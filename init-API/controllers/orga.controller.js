@@ -111,5 +111,41 @@ export const OrgaController = {
 
     const orga = await OrgaModel.update(req.user.id, updates);
     return success(res, orga, 'Profil mis à jour');
+  },
+
+  async refreshToken(req, res) {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new ValidationError('Refresh token requis');
+    }
+
+    const tokenEntry = await TokenModel.findValidToken(refreshToken);
+    if (!tokenEntry) {
+      throw new UnauthorizedError('Refresh token invalide ou expiré');
+    }
+
+    const accessToken = jwt.sign(
+      { id: tokenEntry.user_id, role: 'orga' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    return success(res, { accessToken }, 'Token rafraîchi');
+  },
+
+  async logout(req, res) {
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      await TokenModel.delete(refreshToken);
+    }
+
+    return success(res, null, 'Déconnexion réussie');
+  },
+
+  async deleteAccount(req, res) {
+    await OrgaModel.delete(req.user.id);
+    return success(res, null, 'Compte supprimé');
   }
 };

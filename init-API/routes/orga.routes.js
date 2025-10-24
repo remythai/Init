@@ -9,6 +9,8 @@ const router = Router();
 // Public routes
 router.post('/register', validate('orgaRegister'), asyncHandler(OrgaController.register));
 router.post('/login', validate('orgaLogin'), asyncHandler(OrgaController.login));
+router.post('/refresh', asyncHandler(OrgaController.refreshToken));
+router.post('/logout', asyncHandler(OrgaController.logout));
 
 // Protected routes
 router.get(
@@ -24,6 +26,13 @@ router.put(
   requireRole('orga'),
   validate('orgaUpdate'),
   asyncHandler(OrgaController.updateProfile)
+);
+
+router.delete(
+  '/me',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(OrgaController.deleteAccount)
 );
 
 export default router;
