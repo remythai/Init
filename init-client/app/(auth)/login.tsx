@@ -1,9 +1,8 @@
-
-// app/(auth)/login.tsx
 import { useState } from 'react';
-import { ScrollView, View, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Pressable, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { AuthCard, AuthHeader, AuthTabs, AuthInput, AuthError, AuthButton } from '@/components/auth';
@@ -11,6 +10,7 @@ import { AuthCard, AuthHeader, AuthTabs, AuthInput, AuthError, AuthButton } from
 export default function Login() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,10 +25,12 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await login(email, password);
       router.replace('/(main)/events');
-    } catch (err) {
-      setError('Erreur de connexion');
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Erreur de connexion';
+      setError(message);
+      Alert.alert('Erreur', message);
     } finally {
       setLoading(false);
     }

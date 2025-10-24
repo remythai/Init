@@ -1,17 +1,29 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Tabs, usePathname, useRouter, useSegments, Redirect } from 'expo-router';
+import { Image, Pressable, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 
 export default function MainLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const segments = useSegments();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const isInEvent = pathname.includes('/events/') && segments.includes('[id]');
-  
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
-
   const shouldHideNavigation = isInEvent || isInConversation;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <View style={styles.container}>

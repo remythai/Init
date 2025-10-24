@@ -1,13 +1,15 @@
 import { AuthButton, AuthCard, AuthError, AuthHeader, AuthInput, AuthTabs } from '@/components/auth';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 export default function Register() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,10 +30,12 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await register(email, password, name);
       router.replace('/(main)/events');
-    } catch (err) {
-      setError("Erreur lors de l'inscription");
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Erreur lors de l'inscription";
+      setError(message);
+      Alert.alert('Erreur', message);
     } finally {
       setLoading(false);
     }
