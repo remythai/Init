@@ -1,12 +1,10 @@
-import { ValidationError } from '../utils/errors.js';
-
 export const validationSchemas = {
   userRegister: {
     firstname: { required: true, type: 'string', minLength: 2, maxLength: 100 },
     lastname: { required: true, type: 'string', minLength: 2, maxLength: 100 },
     mail: { required: false, type: 'email' },
     tel: { required: true, type: 'phone' },
-    birthday: { required: true, type: 'date' },
+    birthday: { required: true, type: 'age18' },
     password: { required: true, type: 'string', minLength: 8 }
   },
   userLogin: {
@@ -53,6 +51,21 @@ const validators = {
   date: (value) => {
     const date = new Date(value);
     if (isNaN(date.getTime())) return 'Date invalide';
+    return null;
+  },
+
+  age18: (value) => {
+    const birthDate = new Date(value);
+    if (isNaN(birthDate.getTime())) return 'Date invalide';
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (age < 18) return 'Vous devez avoir au moins 18 ans';
     return null;
   }
 };

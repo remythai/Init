@@ -12,7 +12,6 @@ export const OrgaController = {
   async register(req, res) {
     const { nom, mail, description, tel, password } = req.body;
 
-    // Validation
     if (!nom || !mail || !password) {
       throw new ValidationError('Nom, email et mot de passe sont requis');
     }
@@ -103,20 +102,8 @@ export const OrgaController = {
 
     if (nom) updates.nom = nom;
     if (description !== undefined) updates.description = description;
-    if (mail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(mail)) {
-        throw new ValidationError('Format d\'email invalide');
-      }
-      updates.mail = mail;
-    }
-    if (tel) {
-      const telRegex = /^[0-9+\s()-]{10,20}$/;
-      if (!telRegex.test(tel)) {
-        throw new ValidationError('Format de téléphone invalide');
-      }
-      updates.tel = tel;
-    }
+    if (mail) updates.mail = mail;
+    if (tel) updates.tel = tel;
 
     if (Object.keys(updates).length === 0) {
       throw new ValidationError('Aucune donnée à mettre à jour');

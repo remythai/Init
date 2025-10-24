@@ -12,33 +12,6 @@ export const UserController = {
   async register(req, res) {
     const { firstname, lastname, mail, tel, birthday, password } = req.body;
 
-    if (!firstname || !lastname || !tel || !birthday || !password) {
-      throw new ValidationError('Tous les champs obligatoires doivent être remplis');
-    }
-
-    if (password.length < 8) {
-      throw new ValidationError('Le mot de passe doit contenir au moins 8 caractères');
-    }
-
-    const telRegex = /^[0-9+\s()-]{10,20}$/;
-    if (!telRegex.test(tel)) {
-      throw new ValidationError('Format de téléphone invalide');
-    }
-
-    if (mail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(mail)) {
-        throw new ValidationError('Format d\'email invalide');
-      }
-    }
-
-    const birthDate = new Date(birthday);
-    const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    if (age < 18) {
-      throw new ValidationError('Vous devez avoir au moins 18 ans');
-    }
-
     const password_hash = await bcrypt.hash(password, 10);
 
     const user = await UserModel.create({
@@ -55,10 +28,6 @@ export const UserController = {
 
   async login(req, res) {
     const { tel, password } = req.body;
-
-    if (!tel || !password) {
-      throw new ValidationError('Téléphone et mot de passe requis');
-    }
 
     const user = await UserModel.findByTel(tel);
     if (!user) {
