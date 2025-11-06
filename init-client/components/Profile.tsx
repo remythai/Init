@@ -1,13 +1,13 @@
+import { Camera, Edit2, Save, X } from "lucide-react-native";
 import { useState } from "react";
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import {
   ScrollView,
-  StyleSheet 
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { Edit2, Save, X, Camera } from "lucide-react-native";
 
 export interface UserProfile {
   firstName: string;
