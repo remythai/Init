@@ -24,21 +24,21 @@ export function AuthTabs({ activeTab, onTabChange }: AuthTabsProps) {
       justifyContent: 'center',
     },
     tabLogin: {
-      backgroundColor: activeTab === 'login' ? theme.colors.background : theme.colors.card,
-      borderTopLeftRadius: activeTab === 'login' ? theme.borderRadius.lg : 0,
-      borderBottomRightRadius: activeTab === 'login' ? theme.borderRadius.lg : 0,
+      backgroundColor: activeTab === 'login' ? theme.colors.card : theme.colors.background,
+      borderTopLeftRadius: activeTab === 'login' ? 0 : theme.borderRadius.lg,
+      borderBottomRightRadius: activeTab === 'login' ? 0 : theme.borderRadius.lg,
     },
     tabRegister: {
-      backgroundColor: activeTab === 'register' ? theme.colors.background : theme.colors.card,
-      borderTopRightRadius: activeTab === 'register' ? theme.borderRadius.lg : 0,
-      borderBottomLeftRadius: activeTab === 'register' ? theme.borderRadius.lg : 0,
+      backgroundColor: activeTab === 'register' ? theme.colors.card :  theme.colors.background,
+      borderTopRightRadius: activeTab === 'register' ? 0 : theme.borderRadius.lg,
+      borderBottomLeftRadius: activeTab === 'register' ? 0 : theme.borderRadius.lg,
     },
     tabText: {
       fontSize: theme.fontSizes.sm,
-      color: theme.colors.mutedForeground,
+      color: theme.colors.card,
     },
     activeTabText: {
-      color: theme.colors.card,
+      color: theme.colors.mutedForeground,
       fontWeight: '600',
     },
   });
