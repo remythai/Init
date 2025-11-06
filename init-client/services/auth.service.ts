@@ -3,22 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export interface LoginCredentials {
-  email?: string;  // Pour les orga
-  phone?: string;  // Pour les users
-  tel?: string;    // Alternative pour les users
+  email?: string;
+  phone?: string;
+  tel?: string;
   password: string;
 }
 
 export interface RegisterData {
-  name?: string;      // Pour orga (nom)
-  firstname?: string; // Pour user
-  lastname?: string;  // Pour user
-  email?: string;     // Pour orga (mail)
-  phone?: string;     // Pour user (tel)
-  tel?: string;       // Alternative pour user
+  name?: string;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  phone?: string;
+  tel?: string;
   password: string;
-  birthday?: string;  // Pour user
-  description?: string; // Pour orga
+  birthday?: string;
+  description?: string;
 }
 
 export interface AuthResponse {
@@ -76,7 +76,7 @@ class AuthService {
       ? { mail: credentials.email, password: credentials.password }
       : { tel: credentials.phone || credentials.tel, password: credentials.password };
 
-    console.log('🔑 Login request:', { endpoint, body: { ...body, password: '***' } });
+    console.log('Login request:', { endpoint, body: { ...body, password: '***' } });
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -85,13 +85,12 @@ class AuthService {
     });
 
     const data = await response.json();
-    console.log('📡 Login response complète:', JSON.stringify(data, null, 2));
+    console.log('Login response complète:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Erreur de connexion');
     }
 
-    // ✅ Extraction du token selon la structure de votre API
     let token = null;
     let refreshToken = null;
     let payload = null;
@@ -100,47 +99,47 @@ class AuthService {
       token = data.data.accessToken;
       refreshToken = data.data.refreshToken;
       payload = data.data;
-      console.log('✅ Token trouvé dans data.data.accessToken');
+      console.log('Token trouvé dans data.data.accessToken');
     } else if (data.data && data.data.token) {
       token = data.data.token;
       refreshToken = data.data.refreshToken;
       payload = data.data;
-      console.log('✅ Token trouvé dans data.data.token');
+      console.log('Token trouvé dans data.data.token');
     } else if (data.accessToken) {
       token = data.accessToken;
       refreshToken = data.refreshToken;
       payload = data;
-      console.log('✅ Token trouvé dans data.accessToken');
+      console.log('Token trouvé dans data.accessToken');
     } else if (data.token) {
       token = data.token;
       refreshToken = data.refreshToken;
       payload = data;
-      console.log('✅ Token trouvé dans data.token');
+      console.log('Token trouvé dans data.token');
     } else if (data.data?.data?.accessToken) {
       token = data.data.data.accessToken;
       refreshToken = data.data.data.refreshToken;
       payload = data.data.data;
-      console.log('✅ Token trouvé dans data.data.data.accessToken');
+      console.log('Token trouvé dans data.data.data.accessToken');
     } else if (data.data?.data?.token) {
       token = data.data.data.token;
       refreshToken = data.data.data.refreshToken;
       payload = data.data.data;
-      console.log('✅ Token trouvé dans data.data.data.token');
+      console.log('Token trouvé dans data.data.data.token');
     }
 
     if (!token) {
-      console.error('❌ Structure de réponse non reconnue:', JSON.stringify(data, null, 2));
+      console.error('Structure de réponse non reconnue:', JSON.stringify(data, null, 2));
       throw new Error("Le serveur n'a pas retourné de token. Vérifiez la console pour plus de détails.");
     }
 
-    console.log('🎯 Token extrait:', token.substring(0, 20) + '...');
-    console.log('🔄 RefreshToken extrait:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'non fourni');
+    console.log('Token extrait:', token.substring(0, 20) + '...');
+    console.log('RefreshToken extrait:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'non fourni');
 
     await this.setToken(token);
     if (refreshToken) await this.setRefreshToken(refreshToken);
     await this.setUserType(isOrganizer ? 'orga' : 'user');
 
-    console.log('✅ Login réussi pour', isOrganizer ? 'orga' : 'user');
+    console.log('Login réussi pour', isOrganizer ? 'orga' : 'user');
     return payload;
   }
 
@@ -164,7 +163,7 @@ class AuthService {
           mail: data.email,
         };
 
-    console.log('📝 Register request:', { endpoint, body: { ...body, password: '***' } });
+    console.log('Register request:', { endpoint, body: { ...body, password: '***' } });
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -173,14 +172,13 @@ class AuthService {
     });
 
     const result = await response.json();
-    console.log('📡 Register response complète:', JSON.stringify(result, null, 2));
+    console.log('Register response complète:', JSON.stringify(result, null, 2));
 
     if (!response.ok) {
       throw new Error(result.error || result.message || "Erreur lors de l'inscription");
     }
 
-    // ✅ Inscription réussie, maintenant on fait un login automatique
-    console.log('✅ Inscription réussie, connexion automatique...');
+    console.log('Inscription réussie, connexion automatique...');
     
     const loginCredentials: LoginCredentials = isOrganizer
       ? { email: data.email, password: data.password }

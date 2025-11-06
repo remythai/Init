@@ -13,9 +13,7 @@ export default function Login() {
   const { theme } = useTheme();
   const [isOrganizer, setIsOrganizer] = useState(false);
   
-  // Pour les utilisateurs
   const [phone, setPhone] = useState('');
-  // Pour les organisateurs
   const [email, setEmail] = useState('');
   
   const [password, setPassword] = useState('');
@@ -25,9 +23,7 @@ export default function Login() {
   const handleLogin = async () => {
     setError('');
     
-    // Validation côté client selon les règles du backend
     if (isOrganizer) {
-      // Validation pour organisateur
       if (!email) {
         setError('L\'email est requis');
         return;
@@ -38,7 +34,6 @@ export default function Login() {
         return;
       }
     } else {
-      // Validation pour utilisateur
       if (!phone) {
         setError('Le numéro de téléphone est requis');
         return;
@@ -61,23 +56,21 @@ export default function Login() {
         ? { email, password }
         : { phone, password };
 
-      console.log('🚀 Tentative de connexion:', {
+      console.log('Tentative de connexion:', {
         type: isOrganizer ? 'orga' : 'user',
         credentials: isOrganizer ? { email: email, password: '***' } : { phone: phone, password: '***' }
       });
 
       await authService.login(credentials, isOrganizer);
       
-      console.log('✅ Connexion réussie, redirection...');
-      // Connexion réussie, redirection
+      console.log('Connexion réussie, redirection...');
       router.replace('/(main)/events');
     } catch (err: any) {
-      console.error('❌ Erreur de connexion:', err);
-      console.error('❌ Message:', err.message);
+      console.error('Erreur de connexion:', err);
+      console.error('Message:', err.message);
       
       let errorMessage = err.message || 'Erreur de connexion';
       
-      // Messages d'erreur plus clairs
       if (errorMessage.includes('Identifiants incorrects')) {
         errorMessage = isOrganizer 
           ? 'Email ou mot de passe incorrect' 

@@ -13,14 +13,12 @@ export default function Register() {
   const { theme } = useTheme();
   const [isOrganizer, setIsOrganizer] = useState(false);
   
-  // Champs pour utilisateur
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [phone, setPhone] = useState('');
   const [birthday, setBirthday] = useState('');
   const [userEmail, setUserEmail] = useState('');
   
-  // Champs pour organisateur
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [description, setDescription] = useState('');
@@ -46,7 +44,6 @@ export default function Register() {
   };
 
   const validateUserFields = () => {
-    // Champs requis
     if (!firstname || firstname.length < 2) {
       setError('Le prénom doit contenir au moins 2 caractères');
       return false;
@@ -56,7 +53,6 @@ export default function Register() {
       return false;
     }
     
-    // Validation du téléphone (requis)
     if (!phone) {
       setError('Le numéro de téléphone est requis');
       return false;
@@ -67,7 +63,6 @@ export default function Register() {
       return false;
     }
     
-    // Validation de la date de naissance (requise + 18 ans minimum)
     if (!birthday) {
       setError('La date de naissance est requise');
       return false;
@@ -77,7 +72,6 @@ export default function Register() {
       return false;
     }
     
-    // Email optionnel mais si fourni doit être valide
     if (userEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(userEmail)) {
@@ -86,7 +80,6 @@ export default function Register() {
       }
     }
     
-    // Validation du mot de passe
     if (!password || password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères');
       return false;
@@ -100,13 +93,11 @@ export default function Register() {
   };
 
   const validateOrgaFields = () => {
-    // Nom requis
     if (!name || name.length < 2) {
       setError('Le nom de l\'organisation doit contenir au moins 2 caractères');
       return false;
     }
     
-    // Email requis
     if (!email) {
       setError('L\'email est requis');
       return false;
@@ -117,7 +108,6 @@ export default function Register() {
       return false;
     }
     
-    // Téléphone optionnel mais si fourni doit être valide
     if (orgaPhone) {
       const phoneRegex = /^[0-9+\s()-]{10,20}$/;
       if (!phoneRegex.test(orgaPhone)) {
@@ -126,7 +116,6 @@ export default function Register() {
       }
     }
     
-    // Validation du mot de passe
     if (!password || password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères');
       return false;
@@ -142,7 +131,6 @@ export default function Register() {
   const handleRegister = async () => {
     setError('');
 
-    // Validation selon le type
     if (isOrganizer) {
       if (!validateOrgaFields()) return;
     } else {
@@ -168,19 +156,18 @@ export default function Register() {
             password
           };
 
-      console.log('📝 Données d\'inscription:', {
+      console.log('Données d\'inscription:', {
         type: isOrganizer ? 'orga' : 'user',
         data: { ...registerData, password: '***' }
       });
 
       await authService.register(registerData, isOrganizer);
       
-      console.log('✅ Inscription réussie, redirection...');
-      // Inscription réussie, redirection
+      console.log('Inscription réussie, redirection...');
       router.replace('/(main)/events');
     } catch (err: any) {
-      console.error('❌ Erreur d\'inscription:', err);
-      console.error('❌ Message:', err.message);
+      console.error('Erreur d\'inscription:', err);
+      console.error('Message:', err.message);
       
       let errorMessage = err.message || "Erreur lors de l'inscription";
       
@@ -244,7 +231,6 @@ export default function Register() {
           <AuthTabs activeTab="register" onTabChange={(tab) => router.push(`/(auth)/${tab}`)} />
           
           <View style={styles.formContent}>
-            {/* Switch User/Organizer */}
             <View style={styles.switchContainer}>
               <Pressable 
                 style={[styles.switchButton, !isOrganizer && styles.switchButtonActive]}
@@ -267,7 +253,6 @@ export default function Register() {
             <AuthError message={error} />
             
             {isOrganizer ? (
-              // Formulaire Organisateur
               <>
                 <AuthInput 
                   label="Nom de l'organisation *" 
@@ -305,7 +290,6 @@ export default function Register() {
                 />
               </>
             ) : (
-              // Formulaire Utilisateur
               <>
                 <AuthInput 
                   label="Prénom *" 

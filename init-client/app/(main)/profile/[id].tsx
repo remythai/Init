@@ -9,7 +9,7 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Charger le profil depuis votre API
+    // TODO: Charger le profil depuis API
     setTimeout(() => {
       setUserProfile({
         firstName: "Alex",

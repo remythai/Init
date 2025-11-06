@@ -24,7 +24,6 @@ export interface OrgaProfileData {
 }
 
 class ProfileService {
-  // Récupérer le profil utilisateur
   async getUserProfile(): Promise<UserProfileData> {
     const response = await authService.authenticatedFetch('/api/users/me');
     const data = await response.json();
@@ -33,7 +32,6 @@ class ProfileService {
       throw new Error(data.error || 'Erreur lors de la récupération du profil');
     }
 
-    // Extraction selon la structure de réponse
     const profile = data.data || data;
     
     return {
@@ -51,7 +49,6 @@ class ProfileService {
     };
   }
 
-  // Récupérer le profil organisateur
   async getOrgaProfile(): Promise<OrgaProfileData> {
     const response = await authService.authenticatedFetch('/api/orga/me');
     const data = await response.json();
@@ -71,9 +68,7 @@ class ProfileService {
     };
   }
 
-  // Mettre à jour le profil utilisateur
   async updateUserProfile(updates: Partial<UserProfileData>): Promise<UserProfileData> {
-    // Préparer les données pour l'API
     const body: any = {};
     
     if (updates.firstname) body.firstname = updates.firstname;
@@ -86,7 +81,7 @@ class ProfileService {
       body.personality_questions = JSON.stringify(updates.personalityQuestions);
     }
 
-    console.log('📝 Mise à jour du profil:', body);
+    console.log('Mise à jour du profil:', body);
 
     const response = await authService.authenticatedFetch('/api/users/me', {
       method: 'PUT',
@@ -99,13 +94,11 @@ class ProfileService {
       throw new Error(data.error || 'Erreur lors de la mise à jour du profil');
     }
 
-    console.log('✅ Profil mis à jour');
+    console.log('Profil mis à jour');
     
-    // Récupérer le profil complet après la mise à jour
     return await this.getUserProfile();
   }
 
-  // Mettre à jour le profil organisateur
   async updateOrgaProfile(updates: Partial<OrgaProfileData>): Promise<OrgaProfileData> {
     const body: any = {};
     
@@ -114,7 +107,7 @@ class ProfileService {
     if (updates.tel !== undefined) body.tel = updates.tel;
     if (updates.description !== undefined) body.description = updates.description;
 
-    console.log('📝 Mise à jour du profil orga:', body);
+    console.log('Mise à jour du profil orga:', body);
 
     const response = await authService.authenticatedFetch('/api/orga/me', {
       method: 'PUT',
@@ -127,12 +120,11 @@ class ProfileService {
       throw new Error(data.error || 'Erreur lors de la mise à jour du profil');
     }
 
-    console.log('✅ Profil orga mis à jour');
+    console.log('Profil orga mis à jour');
     
     return await this.getOrgaProfile();
   }
 
-  // Récupérer un profil utilisateur par ID (pour voir d'autres profils)
   async getUserProfileById(userId: number): Promise<UserProfileData> {
     const response = await authService.authenticatedFetch(`/api/users/${userId}`);
     const data = await response.json();
@@ -158,7 +150,6 @@ class ProfileService {
     };
   }
 
-  // Calculer l'âge à partir de la date de naissance
   calculateAge(birthday: string): number {
     const birthDate = new Date(birthday);
     const today = new Date();
