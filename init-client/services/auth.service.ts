@@ -28,6 +28,17 @@ export interface AuthResponse {
   orga?: any;
 }
 
+export interface User {
+  id: number;
+  firstname: string;
+  lastname: string;
+  tel: string;
+  mail?: string;
+  birthday?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 class AuthService {
   async setToken(token: string) {
     if (!token) {
@@ -189,6 +200,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     const token = await this.getToken();
+    const refreshToken = await this.getRefreshToken();
     const userType = await this.getUserType();
 
     if (token && userType) {
@@ -200,6 +212,7 @@ class AuthService {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({ refreshToken }),
         });
       } catch (error) {
         console.error('Logout error:', error);
@@ -292,6 +305,43 @@ class AuthService {
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
     return !!token;
+  }
+
+  // Nouvelles méthodes pour récupérer le profil utilisateur
+  async getCurrentUser(): Promise<User | null> {
+    try {
+      const response = await this.authenticatedFetch('/api/users/me');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la récupération du profil');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      return null;
+    }
+  }
+
+  async updateCurrentUser(updates: Partial<User>): Promise<User | null> {
+    try {
+      const response = await this.authenticatedFetch('/api/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour du profil');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
   }
 }
 

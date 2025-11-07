@@ -1,12 +1,18 @@
-import { Stack } from 'expo-router';
-import { ThemeProvider } from '../context/ThemeContext';
+// app/_layout.tsx
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
-import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { authService } from '@/services/auth.service';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  
   const [fontsLoaded] = useFonts({
     'Roboto': require('../assets/fonts/Roboto-Regular.ttf'),
     'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
@@ -17,30 +23,57 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && isAuthReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, isAuthReady]);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const isAuthenticated = await authService.isAuthenticated();
+        const inAuthGroup = segments[0] === '(auth)';
+
+        if (!isAuthReady) {
+          if (isAuthenticated && inAuthGroup) {
+            router.replace('/(main)/events');
+          } else if (!isAuthenticated && !inAuthGroup) {
+            router.replace('/(auth)/login');
+          }
+          setIsAuthReady(true);
+        } else {
+          if (!isAuthenticated && !inAuthGroup) {
+            router.replace('/(auth)/login');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setIsAuthReady(true);
+      }
+    };
+
+    if (fontsLoaded) {
+      checkAuth();
+    }
+  }, [segments, isAuthReady, fontsLoaded]);
+
+  if (!fontsLoaded || !isAuthReady) {
     return null;
   }
 
   return (
     <ThemeProvider>
-      <Stack
-        screenOptions={{
+      <Stack 
+        screenOptions={{ 
           headerShown: false,
         }}
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(main)" />
         <Stack.Screen name="settings" />
-        <Stack.Screen
-          name="modal"
-          options={{
-            presentation: 'modal',
-          }}
+        <Stack.Screen 
+          name="modal" 
+          options={{ presentation: 'modal' }} 
         />
       </Stack>
     </ThemeProvider>
