@@ -10,29 +10,19 @@ export default function MyProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const debugAuth = async () => {
-      console.log('=== AUTH DEBUG ===');
-      console.log('Token:', await authService.getToken());
-      console.log('RefreshToken:', await authService.getRefreshToken());
-      console.log('UserType:', await authService.getUserType());
-      console.log('Is Authenticated:', await authService.isAuthenticated());
-      console.log('=================');
-    };
-    
-    debugAuth();
-    loadUserProfile();
-  }, []);
-
-  useEffect(() => {
     loadUserProfile();
   }, []);
 
   const loadUserProfile = async () => {
     try {
       setLoading(true);
+      console.log('Chargement du profil utilisateur...');
+      
       const user = await authService.getCurrentUser();
+      console.log('Profil récupéré:', user);
       
       if (!user) {
+        console.log('Aucun profil trouvé, redirection vers login');
         Alert.alert(
           'Session expirée',
           'Veuillez vous reconnecter',
@@ -51,8 +41,25 @@ export default function MyProfileScreen() {
 
       setUserProfile(user);
     } catch (error: any) {
-      console.error('Error loading profile:', error);
-      Alert.alert('Erreur', 'Impossible de charger le profil');
+      console.error('Erreur lors du chargement du profil:', error);
+      Alert.alert(
+        'Erreur', 
+        'Impossible de charger le profil',
+        [
+          {
+            text: 'Réessayer',
+            onPress: () => loadUserProfile()
+          },
+          {
+            text: 'Déconnexion',
+            onPress: () => {
+              authService.clearAuth();
+              router.replace('/(auth)/login');
+            },
+            style: 'destructive'
+          }
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -60,11 +67,18 @@ export default function MyProfileScreen() {
 
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
     try {
+      console.log('Mise à jour du profil avec:', updates);
+      
       const updatedUser = await authService.updateCurrentUser(updates);
+      
       if (updatedUser) {
+        console.log('Profil mis à jour:', updatedUser);
         setUserProfile(updatedUser);
+      } else {
+        throw new Error('La mise à jour n\'a pas retourné de données');
       }
     } catch (error: any) {
+      console.error('Erreur mise à jour profil:', error);
       throw new Error(error.message || 'Erreur lors de la mise à jour');
     }
   };
@@ -78,7 +92,11 @@ export default function MyProfileScreen() {
   }
 
   if (!userProfile) {
-    return null;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#303030" />
+      </View>
+    );
   }
 
   return (

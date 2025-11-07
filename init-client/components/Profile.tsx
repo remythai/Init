@@ -11,11 +11,14 @@ import {
 } from "react-native";
 
 export interface UserProfile {
+  id?: number;
   firstname: string;
   lastname: string;
   tel: string;
   mail?: string;
   birthday?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ProfileProps {
@@ -38,10 +41,36 @@ export function Profile({
   const handleSave = async () => {
     try {
       setSaving(true);
-      await onUpdateProfile(editedProfile);
+      
+      const updates: Partial<UserProfile> = {};
+      
+      if (editedProfile.firstname !== user.firstname) {
+        updates.firstname = editedProfile.firstname;
+      }
+      if (editedProfile.lastname !== user.lastname) {
+        updates.lastname = editedProfile.lastname;
+      }
+      if (editedProfile.tel !== user.tel) {
+        updates.tel = editedProfile.tel;
+      }
+      if (editedProfile.mail !== user.mail) {
+        updates.mail = editedProfile.mail;
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        Alert.alert('Information', 'Aucune modification détectée');
+        setIsEditing(false);
+        setSaving(false);
+        return;
+      }
+      
+      console.log('Envoi des mises à jour:', updates);
+      
+      await onUpdateProfile(updates);
       setIsEditing(false);
       Alert.alert('Succès', 'Profil mis à jour avec succès');
     } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
       Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
@@ -110,7 +139,7 @@ export function Profile({
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {user.firstname.charAt(0)}
+                {user.firstname.charAt(0).toUpperCase()}
               </Text>
             </View>
             {isOwnProfile && isEditing && (
@@ -134,6 +163,7 @@ export function Profile({
                     }
                     style={styles.input}
                     editable={!saving}
+                    placeholder="Prénom"
                   />
                 ) : (
                   <Text style={styles.value}>{user.firstname}</Text>
@@ -149,6 +179,7 @@ export function Profile({
                     }
                     style={styles.input}
                     editable={!saving}
+                    placeholder="Nom"
                   />
                 ) : (
                   <Text style={styles.value}>{user.lastname}</Text>
@@ -167,31 +198,31 @@ export function Profile({
                   style={styles.input}
                   keyboardType="phone-pad"
                   editable={!saving}
+                  placeholder="Téléphone"
                 />
               ) : (
                 <Text style={styles.value}>{user.tel}</Text>
               )}
             </View>
 
-            {(user.mail || isEditing) && (
-              <View style={styles.fullWidthField}>
-                <Text style={styles.label}>Email</Text>
-                {isEditing ? (
-                  <TextInput
-                    value={editedProfile.mail || ''}
-                    onChangeText={(text) =>
-                      setEditedProfile({ ...editedProfile, mail: text })
-                    }
-                    style={styles.input}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!saving}
-                  />
-                ) : (
-                  <Text style={styles.value}>{user.mail || 'Non renseigné'}</Text>
-                )}
-              </View>
-            )}
+            <View style={styles.fullWidthField}>
+              <Text style={styles.label}>Email</Text>
+              {isEditing ? (
+                <TextInput
+                  value={editedProfile.mail || ''}
+                  onChangeText={(text) =>
+                    setEditedProfile({ ...editedProfile, mail: text })
+                  }
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!saving}
+                  placeholder="email@exemple.com"
+                />
+              ) : (
+                <Text style={styles.value}>{user.mail || 'Non renseigné'}</Text>
+              )}
+            </View>
 
             {age !== null && (
               <View style={styles.fullWidthField}>
@@ -201,7 +232,6 @@ export function Profile({
             )}
           </View>
 
-          {/* Section centres d'intérêt - À implémenter plus tard */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Centres d'intérêt</Text>
             <Text style={styles.placeholderText}>
@@ -209,7 +239,6 @@ export function Profile({
             </Text>
           </View>
 
-          {/* Section questions de personnalité - À implémenter plus tard */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Questions de personnalité</Text>
             <Text style={styles.placeholderText}>
@@ -361,6 +390,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 16,
     color: "#303030",
+    backgroundColor: "#FFFFFF",
   },
   cardTitle: {
     fontWeight: "600",
