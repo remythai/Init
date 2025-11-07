@@ -17,7 +17,7 @@ export interface UserProfileData {
 
 export interface OrgaProfileData {
   id: number;
-  nom: string;
+  name: string;
   mail: string;
   tel?: string;
   description?: string;
@@ -61,7 +61,7 @@ class ProfileService {
     
     return {
       id: profile.id,
-      nom: profile.nom,
+      name: profile.name,
       mail: profile.mail,
       tel: profile.tel,
       description: profile.description
@@ -102,7 +102,7 @@ class ProfileService {
   async updateOrgaProfile(updates: Partial<OrgaProfileData>): Promise<OrgaProfileData> {
     const body: any = {};
     
-    if (updates.nom) body.nom = updates.nom;
+    if (updates.name) body.name = updates.name;
     if (updates.mail) body.mail = updates.mail;
     if (updates.tel !== undefined) body.tel = updates.tel;
     if (updates.description !== undefined) body.description = updates.description;
