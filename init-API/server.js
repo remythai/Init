@@ -1,11 +1,13 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+
+import { swaggerSpec } from './config/swagger.config.js';
+
 import userRoutes from './routes/user.routes.js';
 import orgaRoutes from './routes/orga.routes.js';
-import { errorHandler } from './utils/errors.js';
 
-// Import pour tester la connexion DB au démarrage
-import './config/database.js';
+import { errorHandler } from './utils/errors.js';
 
 dotenv.config();
 
@@ -15,7 +17,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS (si besoin)
+// CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
@@ -24,6 +26,27 @@ app.use((req, res, next) => {
     return res.sendStatus(200);
   }
   next();
+});
+
+// Swagger Documentation
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    syntaxHighlight: {
+      activate: true,
+      theme: 'monokai'
+    }
+  }
+}));
+
+// Endpoint pour obtenir la spec OpenAPI en JSON
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
 });
 
 // Routes
@@ -48,4 +71,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
 });
