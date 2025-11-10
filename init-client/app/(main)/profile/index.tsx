@@ -1,27 +1,51 @@
 import { View, ActivityIndicator, StyleSheet, Alert } from "react-native";
-import { Profile, UserProfile } from "@/components/Profile";
+import { Profile, UserProfile, OrgaProfile } from "@/components/Profile";
 import { useState, useEffect } from "react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "expo-router";
 
 export default function MyProfileScreen() {
   const router = useRouter();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | OrgaProfile | null>(null);
+  const [profileType, setProfileType] = useState<'user' | 'orga' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUserProfile();
+    loadProfile();
   }, []);
 
-  const loadUserProfile = async () => {
+  const loadProfile = async () => {
     try {
       setLoading(true);
-      console.log('Chargement du profil utilisateur...');
+      console.log('Chargement du profil...');
       
-      const user = await authService.getCurrentUser();
-      console.log('Profil récupéré:', user);
+      const userType = await authService.getUserType();
+      console.log('Type d\'utilisateur:', userType);
       
-      if (!user) {
+      if (!userType) {
+        console.log('Aucun type d\'utilisateur trouvé, redirection vers login');
+        Alert.alert(
+          'Session expirée',
+          'Veuillez vous reconnecter',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                authService.clearAuth();
+                router.replace('/(auth)');
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      setProfileType(userType);
+
+      const profileData = await authService.getCurrentProfile();
+      console.log('Profil récupéré:', profileData);
+      
+      if (!profileData) {
         console.log('Aucun profil trouvé, redirection vers login');
         Alert.alert(
           'Session expirée',
@@ -39,7 +63,7 @@ export default function MyProfileScreen() {
         return;
       }
 
-      setUserProfile(user);
+      setProfile(profileData);
     } catch (error: any) {
       console.error('Erreur lors du chargement du profil:', error);
       Alert.alert(
@@ -48,7 +72,7 @@ export default function MyProfileScreen() {
         [
           {
             text: 'Réessayer',
-            onPress: () => loadUserProfile()
+            onPress: () => loadProfile()
           },
           {
             text: 'Déconnexion',
@@ -65,15 +89,15 @@ export default function MyProfileScreen() {
     }
   };
 
-  const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+  const handleUpdateProfile = async (updates: Partial<UserProfile | OrgaProfile>) => {
     try {
       console.log('Mise à jour du profil avec:', updates);
       
-      const updatedUser = await authService.updateCurrentUser(updates);
+      const updatedProfile = await authService.updateCurrentProfile(updates);
       
-      if (updatedUser) {
-        console.log('Profil mis à jour:', updatedUser);
-        setUserProfile(updatedUser);
+      if (updatedProfile) {
+        console.log('Profil mis à jour:', updatedProfile);
+        setProfile(updatedProfile);
       } else {
         throw new Error('La mise à jour n\'a pas retourné de données');
       }
@@ -83,15 +107,7 @@ export default function MyProfileScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#303030" />
-      </View>
-    );
-  }
-
-  if (!userProfile) {
+  if (loading || !profile || !profileType) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#303030" />
@@ -102,7 +118,8 @@ export default function MyProfileScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Profile 
-        user={userProfile} 
+        profile={profile}
+        profileType={profileType}
         onUpdateProfile={handleUpdateProfile} 
         isOwnProfile={true}
         loading={loading}

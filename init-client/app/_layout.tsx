@@ -42,7 +42,6 @@ export default function RootLayout() {
     checkAuth();
   }, [fontsLoaded]);
 
-  // Gérer la navigation basée sur l'authentification
   useEffect(() => {
     if (!isReady || isAuthenticated === null || hasNavigated.current) return;
 
@@ -52,7 +51,6 @@ export default function RootLayout() {
       if (isAuthenticated) {
         router.replace('/(main)/events');
       } else {
-        // Redirection vers la page d'auth unifiée
         router.replace('/(auth)');
       }
     }, 100);

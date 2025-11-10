@@ -21,40 +21,75 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+export interface OrgaProfile {
+  id?: number;
+  nom: string;
+  mail: string;
+  description?: string;
+  tel?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface ProfileProps {
-  user: UserProfile;
-  onUpdateProfile: (profile: Partial<UserProfile>) => Promise<void>;
+  profile: UserProfile | OrgaProfile;
+  profileType: 'user' | 'orga';
+  onUpdateProfile: (profile: Partial<UserProfile | OrgaProfile>) => Promise<void>;
   isOwnProfile?: boolean;
   loading?: boolean;
 }
 
+function isUserProfile(profile: any): profile is UserProfile {
+  return 'firstname' in profile && 'lastname' in profile;
+}
+
+function isOrgaProfile(profile: any): profile is OrgaProfile {
+  return 'nom' in profile;
+}
+
 export function Profile({ 
-  user, 
+  profile, 
+  profileType,
   onUpdateProfile, 
   isOwnProfile = true,
   loading = false 
 }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState(user);
+  const [editedProfile, setEditedProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       
-      const updates: Partial<UserProfile> = {};
+      const updates: Partial<UserProfile | OrgaProfile> = {};
       
-      if (editedProfile.firstname !== user.firstname) {
-        updates.firstname = editedProfile.firstname;
-      }
-      if (editedProfile.lastname !== user.lastname) {
-        updates.lastname = editedProfile.lastname;
-      }
-      if (editedProfile.tel !== user.tel) {
-        updates.tel = editedProfile.tel;
-      }
-      if (editedProfile.mail !== user.mail) {
-        updates.mail = editedProfile.mail;
+      if (profileType === 'user' && isUserProfile(profile) && isUserProfile(editedProfile)) {
+        if (editedProfile.firstname !== profile.firstname) {
+          updates.firstname = editedProfile.firstname;
+        }
+        if (editedProfile.lastname !== profile.lastname) {
+          updates.lastname = editedProfile.lastname;
+        }
+        if (editedProfile.tel !== profile.tel) {
+          updates.tel = editedProfile.tel;
+        }
+        if (editedProfile.mail !== profile.mail) {
+          updates.mail = editedProfile.mail;
+        }
+      } else if (profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile)) {
+        if (editedProfile.nom !== profile.nom) {
+          updates.nom = editedProfile.nom;
+        }
+        if (editedProfile.mail !== profile.mail) {
+          updates.mail = editedProfile.mail;
+        }
+        if (editedProfile.tel !== profile.tel) {
+          updates.tel = editedProfile.tel;
+        }
+        if (editedProfile.description !== profile.description) {
+          updates.description = editedProfile.description;
+        }
       }
       
       if (Object.keys(updates).length === 0) {
@@ -78,7 +113,7 @@ export function Profile({
   };
 
   const handleCancel = () => {
-    setEditedProfile(user);
+    setEditedProfile(profile);
     setIsEditing(false);
   };
 
@@ -94,7 +129,21 @@ export function Profile({
     return age;
   };
 
-  const age = calculateAge(user.birthday);
+  const getDisplayName = () => {
+    if (isUserProfile(profile)) {
+      return profile.firstname;
+    }
+    return profile.nom;
+  };
+
+  const getAvatarInitial = () => {
+    if (isUserProfile(profile)) {
+      return profile.firstname.charAt(0).toUpperCase();
+    }
+    return profile.nom.charAt(0).toUpperCase();
+  };
+
+  const age = isUserProfile(profile) ? calculateAge(profile.birthday) : null;
 
   return (
     <View style={styles.container}>
@@ -102,7 +151,9 @@ export function Profile({
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <Text style={styles.headerTitle}>
-              {isOwnProfile ? "Mon Profil" : `Profil de ${user.firstname}`}
+              {isOwnProfile 
+                ? (profileType === 'user' ? "Mon Profil" : "Profil de l'Organisation") 
+                : `Profil de ${getDisplayName()}`}
             </Text>
             {isOwnProfile && !isEditing ? (
               <TouchableOpacity
@@ -139,7 +190,7 @@ export function Profile({
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {user.firstname.charAt(0).toUpperCase()}
+                {getAvatarInitial()}
               </Text>
             </View>
             {isOwnProfile && isEditing && (
@@ -151,100 +202,199 @@ export function Profile({
         </View>
 
         <View style={styles.content}>
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <Text style={styles.label}>Prénom</Text>
-                {isEditing ? (
-                  <TextInput
-                    value={editedProfile.firstname}
-                    onChangeText={(text) =>
-                      setEditedProfile({ ...editedProfile, firstname: text })
-                    }
-                    style={styles.input}
-                    editable={!saving}
-                    placeholder="Prénom"
-                  />
-                ) : (
-                  <Text style={styles.value}>{user.firstname}</Text>
+          {/* Profil Utilisateur */}
+          {profileType === 'user' && isUserProfile(profile) && isUserProfile(editedProfile) && (
+            <>
+              <View style={styles.card}>
+                <View style={styles.row}>
+                  <View style={styles.halfWidth}>
+                    <Text style={styles.label}>Prénom</Text>
+                    {isEditing ? (
+                      <TextInput
+                        value={editedProfile.firstname}
+                        onChangeText={(text) =>
+                          setEditedProfile({ ...editedProfile, firstname: text })
+                        }
+                        style={styles.input}
+                        editable={!saving}
+                        placeholder="Prénom"
+                      />
+                    ) : (
+                      <Text style={styles.value}>{profile.firstname}</Text>
+                    )}
+                  </View>
+                  <View style={styles.halfWidth}>
+                    <Text style={styles.label}>Nom</Text>
+                    {isEditing ? (
+                      <TextInput
+                        value={editedProfile.lastname}
+                        onChangeText={(text) =>
+                          setEditedProfile({ ...editedProfile, lastname: text })
+                        }
+                        style={styles.input}
+                        editable={!saving}
+                        placeholder="Nom"
+                      />
+                    ) : (
+                      <Text style={styles.value}>{profile.lastname}</Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Téléphone</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.tel}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, tel: text })
+                      }
+                      style={styles.input}
+                      keyboardType="phone-pad"
+                      editable={!saving}
+                      placeholder="Téléphone"
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.tel}</Text>
+                  )}
+                </View>
+
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Email</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.mail || ''}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, mail: text })
+                      }
+                      style={styles.input}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!saving}
+                      placeholder="email@exemple.com"
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.mail || 'Non renseigné'}</Text>
+                  )}
+                </View>
+
+                {age !== null && (
+                  <View style={styles.fullWidthField}>
+                    <Text style={styles.label}>Âge</Text>
+                    <Text style={styles.value}>{age} ans</Text>
+                  </View>
                 )}
               </View>
-              <View style={styles.halfWidth}>
-                <Text style={styles.label}>Nom</Text>
-                {isEditing ? (
-                  <TextInput
-                    value={editedProfile.lastname}
-                    onChangeText={(text) =>
-                      setEditedProfile({ ...editedProfile, lastname: text })
-                    }
-                    style={styles.input}
-                    editable={!saving}
-                    placeholder="Nom"
-                  />
-                ) : (
-                  <Text style={styles.value}>{user.lastname}</Text>
-                )}
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Centres d'intérêt</Text>
+                <Text style={styles.placeholderText}>
+                  Cette fonctionnalité sera bientôt disponible
+                </Text>
               </View>
-            </View>
 
-            <View style={styles.fullWidthField}>
-              <Text style={styles.label}>Téléphone</Text>
-              {isEditing ? (
-                <TextInput
-                  value={editedProfile.tel}
-                  onChangeText={(text) =>
-                    setEditedProfile({ ...editedProfile, tel: text })
-                  }
-                  style={styles.input}
-                  keyboardType="phone-pad"
-                  editable={!saving}
-                  placeholder="Téléphone"
-                />
-              ) : (
-                <Text style={styles.value}>{user.tel}</Text>
-              )}
-            </View>
-
-            <View style={styles.fullWidthField}>
-              <Text style={styles.label}>Email</Text>
-              {isEditing ? (
-                <TextInput
-                  value={editedProfile.mail || ''}
-                  onChangeText={(text) =>
-                    setEditedProfile({ ...editedProfile, mail: text })
-                  }
-                  style={styles.input}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!saving}
-                  placeholder="email@exemple.com"
-                />
-              ) : (
-                <Text style={styles.value}>{user.mail || 'Non renseigné'}</Text>
-              )}
-            </View>
-
-            {age !== null && (
-              <View style={styles.fullWidthField}>
-                <Text style={styles.label}>Âge</Text>
-                <Text style={styles.value}>{age} ans</Text>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Questions de personnalité</Text>
+                <Text style={styles.placeholderText}>
+                  Cette fonctionnalité sera bientôt disponible
+                </Text>
               </View>
-            )}
-          </View>
+            </>
+          )}
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Centres d'intérêt</Text>
-            <Text style={styles.placeholderText}>
-              Cette fonctionnalité sera bientôt disponible
-            </Text>
-          </View>
+          {/* Profil Organisation */}
+          {profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile) && (
+            <>
+              <View style={styles.card}>
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Nom de l'organisation</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.nom}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, nom: text })
+                      }
+                      style={styles.input}
+                      editable={!saving}
+                      placeholder="Nom de l'organisation"
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.nom}</Text>
+                  )}
+                </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Questions de personnalité</Text>
-            <Text style={styles.placeholderText}>
-              Cette fonctionnalité sera bientôt disponible
-            </Text>
-          </View>
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Email</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.mail}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, mail: text })
+                      }
+                      style={styles.input}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!saving}
+                      placeholder="email@organisation.com"
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.mail}</Text>
+                  )}
+                </View>
+
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Téléphone</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.tel || ''}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, tel: text })
+                      }
+                      style={styles.input}
+                      keyboardType="phone-pad"
+                      editable={!saving}
+                      placeholder="Téléphone"
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.tel || 'Non renseigné'}</Text>
+                  )}
+                </View>
+
+                <View style={styles.fullWidthField}>
+                  <Text style={styles.label}>Description</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editedProfile.description || ''}
+                      onChangeText={(text) =>
+                        setEditedProfile({ ...editedProfile, description: text })
+                      }
+                      style={[styles.input, styles.textArea]}
+                      multiline
+                      numberOfLines={4}
+                      editable={!saving}
+                      placeholder="Description de l'organisation..."
+                    />
+                  ) : (
+                    <Text style={styles.value}>{profile.description || 'Aucune description'}</Text>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Événements créés</Text>
+                <Text style={styles.placeholderText}>
+                  Cette fonctionnalité sera bientôt disponible
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Statistiques</Text>
+                <Text style={styles.placeholderText}>
+                  Cette fonctionnalité sera bientôt disponible
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -391,6 +541,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#303030",
     backgroundColor: "#FFFFFF",
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: "top",
   },
   cardTitle: {
     fontWeight: "600",
