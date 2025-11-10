@@ -27,18 +27,15 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [userType, setUserType] = useState<UserType>("user");
 
-  // Champs communs
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Champs utilisateur
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
-  // Champs organisateur
   const [organizationName, setOrganizationName] = useState("");
   const [organizerEmail, setOrganizerEmail] = useState("");
   const [organizerPhone, setOrganizerPhone] = useState("");
@@ -63,7 +60,6 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
   const handleSubmit = async () => {
     setError("");
 
-    // Validation pour connexion
     if (isLogin) {
       if (userType === "user") {
         if (!phone) {
@@ -92,7 +88,6 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
         return;
       }
     }
-    // Validation pour inscription
     else {
       if (userType === "user") {
         if (!firstName || firstName.length < 2) {
@@ -161,7 +156,6 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
     }
 
     try {
-      // Préparer les données selon le type d'utilisateur et l'action
       const data = {
         phone,
         firstName,

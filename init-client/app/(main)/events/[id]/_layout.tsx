@@ -1,6 +1,6 @@
-import { View, Pressable, StyleSheet } from 'react-native';
-import { Stack, useRouter, useLocalSearchParams, useSegments } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 export default function EventLayout() {
   const router = useRouter();

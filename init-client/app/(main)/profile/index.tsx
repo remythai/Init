@@ -31,7 +31,7 @@ export default function MyProfileScreen() {
               text: 'OK',
               onPress: () => {
                 authService.clearAuth();
-                router.replace('/(auth)/login');
+                router.replace('/(auth)');
               }
             }
           ]
@@ -54,7 +54,7 @@ export default function MyProfileScreen() {
             text: 'Déconnexion',
             onPress: () => {
               authService.clearAuth();
-              router.replace('/(auth)/login');
+              router.replace('/(auth)');
             },
             style: 'destructive'
           }

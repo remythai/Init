@@ -1,10 +1,9 @@
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/context/ThemeContext';
 import { authService } from '@/services/auth.service';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -20,168 +19,241 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView style={styles.content}>
-        <View style={[styles.section, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-          <ThemedText style={styles.sectionTitle} variant="small">Compte</ThemedText>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="person" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Modifier le profil</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="lock" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Confidentialité</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="notifications" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Notifications</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-        </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
+        <ThemedText style={styles.headerTitle}>Paramètres</ThemedText>
+      </View>
 
-        <View style={[styles.section, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-          <ThemedText style={styles.sectionTitle} variant="small">Préférences</ThemedText>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="language" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Langue</ThemedText>
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.content}>
+          {/* Section Général */}
+          <View style={styles.card}>
+            <ThemedText style={styles.cardTitle}>Général</ThemedText>
+            
+            <View style={styles.cardContent}>
+              <Pressable style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="language" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Langue</ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable style={styles.settingItemButton}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="notifications" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Notifications</ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable 
+                style={styles.settingItemButton}
+                onPress={toggleTheme}
+              >
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="dark-mode" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Thème sombre</ThemedText>
+                </View>
+                <MaterialIcons 
+                  name={isDark ? "toggle-on" : "toggle-off"} 
+                  size={32} 
+                  color={isDark ? "#303030" : "#999"} 
+                />
+              </Pressable>
             </View>
-            <View style={styles.settingRight}>
-              <ThemedText style={styles.settingValue} variant="small">Français</ThemedText>
-              <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
+          </View>
+
+          {/* Section Confidentialité et sécurité */}
+          <View style={styles.card}>
+            <ThemedText style={styles.cardTitle}>Confidentialité et sécurité</ThemedText>
+            
+            <View style={styles.cardContentDivided}>
+              <Pressable style={styles.dividedItem}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="shield" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Confidentialité</ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable style={styles.dividedItem}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="description" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Conditions d'utilisation</ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable style={[styles.dividedItem, styles.lastItem]}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="description" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Politique de confidentialité</ThemedText>
+                </View>
+              </Pressable>
             </View>
-          </Pressable>
-          
-          <Pressable 
-            style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}
-            onPress={toggleTheme}
+          </View>
+
+          {/* Section Aide */}
+          <View style={styles.card}>
+            <ThemedText style={styles.cardTitle}>Aide</ThemedText>
+            
+            <View style={styles.cardContentDivided}>
+              <Pressable style={styles.dividedItem}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="help" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>Centre d'aide</ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable style={[styles.dividedItem, styles.lastItem]}>
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="info" size={20} color="#303030" />
+                  <ThemedText style={styles.settingText}>À propos</ThemedText>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Bouton de déconnexion */}
+          <Pressable
+            style={styles.logoutCard}
+            onPress={handleLogout}
           >
             <View style={styles.settingLeft}>
-              <MaterialIcons name="dark-mode" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Thème sombre</ThemedText>
+              <MaterialIcons name="logout" size={20} color="#dc2626" />
+              <ThemedText style={styles.logoutText}>Déconnexion</ThemedText>
             </View>
-            <MaterialIcons 
-              name={isDark ? "toggle-on" : "toggle-off"} 
-              size={32} 
-              color={isDark ? theme.colors.primary : theme.colors.mutedForeground} 
-            />
           </Pressable>
+
+          {/* Version */}
+          <View style={styles.versionContainer}>
+            <ThemedText style={styles.versionText}>Version 1.0.0</ThemedText>
+            <ThemedText style={styles.versionText}>© 2025 Init. Tous droits réservés.</ThemedText>
+          </View>
         </View>
-
-        <View style={[styles.section, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-          <ThemedText style={styles.sectionTitle} variant="small">Support</ThemedText>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="help" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Aide</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="feedback" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>Envoyer un feedback</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-          
-          <Pressable style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="info" size={24} color={theme.colors.primary} />
-              <ThemedText style={styles.settingText}>À propos</ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color={theme.colors.mutedForeground} />
-          </Pressable>
-        </View>
-
-        <Pressable
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <MaterialIcons name="logout" size={24} color="#fff" />
-          <ThemedText style={styles.logoutText}>Se déconnecter</ThemedText>
-        </Pressable>
-
-        <ThemedText style={styles.version} variant="small">Version 1.0.0</ThemedText>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5F5F5',
   },
-  content: {
+  header: {
+    backgroundColor: '#303030',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 48,
+    gap: 12,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerTitle: {
+    fontFamily: 'Poppins',
+    fontWeight: '600',
+    fontSize: 18,
+    color: '#fff',
+  },
+  scrollContent: {
     flex: 1,
   },
-  section: {
-    marginTop: 24,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+  content: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 80,
   },
-  sectionTitle: {
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  cardTitle: {
+    fontFamily: 'Poppins',
     fontWeight: '600',
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    opacity: 0.6,
+    fontSize: 16,
+    color: '#303030',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  cardContent: {
+    padding: 16,
+    gap: 16,
+  },
+  cardContentDivided: {
+    borderTopWidth: 0,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  settingItemButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+  },
+  dividedItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  lastItem: {
+    borderBottomWidth: 0,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   settingText: {
     fontSize: 16,
+    color: '#303030',
   },
-  settingValue: {
-    fontSize: 16,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#ff3b30',
-    margin: 16,
+  logoutCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
     padding: 16,
-    borderRadius: 8,
   },
   logoutText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins',
+    color: '#dc2626',
+    fontWeight: '600',
   },
-  version: {
-    textAlign: 'center',
-    marginBottom: 32,
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 });

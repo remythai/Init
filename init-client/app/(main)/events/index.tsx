@@ -3,7 +3,6 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { EventsList, Event } from '@/components/EventsList';
 import { router } from 'expo-router';
 
-// Données d'exemple - remplacez par vos vraies données (API, base de données, etc.)
 const MOCK_EVENTS: Event[] = [
   {
     id: '1',
@@ -84,11 +83,8 @@ export default function EventsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simuler le chargement des données
-    // Remplacez ceci par votre logique de récupération de données (API, AsyncStorage, etc.)
     const loadEvents = async () => {
       try {
-        // Exemple avec un délai simulé
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // TODO: Remplacez par votre appel API
@@ -109,12 +105,10 @@ export default function EventsScreen() {
   }, []);
 
   const handleEventClick = (event: Event) => {
-    // Navigation vers la page détail de l'événement
     router.push(`/(main)/events/${event.id}`);
   };
 
   const handleEnterEvent = (event: Event) => {
-    // Navigation vers l'environnement de l'événement (swiper)
     router.push(`/(main)/events/${event.id}/(event-tabs)/swiper`);
   };
 
