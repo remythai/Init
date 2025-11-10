@@ -72,7 +72,7 @@ export const OrgaController = {
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
 
-    await TokenModel.create(orga.id, refreshToken, expiry);
+    await TokenModel.create(orga.id, refreshToken, expiry, 'orga');
 
     return success(res, {
       accessToken,
@@ -125,8 +125,11 @@ export const OrgaController = {
       throw new UnauthorizedError('Refresh token invalide ou expiré');
     }
 
+    const entityId = tokenEntry.orga_id || tokenEntry.user_id;
+    const role = tokenEntry.user_type;
+
     const accessToken = jwt.sign(
-      { id: tokenEntry.user_id, role: 'orga' },
+      { id: entityId, role: role },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -145,6 +148,7 @@ export const OrgaController = {
   },
 
   async deleteAccount(req, res) {
+    await TokenModel.deleteAllForUser(req.user.id, 'orga');
     await OrgaModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
   }
