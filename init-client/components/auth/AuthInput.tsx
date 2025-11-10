@@ -1,6 +1,6 @@
-import { View, TextInput, StyleSheet, TextInputProps } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/context/ThemeContext';
+import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 
 interface AuthInputProps extends TextInputProps {
   label: string;
@@ -17,6 +17,7 @@ export function AuthInput({ label, value, onChangeText, ...props }: AuthInputPro
     },
     label: {
       marginBottom: theme.spacing.xs,
+      color: 'black',
     },
     input: {
       backgroundColor: theme.colors.inputBackground,
@@ -26,7 +27,7 @@ export function AuthInput({ label, value, onChangeText, ...props }: AuthInputPro
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSizes.base,
-      color: theme.colors.foreground,
+      color: 'black',
       fontFamily: theme.fonts.primary,
     },
   });

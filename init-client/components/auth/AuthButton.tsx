@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/context/ThemeContext';
+import { Pressable, StyleSheet } from 'react-native';
 
 interface AuthButtonProps {
   onPress: () => void;
@@ -14,14 +14,14 @@ export function AuthButton({ onPress, disabled, loading, label }: AuthButtonProp
 
   const styles = StyleSheet.create({
     button: {
-      backgroundColor: theme.colors.primaryForeground,
+      backgroundColor: 'rgb(48, 48, 48);',
       borderRadius: theme.borderRadius.md,
       paddingVertical: theme.spacing.md,
       alignItems: 'center',
       marginTop: theme.spacing.lg,
     },
     buttonText: {
-      color: theme.colors.card,
+      color: 'rgb(245, 245, 245)',
       fontWeight: '600',
     },
   });

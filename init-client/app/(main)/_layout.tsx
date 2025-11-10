@@ -7,17 +7,16 @@ export default function MainLayout() {
   const pathname = usePathname();
   const segments = useSegments();
 
-  const isInEvent = pathname.includes('/events/') && segments.includes('[id]');
-  
+  const isInEventTabs = segments.includes('(event-tabs)');
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
 
-  const shouldHideNavigation = isInEvent || isInConversation;
+  const shouldHideNavigation = isInEventTabs || isInConversation;
 
   return (
     <View style={styles.container}>
       {!shouldHideNavigation && (
         <View style={styles.header}>
-          <Image style={styles.logo} source={require('../../assets/images/initLogoGray.png')}/>
+          <Image style={styles.logo} source={require('../../assets/images/initLogoGray.png')} />
           <Pressable onPress={() => router.push('/settings')}>
             <MaterialIcons name="settings" size={24} color="#F5F5F5" />
           </Pressable>
@@ -27,38 +26,52 @@ export default function MainLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#007AFF',
-          tabBarStyle: shouldHideNavigation ? { display: 'none' } : undefined,
+          tabBarShowLabel: true,
+          tabBarActiveTintColor: "#303030",
+          tabBarInactiveTintColor: "rgba(48,48,48,0.6)",
+          tabBarStyle: shouldHideNavigation
+            ? { display: "none" }
+            : {
+                backgroundColor: "#F5F5F5",
+                borderTopWidth: 1,
+                borderTopColor: "#E5E5E5",
+                paddingVertical: 6,
+                height: 70,
+              },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontFamily: "Poppins-Regular",
+          },
+          tabBarIconStyle: {
+            marginBottom: -4,
+          },
         }}
       >
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profil',
+            title: "Profil",
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="person" size={24} color={color} />
             ),
-            href: '/profile',
           }}
         />
         <Tabs.Screen
           name="events"
           options={{
-            title: 'Events',
+            title: "Événements",
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="event" size={24} color={color} />
-            ),
-            href: '/events',
-          }}
+              ),
+            }}
         />
         <Tabs.Screen
           name="messagery"
           options={{
-            title: 'Messagerie',
+            title: "Messages",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="message" size={24} color={color} />
+            <MaterialIcons name="message" size={24} color={color} />
             ),
-            href: '/messagery',
           }}
         />
       </Tabs>
@@ -67,9 +80,7 @@ export default function MainLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -81,9 +92,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  logo: {
-    width: 53,
-    height: 53,
-    resizeMode: 'contain',
-  },
+  logo: { width: 53, height: 53, resizeMode: 'contain' },
 });
