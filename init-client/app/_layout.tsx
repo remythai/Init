@@ -52,7 +52,8 @@ export default function RootLayout() {
       if (isAuthenticated) {
         router.replace('/(main)/events');
       } else {
-        router.replace('/(auth)/login');
+        // Redirection vers la page d'auth unifiée
+        router.replace('/(auth)');
       }
     }, 100);
   }, [isReady, isAuthenticated]);

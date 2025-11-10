@@ -13,7 +13,7 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     try {
       await authService.logout();
-      router.replace('/(auth)/login');
+      router.replace('/(auth)');
     } catch (error) {
       console.error('Erreur de déconnexion:', error);
     }
