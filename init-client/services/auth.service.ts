@@ -304,10 +304,40 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
-    return !!token;
+    
+    if (!token) {
+      console.log('🔐 No token found');
+      return false;
+    }
+  
+    try {
+      const userType = await this.getUserType();
+      if (!userType) {
+        console.log('🔐 No user type found');
+        await this.clearAuth();
+        return false;
+      }
+  
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      if (!response.ok) {
+        console.log('🔐 Token invalid, clearing auth');
+        await this.clearAuth();
+        return false;
+      }
+  
+      console.log('🔐 Token valid');
+      return true;
+    } catch (error) {
+      console.error('🔐 Error checking token:', error);
+      await this.clearAuth();
+      return false;
+    }
   }
 
-  // Nouvelles méthodes pour récupérer le profil utilisateur
   async getCurrentUser(): Promise<User | null> {
     try {
       const response = await this.authenticatedFetch('/api/users/me');

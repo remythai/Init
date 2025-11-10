@@ -1,6 +1,6 @@
-// components/themed-view.tsx
-import { View, type ViewProps } from 'react-native';
+import { View, type ViewProps, type ViewStyle } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useMemo } from 'react';
 
 export type ThemedViewProps = ViewProps & {
   variant?: 'default' | 'card' | 'muted';
@@ -9,11 +9,16 @@ export type ThemedViewProps = ViewProps & {
 export function ThemedView({ style, variant = 'default', ...otherProps }: ThemedViewProps) {
   const { theme } = useTheme();
 
-  const backgroundColor = {
-    default: theme.colors.background,
-    card: theme.colors.card,
-    muted: theme.colors.muted,
-  }[variant];
+  const backgroundColor = useMemo(() => {
+    const variants = {
+      default: theme.colors.background,
+      card: theme.colors.card,
+      muted: theme.colors.muted,
+    };
+    return variants[variant];
+  }, [theme.colors.background, theme.colors.card, theme.colors.muted, variant]);
 
-  return <View style={[{ backgroundColor }, style]} {...otherProps} />;
+  const baseStyle: ViewStyle = { backgroundColor };
+
+  return <View style={[baseStyle, style]} {...otherProps} />;
 }
