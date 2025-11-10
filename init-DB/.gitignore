@@ -4,9 +4,6 @@
 # Données PostgreSQL
 postgres_data/
 
-# Dumps de base de données avec vraies données
-*.sql
-
 # Fichiers système
 .DS_Store
 Thumbs.db
