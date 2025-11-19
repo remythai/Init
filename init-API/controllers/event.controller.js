@@ -77,10 +77,18 @@ export const EventController = {
     const events = await EventModel.findByOrgaId(req.user.id);
   
     const eventsWithCount = await Promise.all(
-      events.map(async (event) => ({
-        ...event,
-        participant_count: await EventModel.countParticipants(event.id)
-      }))
+      events.map(async (event) => {
+        const { id, name, location, event_date, max_participants } = event;
+        
+        return {
+          id,
+          name,
+          location,
+          event_date,
+          max_participants,
+          participant_count: await EventModel.countParticipants(event.id)
+        };
+      })
     );
 
     return success(res, eventsWithCount);
