@@ -21,7 +21,7 @@ export const validationSchemas = {
   },
 
   orgaRegister: {
-    nom: { required: true, type: 'string', minLength: 2, maxLength: 255 },
+    name: { required: true, type: 'string', minLength: 2, maxLength: 255 },
     mail: { required: true, type: 'email' },
     description: { required: false, type: 'string' },
     tel: { required: false, type: 'phone' },
