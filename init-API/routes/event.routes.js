@@ -72,14 +72,14 @@ router.delete(
 );
 
 router.get(
-  '/user/my-events',
+  '/users/my-events',
   authMiddleware,
   requireRole('user'),
   asyncHandler(EventController.getMyRegisteredEvents)
 );
 
 router.get(
-  '/list',
+  '/users/list',
   authMiddleware,
   requireRole('user'),
   asyncHandler(EventController.getPublicEventsForUser)
