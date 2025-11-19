@@ -86,12 +86,10 @@ export const EventModel = {
       SELECT 
         e.id,
         e.name,
-        e.start_at,
-        e.end_at,
         e.location,
         e.max_participants,
-        e.description,
-        o.nom as orga_nom,
+        e.event_date,
+        o.nom as orga_name,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         ${userId ? `EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $1) as is_registered` : 'false as is_registered'}
       FROM events e
@@ -139,12 +137,10 @@ export const EventModel = {
       SELECT 
         e.id,
         e.name,
-        e.start_at,
-        e.end_at,
         e.location,
         e.max_participants,
-        e.description,
-        o.nom as orga_nom,
+        e.event_date,
+        o.nom as orga_name,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         true as is_registered,
         uer.profil_info,
