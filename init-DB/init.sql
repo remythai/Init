@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dAhtawKcK2GzJyLPPNoBpErvZmX2KUvbO9ZVerIjsACMQr6uqqUqLaybEjDgK8a
+\restrict hETxrcyO2BRAdrzdQzsEGbJfZmZDl3JwSA0fdUCRotT2e5iqyTc6JycwbLANzgc
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -122,6 +122,7 @@ CREATE TABLE public.events (
     has_password_access boolean DEFAULT false NOT NULL,
     access_password_hash text,
     custom_fields jsonb DEFAULT '[]'::jsonb,
+    event_date timestamp without time zone,
     CONSTRAINT chk_event_dates CHECK ((end_at > start_at))
 );
 
@@ -455,6 +456,173 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
+-- Data for Name: event_link_access; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.event_link_access (id, event_id, access_token, used, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: event_photos; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.event_photos (event_id, photo_id, display_order) FROM stdin;
+\.
+
+
+--
+-- Data for Name: event_whitelist; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.event_whitelist (event_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: events; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.events (id, name, start_at, cooldown, end_at, orga_id, created_at, updated_at, max_participants, location, description, is_public, has_whitelist, has_link_access, has_password_access, access_password_hash, custom_fields, event_date) FROM stdin;
+2	Tournoi d'Échecs Inter-Écoles	2025-12-01 09:00:00	02:00:00	2025-12-01 18:00:00	1	2025-11-07 14:16:17.702843	2025-11-07 14:16:17.702843	64	Salle Polyvalente, Paris	Tournoi amical d'échecs réunissant plusieurs écoles parisiennes.	t	f	t	f	\N	[{"id": "level", "type": "select", "label": "Niveau", "options": [{"label": "Débutant", "value": "beginner"}, {"label": "Intermédiaire", "value": "intermediate"}, {"label": "Avancé", "value": "advanced"}], "required": true}, {"id": "need_equipment", "type": "checkbox", "label": "Besoin de matériel", "required": false}]	\N
+3	Tournoi d'Échecs Inter-Écoles 2	2025-12-01 09:00:00	02:00:00	2025-12-01 18:00:00	1	2025-11-07 14:17:02.649399	2025-11-07 14:17:02.649399	64	Salle Polyvalente, Paris	Tournoi amical d'échecs réunissant plusieurs écoles parisiennes.	f	f	t	f	\N	[{"id": "level", "type": "select", "label": "Niveau", "options": [{"label": "Débutant", "value": "beginner"}, {"label": "Intermédiaire", "value": "intermediate"}, {"label": "Avancé", "value": "advanced"}], "required": true}, {"id": "need_equipment", "type": "checkbox", "label": "Besoin de matériel", "required": false}]	\N
+\.
+
+
+--
+-- Data for Name: matches; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.matches (id, user1_id, user2_id, event_id, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: messages; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.messages (id, match_id, sender_id, content, sent_at, is_read, is_liked) FROM stdin;
+\.
+
+
+--
+-- Data for Name: orga; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.orga (id, nom, mail, description, tel, created_at, updated_at, password_hash) FROM stdin;
+1	M-Tech	mail@test.com	\N	\N	2025-11-07 13:20:45.259917	2025-11-07 13:20:45.259917	$2b$10$ZVXndtNUq67gmWpa6N3RMe92piFtUe1muRLu8MM01NElxgkwmhdM.
+\.
+
+
+--
+-- Data for Name: photos; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.photos (id, user_id, file_path, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: refresh_tokens; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.refresh_tokens (id, user_id, token, expiry, orga_id, user_type) FROM stdin;
+1	1	80713be000b171cd195cc45181ee3d84a1ad1899239a5cfe31fe8e3a4ede283a29d5b68f50921b0cfd79b0481fa8160083cc7fcb1382cf49d1407f15ba61d391	2025-10-30 14:27:26.999	\N	\N
+2	4	7bbd8b8ede38aece1ca954cb12b9d5bf727e16142a19d3f805a0579f1235833af54ccdec0e84fd8d092c38ecfae001eff59eb403ab6c8d8e8f909a68b3c7f95f	2025-10-30 14:40:19.822	\N	\N
+3	4	b3a67d24b1f288aebc6e98d211ee2a852b1080c186d54caec7df18b18cebfc69dcd200d12f6d52e7c949b530dbf960c0f902a74527ff799ff95c54ec4396f216	2025-10-30 19:54:47.745	\N	\N
+4	4	9040677286758a3410f689c7f8ca4cf0abdfd3341856a3286626a1a49b5a36f43cc9b96b76210b7e52a7be7593260fa288f6412b2567db0ca45915c93a0e0d21	2025-10-30 19:55:47.19	\N	\N
+5	4	0f82abad0f7b953a1ac01490ac8b6c0a85a3de23a2d06a2f1821beaec9dc951d171fddea35b9b0ea1ff37c831191db11caa5e4780efa54c350e8b707f564c5c7	2025-10-31 10:36:13.827	\N	\N
+6	1	275c82bb2fc366901a4855ca7e2155098ef21891835bb4ead528e4d9f7c4abe83c121062e2875d28fd88d060906770d2d7315f046370142c22b1a545e84e454b	2025-11-14 13:35:20.423	\N	\N
+7	1	9df8bf6c36026291406f58dda52898e576482ce35231b338f219aac35b16f464c3276b487670a00c456a8c1e672b31426f544bb4a37c3403a0f95b524f852724	2025-11-14 13:54:13.366	\N	\N
+8	1	7d63ac37524dec77f28cd98b4ef512074145f6b3a0f42b4060d1af63820aa630fbf0a12d9386c3ce3993c3de4d4e7ce496917ee2a7681ec5e65f43077bb64f04	2025-11-14 14:14:53.116	\N	\N
+9	1	eb109e87d2f9c0c02be03cb903c750c36324a93b105f429296496d9f3cd49347b80c5bf7200d6d42bf081eb77d8478e12e4c69bf64d68dab20bb5412d12294c3	2025-11-14 14:32:17.036	\N	\N
+10	\N	5aae6027bf052683a5857867d9d93328ff4e0ca37aeebbdc9ac22ac473ad6f50ce3bc2b96b9cca963f57cc28b9f72d0665d05f66b7903872621f9cda8a3766c1	2025-11-26 17:50:38.95	1	orga
+11	\N	e089ca88f06a2cf4a6f9d6c3227b53095c7ac2a47589c10360a25eff58900f04a306a67800143ec2efbad017c4c46a0bbe7cfa65c50464a2468aa2c3dd22df69	2025-11-26 18:15:42.611	1	orga
+12	1	935f988c255aed3d89bbbd0b0e9de746e18a02e97442f4a536e94809e7df13d97ef9591f400b5dffea202772338dac72293ffe6deff2828c1a211261b9754960	2025-11-26 18:38:40.401	\N	user
+13	\N	7aa123f68191f6278472e05f8196a9416fb44cd1589ae6db29a0c1fb9b0bd5597696ae38e90fa5fd630b515db3e7dce7e99824683f9ffbca63a5dc0bf0675414	2025-11-26 18:42:56.581	1	orga
+14	1	f74cc59dd8027b00a5cfbee257b554769d6022f0396b32d0b0407381e488c041bb85912fa14bfd94e6b1166d032f3f301372115624df0235a8522566defc0125	2025-11-26 18:55:11.826	\N	user
+15	1	81ee1fc67f92ec2513667033c9fde3913e24880c2e3659612502c377331c43db17af2b65e9fde624ca3bac60ead59c8bff2339bc2e752718db228695e0e0c062	2025-11-27 10:09:40.572	\N	user
+16	\N	9f57c499df72bd32096cbcddb05b332cb89bdb89f93fb60ed1fb81b07c77877ee29918e860a14ec5e2f8ee1565e9d21c8ac265a260f404a1ff5aed6dccc2ecac	2025-11-27 10:12:30.202	1	orga
+\.
+
+
+--
+-- Data for Name: user_event_rel; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.user_event_rel (user_id, event_id, profil_info, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: dating_admin
+--
+
+COPY public.users (id, firstname, lastname, mail, tel, birthday, created_at, updated_at, password_hash) FROM stdin;
+1	Alice	Dupont	alice@example.com	0601020304	1995-08-12	2025-10-23 11:55:53.300893	2025-10-23 11:55:53.300893	$2b$10$73We/ZAnQGlPCvOVyQITX.6wRnVkIWQ.uC5sRcl.5oV5PMaMDrqYS
+4	Alice	Dupont	\N	0707070707	1995-08-12	2025-10-23 14:40:01.798929	2025-10-23 14:40:01.798929	$2b$10$.UuleOQFeuXt173p/W6Eh.qOWyCWpSgtBdDgaucsQjppPnX50gOJ6
+7	Alice	Dupont	\N	0707070708	1995-08-12	2025-10-24 10:37:32.441027	2025-10-24 10:37:32.441027	$2b$10$l4RHvZpg3Q9e3dVg2Ze69OinIkPt.DpYCa.RDKgKmaUnUXuvBkV5i
+8	Alice	Dupont	\N	0707070701	1995-08-01	2025-11-06 21:38:04.645514	2025-11-06 21:38:04.645514	$2b$10$f90PdFz01S6l149GdhXP2eaK0IcTTaRPp0NkJtzMa4i1j3hpVrvZq
+\.
+
+
+--
+-- Name: event_link_access_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.event_link_access_id_seq', 1, false);
+
+
+--
+-- Name: events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.events_id_seq', 3, true);
+
+
+--
+-- Name: matches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.matches_id_seq', 1, false);
+
+
+--
+-- Name: messages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.messages_id_seq', 1, false);
+
+
+--
+-- Name: orga_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.orga_id_seq', 6, true);
+
+
+--
+-- Name: photos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.photos_id_seq', 1, false);
+
+
+--
+-- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 16, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: dating_admin
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 8, true);
+
+
+--
 -- Name: event_link_access event_link_access_access_token_key; Type: CONSTRAINT; Schema: public; Owner: dating_admin
 --
 
@@ -781,5 +949,5 @@ ALTER TABLE ONLY public.user_event_rel
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dAhtawKcK2GzJyLPPNoBpErvZmX2KUvbO9ZVerIjsACMQr6uqqUqLaybEjDgK8a
+\unrestrict hETxrcyO2BRAdrzdQzsEGbJfZmZDl3JwSA0fdUCRotT2e5iqyTc6JycwbLANzgc
 
