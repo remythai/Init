@@ -1,3 +1,4 @@
+//components/EventsList.tsx
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
@@ -10,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { CreateEventDialog } from "./CreateEventDialog";
 
 export interface Event {
   id: string;
@@ -28,18 +30,21 @@ interface EventsListProps {
   events: Event[];
   onEventClick: (event: Event) => void;
   onEnterEvent?: (event: Event) => void;
+  userType?: "user" | "organizer";
+  onCreateEvent?: () => void;
 }
 
 export function EventsList({
   events,
   onEventClick,
   onEnterEvent,
+  userType,
+  onCreateEvent,
 }: EventsListProps) {
   const [activeFilter, setActiveFilter] = useState<"all" | "registered">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
-  // Advanced filters
   const [maxDistance, setMaxDistance] = useState(50);
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
@@ -52,14 +57,12 @@ export function EventsList({
       event.theme.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Advanced filters
     const matchesTheme =
       selectedTheme === "all" ||
       event.theme.toLowerCase() === selectedTheme.toLowerCase();
     const matchesAvailability =
       !onlyAvailable || event.participants < event.maxParticipants;
 
-    // Date filter logic
     let matchesDate = true;
     if (dateFilter === "today") {
       matchesDate =
@@ -261,43 +264,44 @@ export function EventsList({
       </ScrollView>
 
       {/* Filter Tabs */}
-      <View style={styles.filterTabs}>
-        <View style={styles.tabsContainer}>
-          <Pressable
-            style={[
-              styles.tab,
-              activeFilter === "all" && styles.tabActive,
-            ]}
-            onPress={() => setActiveFilter("all")}
-          >
-            <Text
+      {userType === "user" && (
+        <View style={styles.filterTabs}>
+          <View style={styles.tabsContainer}>
+            <Pressable
               style={[
-                styles.tabText,
-                activeFilter === "all" && styles.tabTextActive,
+                styles.tab,
+                activeFilter === "all" && styles.tabActive,
               ]}
+              onPress={() => setActiveFilter("all")}
             >
-              Tous les événements
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.tab,
-              activeFilter === "registered" && styles.tabActive,
-            ]}
-            onPress={() => setActiveFilter("registered")}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.tabText,
+                  activeFilter === "all" && styles.tabTextActive,
+                ]}
+              >
+                Tous les événements
+              </Text>
+            </Pressable>
+            <Pressable
               style={[
-                styles.tabText,
-                activeFilter === "registered" && styles.tabTextActive,
+                styles.tab,
+                activeFilter === "registered" && styles.tabActive,
               ]}
+              onPress={() => setActiveFilter("registered")}
             >
-              Mes événements
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeFilter === "registered" && styles.tabTextActive,
+                ]}
+              >
+                Mes événements
+              </Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
-
+      )}
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
@@ -464,6 +468,9 @@ export function EventsList({
           </View>
         </View>
       </Modal>
+      {userType === "organizer" && onCreateEvent && (
+        <CreateEventDialog onEventCreated={onCreateEvent} />
+      )}
     </View>
   );
 }
@@ -859,4 +866,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
+  floatingButton: {
+    position: "absolute",
+    bottom: 100,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#303030",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 50,
+  },  
 });

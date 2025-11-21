@@ -1,3 +1,4 @@
+// components/EventDetails.tsx
 import { MaterialIcons } from "@expo/vector-icons";
 import {
     Image,
@@ -6,7 +7,10 @@ import {
     StyleSheet,
     Text,
     View,
+    Alert,
 } from "react-native";
+import { useState } from "react";
+import { eventService } from "@/services/event.service";
 
 export interface Event {
   id: string;
@@ -25,6 +29,7 @@ interface EventDetailProps {
   event: Event;
   onBack: () => void;
   onRegister: (eventId: string) => void;
+  onUnregister?: (eventId: string) => void;
   onEnterEvent?: (event: Event) => void;
 }
 
@@ -32,8 +37,11 @@ export function EventDetail({
   event,
   onBack,
   onRegister,
+  onUnregister,
   onEnterEvent,
 }: EventDetailProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   const getThemeColor = (theme: string) => {
     const colors: Record<string, string> = {
       musique: "#a855f7",
@@ -44,6 +52,68 @@ export function EventDetail({
       fête: "#ec4899",
     };
     return colors[theme.toLowerCase()] || "#6b7280";
+  };
+
+  const handleRegister = async () => {
+    try {
+      setIsLoading(true);
+      await eventService.registerToEvent(event.id, {
+        profil_info: {}
+      });
+      
+      Alert.alert(
+        "Inscription réussie",
+        "Vous êtes maintenant inscrit à cet événement !"
+      );
+      
+      onRegister(event.id); 
+    } catch (err: any) {
+      console.error('Erreur inscription:', err);
+      Alert.alert(
+        "Erreur",
+        err.message || "Impossible de s'inscrire à l'événement"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnregister = async () => {
+    Alert.alert(
+      "Confirmer la désinscription",
+      "Êtes-vous sûr de vouloir vous désinscrire de cet événement ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel"
+        },
+        {
+          text: "Se désinscrire",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await eventService.unregisterFromEvent(event.id);
+              
+              Alert.alert(
+                "Désinscription réussie",
+                "Vous n'êtes plus inscrit à cet événement"
+              );
+              
+              onUnregister?.(event.id);
+            } catch (err: any) {
+              console.error('Erreur désinscription:', err);
+              Alert.alert(
+                "Erreur",
+                err.message || "Impossible de se désinscrire de l'événement"
+              );
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -113,9 +183,7 @@ export function EventDetail({
                     style={[
                       styles.progressFill,
                       {
-                        width: `${
-                          (event.participants / event.maxParticipants) * 100
-                        }%`,
+                        width: `${(event.participants / event.maxParticipants) * 100}%`,
                       },
                     ]}
                   />
@@ -149,20 +217,43 @@ export function EventDetail({
         </View>
       </ScrollView>
 
-      {/* Action Button */}
+      {/* Action Buttons */}
       <View style={styles.actionContainer}>
-        <Pressable
-          style={styles.actionButton}
-          onPress={() =>
-            event.isRegistered ? onEnterEvent?.(event) : onRegister(event.id)
-          }
-        >
-          <Text style={styles.actionButtonText}>
-            {event.isRegistered
-              ? "Entrer dans l'événement"
-              : "Participer à cet événement"}
-          </Text>
-        </Pressable>
+        {event.isRegistered ? (
+          <View style={styles.actionButtonsRow}>
+            <Pressable
+              style={[styles.actionButton, styles.unregisterButton]}
+              onPress={handleUnregister}
+              disabled={isLoading}
+            >
+              <MaterialIcons name="cancel" size={20} color="#dc2626" />
+              <Text style={styles.unregisterButtonText}>
+                {isLoading ? "Chargement..." : "Se désinscrire"}
+              </Text>
+            </Pressable>
+            
+            <Pressable
+              style={[styles.actionButton, styles.enterButton]}
+              onPress={() => onEnterEvent?.(event)}
+              disabled={isLoading}
+            >
+              <MaterialIcons name="login" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>
+                Entrer
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={[styles.actionButton, styles.registerButton]}
+            onPress={handleRegister}
+            disabled={isLoading}
+          >
+            <Text style={styles.actionButtonText}>
+              {isLoading ? "Inscription..." : "Participer à cet événement"}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -183,22 +274,6 @@ const styles = StyleSheet.create({
   eventImage: {
     width: "100%",
     height: "100%",
-  },
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    width: 40,
-    height: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   badgeContainer: {
     position: "absolute",
@@ -328,15 +403,41 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f3f4f6",
   },
+  actionButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
   actionButton: {
-    backgroundColor: "#303030",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  registerButton: {
+    flex: 1,
+    backgroundColor: "#303030",
+  },
+  enterButton: {
+    flex: 1,
+    backgroundColor: "#303030",
+  },
+  unregisterButton: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#dc2626",
   },
   actionButtonText: {
     fontFamily: "Poppins",
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  unregisterButtonText: {
+    fontFamily: "Poppins",
+    color: "#dc2626",
     fontSize: 16,
     fontWeight: "600",
   },

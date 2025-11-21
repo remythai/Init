@@ -1,3 +1,5 @@
+//auth.service.ts
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -169,7 +171,7 @@ class AuthService {
 
     const body = isOrganizer
       ? {
-          nom: data.name,
+          name: data.name,
           mail: data.email,
           password: data.password,
           description: data.description,

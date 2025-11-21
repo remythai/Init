@@ -1,61 +1,118 @@
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { EventDetail, Event } from "@/components/EventDetails";
-
-// Mock data - À remplacer par votre logique de fetch
-const MOCK_EVENTS: Record<string, Event> = {
-  "1": {
-    id: "1",
-    name: "Soirée Jazz au Café",
-    theme: "musique",
-    date: "15 novembre 2025",
-    location: "Le Café des Arts, Pau",
-    participants: 12,
-    maxParticipants: 20,
-    image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800",
-    description:
-      "Rejoignez-nous pour une soirée jazz intime dans l'ambiance chaleureuse du Café des Arts. Musiciens locaux et bonne ambiance garantie !",
-    isRegistered: true,
-  },
-  "2": {
-    id: "2",
-    name: "Networking Startup",
-    theme: "professionnel",
-    date: "18 novembre 2025",
-    location: "Tech Hub Pau",
-    participants: 25,
-    maxParticipants: 30,
-    image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800",
-    description:
-      "Rencontrez des entrepreneurs et professionnels de la tech dans un cadre informel. Échangez vos idées et développez votre réseau !",
-    isRegistered: false,
-  },
-};
+// events/[id]/index.tsx
+import { Event, EventDetail } from "@/components/EventDetails";
+import { eventService } from "@/services/event.service";
+import { transformEventResponse } from "@/utils/event.utils";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 export default function EventDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   
-  const event = MOCK_EVENTS[id as string] || MOCK_EVENTS["1"];
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isRegistered, setIsRegistered] = useState(false);
 
-  const handleBack = () => {
-    router.back();
+  useEffect(() => {
+    loadEventDetails();
+  }, [id]);
+
+  const loadEventDetails = async () => {
+    try {
+      setLoading(true);
+      const eventResponse = await eventService.getEventById(id as string);
+      
+      console.log("🔍 Réponse complète de l'API:", JSON.stringify(eventResponse, null, 2));
+      
+      const transformedEvent = transformEventResponse(eventResponse);
+      setEvent(transformedEvent);
+      setIsRegistered(transformedEvent.isRegistered);
+      
+      console.log("✅ isRegistered après transformation:", transformedEvent.isRegistered);
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'événement:", error);
+      Alert.alert(
+        "Erreur",
+        "Impossible de charger les détails de l'événement.",
+        [{ text: "OK", onPress: () => router.back() }]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = (eventId: string) => {
-    // TODO: Implémenter la logique d'inscription
-    console.log("Inscription à l'événement:", eventId);
+  const handleRegister = async (eventId: string) => {
+    try {
+      await eventService.registerToEvent(eventId, {
+        profil_info: {}
+      });
+      
+      setIsRegistered(true);
+      await loadEventDetails();
+      
+      Alert.alert(
+        "Succès",
+        "Vous êtes maintenant inscrit à cet événement !"
+      );
+    } catch (error: any) {
+      console.error("Erreur lors de l'inscription:", error);
+      
+      if (error.message?.includes("déjà inscrit")) {
+        setIsRegistered(true);
+        await loadEventDetails();
+        
+        Alert.alert(
+          "Information",
+          "Vous êtes déjà inscrit à cet événement !"
+        );
+      } else {
+        Alert.alert(
+          "Erreur",
+          error.message || "Impossible de s'inscrire à l'événement."
+        );
+      }
+    }
   };
+
+  const handleUnregister = async (eventId: string) => {
+    setIsRegistered(false);
+    await loadEventDetails();
+  };
+  
 
   const handleEnterEvent = (event: Event) => {
-    router.push(`/events/${event.id}/swiper`);
+    router.push(`/(main)/events/${event.id}/(event-tabs)/swiper`);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#303030" />
+      </View>
+    );
+  }
+
+  if (!event) {
+    return null;
+  }
 
   return (
     <EventDetail
-      event={event}
-      onBack={handleBack}
+      event={{ ...event, isRegistered }}
+      onBack={() => router.back()}
       onRegister={handleRegister}
+      onUnregister={handleUnregister}
       onEnterEvent={handleEnterEvent}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+});

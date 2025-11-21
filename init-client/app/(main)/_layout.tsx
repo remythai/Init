@@ -8,9 +8,10 @@ export default function MainLayout() {
   const segments = useSegments();
 
   const isInEventTabs = segments.includes('(event-tabs)');
+  const isInEventDetail = pathname.match(/\/events\/[^/]+$/) !== null;
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
 
-  const shouldHideNavigation = isInEventTabs || isInConversation;
+  const shouldHideNavigation = isInEventTabs || isInEventDetail || isInConversation;
 
   return (
     <View style={styles.container}>

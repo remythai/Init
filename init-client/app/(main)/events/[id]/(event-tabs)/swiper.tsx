@@ -1,11 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function EventSwiperScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>SWIPER</Text>
       <Text style={styles.subtitle}>
-        (montagne de caca)
       </Text>
     </View>
   );
