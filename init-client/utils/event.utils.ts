@@ -71,22 +71,32 @@ const getDefaultImage = (theme: string): string => {
 };
 
 export const transformEventResponse = (eventResponse: EventResponse): Event => {
-  console.log('📅 start_at reçu:', eventResponse.start_at);
+  // Gérer les deux formats de date
+  const dateToFormat = eventResponse.start_at || eventResponse.event_date;
+  
+  console.log('📅 Date reçue:', dateToFormat);
   console.log('📝 is_registered reçu:', eventResponse.is_registered);
+  console.log('📋 custom_fields reçu:', eventResponse.custom_fields);
   
   const theme = inferTheme(eventResponse.name, eventResponse.description);
+  
+  // Convertir participant_count en nombre (peut être string)
+  const participantCount = typeof eventResponse.participant_count === 'string' 
+    ? parseInt(eventResponse.participant_count, 10) 
+    : (eventResponse.participant_count || 0);
   
   return {
     id: eventResponse.id.toString(),
     name: eventResponse.name,
     theme: theme,
-    date: formatEventDate(eventResponse.start_at),
+    date: dateToFormat ? formatEventDate(dateToFormat) : 'Date à venir',
     location: eventResponse.location,
-    participants: eventResponse.participant_count || 0,
+    participants: participantCount,
     maxParticipants: eventResponse.max_participants,
     image: getDefaultImage(theme),
     description: eventResponse.description,
     isRegistered: eventResponse.is_registered || false,
+    customFields: eventResponse.custom_fields || [],
   };
 };
 

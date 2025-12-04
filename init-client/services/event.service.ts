@@ -1,4 +1,5 @@
 // services/event.service.ts
+import { CustomField } from '@/components/EventDetails';
 import { authService } from './auth.service';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -6,16 +7,15 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 export interface EventResponse {
   id: number;
   name: string;
-  description: string;
-  start_at: string;
-  end_at: string;
   location: string;
   max_participants: number;
-  is_public: boolean;
-  orga_name?: string;
-  participant_count: number;
+  event_date: string | null;
+  start_at?: string;
+  description?: string;
+  participant_count?: number | string;
   is_registered?: boolean;
-  custom_fields?: any[];
+  custom_fields?: CustomField[];
+  orga_name?: string;
 }
 
 export interface EventListResponse {

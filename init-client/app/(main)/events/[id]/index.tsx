@@ -42,10 +42,10 @@ export default function EventDetailScreen() {
     }
   };
 
-  const handleRegister = async (eventId: string) => {
+  const handleRegister = async (eventId: string, profileInfo: Record<string, any>) => {
     try {
       await eventService.registerToEvent(eventId, {
-        profil_info: {}
+        profil_info: profileInfo
       });
       
       setIsRegistered(true);
@@ -61,7 +61,6 @@ export default function EventDetailScreen() {
       if (error.message?.includes("déjà inscrit")) {
         setIsRegistered(true);
         await loadEventDetails();
-        
         Alert.alert(
           "Information",
           "Vous êtes déjà inscrit à cet événement !"
@@ -74,11 +73,29 @@ export default function EventDetailScreen() {
       }
     }
   };
+  
+  
 
   const handleUnregister = async (eventId: string) => {
-    setIsRegistered(false);
-    await loadEventDetails();
+    try {
+      await eventService.unregisterFromEvent(eventId);
+      
+      setIsRegistered(false);
+      await loadEventDetails();
+      
+      Alert.alert(
+        "Désinscription réussie",
+        "Vous n'êtes plus inscrit à cet événement"
+      );
+    } catch (error: any) {
+      console.error("Erreur lors de la désinscription:", error);
+      Alert.alert(
+        "Erreur",
+        error.message || "Impossible de se désinscrire de l'événement."
+      );
+    }
   };
+  
   
 
   const handleEnterEvent = (event: Event) => {

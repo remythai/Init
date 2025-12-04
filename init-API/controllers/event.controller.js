@@ -190,16 +190,16 @@ export const EventController = {
     const eventId = req.params.id;
     const userId = req.user.id;
     const { profil_info, access_password } = req.body;
-
+  
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+  
     if (!event.is_public) {
       throw new ForbiddenError('Cet événement n\'est pas public');
     }
-
+  
     if (event.has_password_access) {
       if (!access_password) {
         throw new ValidationError('Un mot de passe est requis pour accéder à cet événement');
@@ -209,26 +209,32 @@ export const EventController = {
         throw new ValidationError('Mot de passe incorrect');
       }
     }
-
+  
     const existing = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (existing) {
       throw new ConflictError('Vous êtes déjà inscrit à cet événement');
     }
-
+  
     if (event.max_participants) {
       const currentCount = await EventModel.countParticipants(eventId);
       if (currentCount >= event.max_participants) {
         throw new ConflictError('L\'événement a atteint le nombre maximum de participants');
       }
     }
-
-    if (event.custom_fields && event.custom_fields.length > 0) {
-      if (!profil_info) {
-        throw new ValidationError('Les informations de profil sont requises pour cet événement');
+  
+    if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
+      const requiredFields = event.custom_fields.filter(field => field.required);
+      
+      if (requiredFields.length > 0) {
+        if (!profil_info || Object.keys(profil_info).length === 0) {
+          throw new ValidationError('Les informations de profil sont requises pour cet événement');
+        }
+        validateCustomData(event.custom_fields, profil_info);
+      } else if (profil_info && Object.keys(profil_info).length > 0) {
+        validateCustomData(event.custom_fields, profil_info);
       }
-      validateCustomData(event.custom_fields, profil_info);
     }
-
+  
     const registration = await RegistrationModel.create(userId, eventId, profil_info || {});
     return created(res, registration, 'Inscription réussie');
   },
