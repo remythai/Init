@@ -71,7 +71,6 @@ const getDefaultImage = (theme: string): string => {
 };
 
 export const transformEventResponse = (eventResponse: EventResponse): Event => {
-  // Gérer les deux formats de date
   const dateToFormat = eventResponse.start_at || eventResponse.event_date;
   
   console.log('📅 Date reçue:', dateToFormat);
@@ -80,7 +79,6 @@ export const transformEventResponse = (eventResponse: EventResponse): Event => {
   
   const theme = inferTheme(eventResponse.name, eventResponse.description);
   
-  // Convertir participant_count en nombre (peut être string)
   const participantCount = typeof eventResponse.participant_count === 'string' 
     ? parseInt(eventResponse.participant_count, 10) 
     : (eventResponse.participant_count || 0);

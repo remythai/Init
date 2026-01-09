@@ -1,30 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native';
+// app/(main)/events/[id]/(event-tabs)/swiper.tsx
+import { View, StyleSheet } from "react-native";
+import { EventSwiper } from "@/components/Swiper";
 
-export default function EventSwiperScreen() {
+export default function SwiperScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>SWIPER</Text>
-      <Text style={styles.subtitle}>
-      </Text>
+      <EventSwiper
+        onMatch={(profileId) => {
+          console.log("Match avec le profil:", profileId);
+          // TODO: appel API / mutation
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  text: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-  },
+  container: { flex: 1 },
 });

@@ -1,27 +1,75 @@
+// app/(main)/events/[id]/(event-tabs)/_layout.tsx
 import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Tabs, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
+import { useEffect } from 'react';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function EventTabsLayout() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const pathname = usePathname();
+  const segments = useSegments();
 
-  // ✅ Détection conversation dans un event
-  const isInEventConversation = pathname.match(/\/events\/[^/]+\/\(event-tabs\)\/messagery\/[^/]+$/) !== null;
+  const isInConversation = segments[segments.length - 2] === 'messagery' && 
+                           segments[segments.length - 1] !== 'index';
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      console.log('🔍 Segments:', segments);
+      
+      const eventTabsIndex = segments.findIndex(s => s === '(event-tabs)');
+      
+      if (eventTabsIndex === -1) return false;
+      
+      const currentTab = segments[eventTabsIndex + 1];
+      
+      console.log('📍 Current tab:', currentTab);
+
+      if (currentTab === 'swiper') {
+        console.log('✅ Swiper → Events');
+        router.push('/(main)/events');
+        return true;
+      } else if (currentTab === 'profile') {
+        console.log('✅ Profile → Swiper');
+        router.push(`/(main)/events/${id}/(event-tabs)/swiper`);
+        return true;
+      } else if (currentTab === 'messagery') {
+        console.log('✅ Messagery → Swiper');
+        router.push(`/(main)/events/${id}/(event-tabs)/swiper`);
+        return true;
+      }
+
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [segments, id, router]);
+
+  if (isInConversation) {
+    return (
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { display: "none" },
+        }}
+      >
+        <Tabs.Screen name="profile" />
+        <Tabs.Screen name="swiper" />
+        <Tabs.Screen name="messagery" />
+      </Tabs>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* En-tête visible uniquement hors conversation */}
-      {!isInEventConversation && (
-        <View style={styles.header}>
-          <Pressable onPress={() => router.push(`/events/${id}`)}>
-            <MaterialIcons name="arrow-back" size={24} color="#303030" />
-          </Pressable>
-          <Text style={styles.eventName}>Nom de l'événement</Text>
-          <View style={{ width: 24 }} /> 
-        </View>
-      )}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.push(`/events/${id}`)}>
+          <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
+        </Pressable>
+        <Text style={styles.eventName}>Décoeurtique moi</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       <Tabs
         screenOptions={{
@@ -29,15 +77,13 @@ export default function EventTabsLayout() {
           tabBarShowLabel: true,
           tabBarActiveTintColor: "#303030",
           tabBarInactiveTintColor: "rgba(48,48,48,0.6)",
-          tabBarStyle: isInEventConversation
-            ? { display: "none" }
-            : {
-                backgroundColor: "#F5F5F5",
-                borderTopWidth: 1,
-                borderTopColor: "#E5E5E5",
-                paddingVertical: 6,
-                height: 70,
-              },
+          tabBarStyle: {
+            backgroundColor: "#F5F5F5",
+            borderTopWidth: 1,
+            borderTopColor: "#E5E5E5",
+            paddingVertical: 6,
+            height: 70,
+          },
           tabBarLabelStyle: {
             fontSize: 12,
             fontFamily: "Poppins-Regular",
@@ -54,10 +100,6 @@ export default function EventTabsLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="person" size={24} color={color} />
             ),
-            href: {
-              pathname: "/events/[id]/(event-tabs)/profile",
-              params: { id },
-            },
           }}
         />
         <Tabs.Screen
@@ -67,10 +109,6 @@ export default function EventTabsLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="swipe" size={24} color={color} />
             ),
-            href: {
-              pathname: "/events/[id]/(event-tabs)/swiper",
-              params: { id },
-            },
           }}
         />
         <Tabs.Screen
@@ -80,10 +118,6 @@ export default function EventTabsLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="message" size={24} color={color} />
             ),
-            href: {
-              pathname: "/events/[id]/(event-tabs)/messagery",
-              params: { id },
-            },
           }}
         />
       </Tabs>
@@ -100,13 +134,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#303030",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5E5",
   },
   eventName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#303030",
+    color: "#fff",
   },
 });

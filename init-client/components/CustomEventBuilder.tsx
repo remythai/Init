@@ -57,7 +57,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
       options: []
     };
     onChange([...fields, newField]);
-    setExpandedFieldIndex(fields.length); // Auto-expand le nouveau champ
+    setExpandedFieldIndex(fields.length);
   };
 
   const removeField = (index: number) => {
@@ -84,11 +84,9 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], ...updates };
     
-    // Si on change le type vers un type sans options, on retire les options
     if (updates.type && !needsOptions(updates.type)) {
       delete newFields[index].options;
     }
-    // Si on change vers un type avec options et qu'il n'y en a pas, on en crée
     else if (updates.type && needsOptions(updates.type) && !newFields[index].options) {
       newFields[index].options = [];
     }

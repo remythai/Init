@@ -1,7 +1,8 @@
 // components/CreateEventDialog.tsx
 import { eventService } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import * as Location from 'expo-location';
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,8 +12,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
+import MapView, { Marker, Region } from "react-native-maps";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { CustomFieldsBuilder } from "./CustomEventBuilder";
 
 interface CustomField {
@@ -26,6 +29,22 @@ interface CustomField {
 
 interface CreateEventDialogProps {
   onEventCreated: () => void;
+}
+
+interface AddressSuggestion {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    road?: string;
+    house_number?: string;
+    postcode?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+  };
 }
 
 export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
@@ -43,12 +62,35 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     options: [],
   });
 
+  const [isStartDateVisible, setStartDateVisible] = useState(false);
+  const [isEndDateVisible, setEndDateVisible] = useState(false);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
+  const [locationInput, setLocationInput] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 48.8566,
+    longitude: 2.3522,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
+  const [tempMarker, setTempMarker] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    start_at: "",
-    end_at: "",
-    location: "",
     max_participants: "",
     is_public: true,
     has_whitelist: false,
@@ -76,27 +118,156 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 
   const [newOption, setNewOption] = useState({ value: '', label: '' });
 
-  const parseDateTime = (dateStr: string): string | null => {
-    try {
-      const regex = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/;
-      const match = dateStr.trim().match(regex);
-      
-      if (!match) return null;
-
-      const [, day, month, year, hour, minute] = match;
-      const date = new Date(
-        parseInt(year),
-        parseInt(month) - 1,
-        parseInt(day),
-        parseInt(hour),
-        parseInt(minute)
-      );
-
-      if (isNaN(date.getTime())) return null;
-      return date.toISOString();
-    } catch (err) {
-      return null;
+  useEffect(() => {
+    if (locationInput.length > 2) {
+      const timer = setTimeout(() => {
+        searchAddress(locationInput);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
     }
+  }, [locationInput]);
+
+  const searchAddress = async (query: string) => {
+    console.log('Recherche pour:', query);
+    setLoadingSuggestions(true);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        query
+      )}&limit=5&countrycodes=fr&addressdetails=1`;
+      console.log('URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'EventApp/1.0',
+        },
+      });
+      const data = await response.json();
+      console.log('Résultats:', data);
+      
+      setAddressSuggestions(data);
+      setShowSuggestions(data.length > 0);
+    } catch (error) {
+      console.error('Erreur recherche adresse:', error);
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const selectAddress = (suggestion: AddressSuggestion) => {
+    let shortAddress = '';
+    
+    if (suggestion.address) {
+      const addr = suggestion.address;
+      const street = addr.house_number && addr.road 
+        ? `${addr.house_number} ${addr.road}` 
+        : addr.road || '';
+      const postcode = addr.postcode || '';
+      const city = addr.city || addr.town || addr.village || addr.municipality || '';
+      
+      if (street && postcode && city) {
+        shortAddress = `${street}, ${postcode} ${city}`;
+      } else if (street && city) {
+        shortAddress = `${street}, ${city}`;
+      } else if (postcode && city) {
+        shortAddress = `${postcode} ${city}`;
+      } else {
+        const parts = suggestion.display_name.split(', ');
+        shortAddress = parts.slice(0, 3).join(', ');
+      }
+    } else {
+      const parts = suggestion.display_name.split(', ');
+      shortAddress = parts.slice(0, 3).join(', ');
+    }
+    
+    console.log('Adresse courte:', shortAddress);
+    
+    setLocationInput(shortAddress);
+    setSelectedLocation({
+      latitude: parseFloat(suggestion.lat),
+      longitude: parseFloat(suggestion.lon),
+      address: shortAddress,
+    });
+    setShowSuggestions(false);
+  };
+
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Impossible d\'accéder à votre position');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setMapRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+      setTempMarker({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch (error) {
+      console.error('Erreur géolocalisation:', error);
+    }
+  };
+
+  const reverseGeocode = async (latitude: number, longitude: number) => {
+    try {
+      const result = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (result && result.length > 0) {
+        const addr = result[0];
+        const parts = [
+          addr.streetNumber,
+          addr.street,
+          addr.postalCode,
+          addr.city,
+          addr.country
+        ].filter(Boolean);
+        return parts.join(', ');
+      }
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    } catch (error) {
+      console.error('Erreur reverse geocoding:', error);
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    }
+  };
+
+  const handleMapPress = async (event: any) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setTempMarker({ latitude, longitude });
+  };
+
+  const confirmLocationSelection = async () => {
+    if (!tempMarker) {
+      Alert.alert('Erreur', 'Veuillez sélectionner un emplacement sur la carte');
+      return;
+    }
+
+    const address = await reverseGeocode(tempMarker.latitude, tempMarker.longitude);
+    setSelectedLocation({
+      latitude: tempMarker.latitude,
+      longitude: tempMarker.longitude,
+      address,
+    });
+    setLocationInput(address);
+    setShowLocationPicker(false);
+  };
+
+  const formatDateTime = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
   const validateForm = (): string | null => {
@@ -108,7 +279,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       return "La description est requise";
     }
 
-    if (!formData.location.trim()) {
+    if (!locationInput.trim()) {
       return "Le lieu est requis";
     }
 
@@ -117,21 +288,19 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       return "Le nombre de participants doit être supérieur à 0";
     }
 
-    const startDate = parseDateTime(formData.start_at);
     if (!startDate) {
-      return "Format de date de début invalide (attendu: JJ/MM/AAAA HH:MM)";
+      return "La date de début est requise";
     }
 
-    const endDate = parseDateTime(formData.end_at);
     if (!endDate) {
-      return "Format de date de fin invalide (attendu: JJ/MM/AAAA HH:MM)";
+      return "La date de fin est requise";
     }
 
-    if (new Date(endDate) <= new Date(startDate)) {
+    if (endDate <= startDate) {
       return "La date de fin doit être après la date de début";
     }
 
-    if (new Date(startDate) < new Date()) {
+    if (startDate < new Date()) {
       return "La date de début ne peut pas être dans le passé";
     }
 
@@ -240,15 +409,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     setLoading(true);
 
     try {
-      const start_at = parseDateTime(formData.start_at)!;
-      const end_at = parseDateTime(formData.end_at)!;
-
       const eventData: any = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        start_at,
-        end_at,
-        location: formData.location.trim(),
+        start_at: startDate!.toISOString(),
+        end_at: endDate!.toISOString(),
+        location: locationInput.trim(),
         max_participants: parseInt(formData.max_participants),
         is_public: formData.is_public,
         has_whitelist: formData.has_whitelist,
@@ -256,6 +422,11 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         has_password_access: formData.has_password_access,
         custom_fields: customFields,
       };
+
+      if (selectedLocation) {
+        eventData.latitude = selectedLocation.latitude;
+        eventData.longitude = selectedLocation.longitude;
+      }
 
       if (formData.has_password_access && formData.access_password) {
         eventData.access_password = formData.access_password;
@@ -272,9 +443,6 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       setFormData({
         name: "",
         description: "",
-        start_at: "",
-        end_at: "",
-        location: "",
         max_participants: "",
         is_public: true,
         has_whitelist: false,
@@ -284,6 +452,10 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         cooldown: "",
         theme: "Professionnel",
       });
+      setStartDate(null);
+      setEndDate(null);
+      setLocationInput("");
+      setSelectedLocation(null);
       setCustomFields([]);
 
       setOpen(false);
@@ -338,6 +510,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
             <ScrollView
               style={styles.modalBody}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               {/* Nom */}
               <View style={styles.formGroup}>
@@ -399,50 +572,133 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                 />
               </View>
 
-              {/* Dates */}
+              {/* Date de début */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Date et heure de début *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.start_at}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, start_at: text })
-                  }
-                  placeholder="JJ/MM/AAAA HH:MM"
-                  placeholderTextColor="#9CA3AF"
-                  editable={!loading}
-                />
-                <Text style={styles.helperText}>Format: JJ/MM/AAAA HH:MM</Text>
+
+                <Pressable onPress={() => setStartDateVisible(true)}>
+                  <View pointerEvents="none">
+                    <TextInput
+                      style={[styles.input, styles.dateInput]}
+                      value={startDate ? formatDateTime(startDate) : ''}
+                      placeholder="Sélectionner la date et l'heure"
+                      placeholderTextColor="#9CA3AF"
+                      editable={false}
+                    />
+                  </View>
+                  <View style={styles.inputIcon}>
+                    <MaterialIcons name="event" size={20} color="#6B7280" />
+                  </View>
+                </Pressable>
               </View>
 
+              {/* Date de fin */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Date et heure de fin *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.end_at}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, end_at: text })
-                  }
-                  placeholder="JJ/MM/AAAA HH:MM"
-                  placeholderTextColor="#9CA3AF"
-                  editable={!loading}
-                />
-                <Text style={styles.helperText}>Format: JJ/MM/AAAA HH:MM</Text>
+
+                <Pressable onPress={() => setEndDateVisible(true)}>
+                  <View pointerEvents="none">
+                    <TextInput
+                      style={[styles.input, styles.dateInput]}
+                      value={endDate ? formatDateTime(endDate) : ''}
+                      placeholder="Sélectionner la date et l'heure"
+                      placeholderTextColor="#9CA3AF"
+                      editable={false}
+                    />
+                  </View>
+                  <View style={styles.inputIcon}>
+                    <MaterialIcons name="event" size={20} color="#6B7280" />
+                  </View>
+                </Pressable>
               </View>
 
-              {/* Lieu */}
+              {/* Lieu avec autocomplete */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Lieu *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.location}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, location: text })
-                  }
-                  placeholder="Ex: Station F, Paris 13e"
-                  placeholderTextColor="#9CA3AF"
-                  editable={!loading}
-                />
+                
+                <View style={styles.locationInputContainer}>
+                  <MaterialIcons 
+                    name="location-on" 
+                    size={20} 
+                    color="#6B7280" 
+                    style={styles.locationInputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.locationInput]}
+                    value={locationInput}
+                    onChangeText={(text) => {
+                      setLocationInput(text);
+                      if (text.length <= 2) {
+                        setSelectedLocation(null);
+                      }
+                    }}
+                    placeholder="Commencez à taper une adresse..."
+                    placeholderTextColor="#9CA3AF"
+                    editable={!loading}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                  />
+                  {loadingSuggestions && (
+                    <ActivityIndicator 
+                      size="small" 
+                      color="#1271FF" 
+                      style={styles.locationLoadingIcon}
+                    />
+                  )}
+                </View>
+
+                {/* Address Suggestions */}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    <ScrollView 
+                      style={styles.suggestionsList}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {addressSuggestions.map((item) => (
+                        <Pressable
+                          key={item.place_id.toString()}
+                          style={styles.suggestionItem}
+                          onPress={() => selectAddress(item)}
+                        >
+                          <MaterialIcons name="place" size={18} color="#6B7280" />
+                          <Text style={styles.suggestionText} numberOfLines={2}>
+                            {item.display_name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <Pressable 
+                  style={styles.mapPickerButton}
+                  onPress={() => {
+                    setShowLocationPicker(true);
+                    if (!tempMarker && !selectedLocation) {
+                      getCurrentLocation();
+                    } else if (selectedLocation) {
+                      setTempMarker({
+                        latitude: selectedLocation.latitude,
+                        longitude: selectedLocation.longitude,
+                      });
+                      setMapRegion({
+                        latitude: selectedLocation.latitude,
+                        longitude: selectedLocation.longitude,
+                        latitudeDelta: 0.05,
+                        longitudeDelta: 0.05,
+                      });
+                    }
+                  }}
+                >
+                  <MaterialIcons name="map" size={18} color="#1271FF" />
+                  <Text style={styles.mapPickerButtonText}>
+                    Ou sélectionner sur la carte
+                  </Text>
+                </Pressable>
               </View>
 
               {/* Max Participants */}
@@ -675,6 +931,98 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                 )}
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date/Time Pickers */}
+      <DateTimePickerModal
+        isVisible={isStartDateVisible}
+        mode="datetime"
+        onConfirm={(date) => {
+          setStartDate(date);
+          setStartDateVisible(false);
+        }}
+        onCancel={() => setStartDateVisible(false)}
+        minimumDate={new Date()}
+        date={startDate || new Date()}
+        locale="fr_FR"
+        display="inline"
+      />
+
+      <DateTimePickerModal
+        isVisible={isEndDateVisible}
+        mode="datetime"
+        onConfirm={(date) => {
+          setEndDate(date);
+          setEndDateVisible(false);
+        }}
+        onCancel={() => setEndDateVisible(false)}
+        minimumDate={startDate || new Date()}
+        date={endDate || startDate || new Date()}
+        locale="fr_FR"
+        display="inline"
+      />
+
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <View style={styles.locationModalContainer}>
+          <View style={styles.locationModalHeader}>
+            <Pressable onPress={() => setShowLocationPicker(false)}>
+              <MaterialIcons name="close" size={28} color="#303030" />
+            </Pressable>
+            <Text style={styles.locationModalTitle}>Sélectionner un lieu</Text>
+            <Pressable onPress={getCurrentLocation}>
+              <MaterialIcons name="my-location" size={28} color="#1271FF" />
+            </Pressable>
+          </View>
+
+          <MapView
+            style={styles.map}
+            region={mapRegion}
+            onRegionChangeComplete={setMapRegion}
+            onPress={handleMapPress}
+          >
+            {tempMarker && (
+              <Marker
+                coordinate={tempMarker}
+                draggable
+                onDragEnd={(e) => setTempMarker(e.nativeEvent.coordinate)}
+              />
+            )}
+          </MapView>
+
+          <View style={styles.mapInstructions}>
+            <MaterialIcons name="info-outline" size={20} color="#6B7280" />
+            <Text style={styles.mapInstructionsText}>
+              Tapez sur la carte pour placer un marqueur ou déplacez-le
+            </Text>
+          </View>
+
+          <View style={styles.locationModalActions}>
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowLocationPicker(false);
+                setTempMarker(selectedLocation ? {
+                  latitude: selectedLocation.latitude,
+                  longitude: selectedLocation.longitude,
+                } : null);
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Annuler</Text>
+            </Pressable>
+            <Pressable
+              style={styles.submitButton}
+              onPress={confirmLocationSelection}
+            >
+              <Text style={styles.submitButtonText}>Confirmer</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -974,6 +1322,130 @@ const styles = StyleSheet.create({
     color: "#303030",
     backgroundColor: "#FFFFFF",
   },
+  dateInput: {
+    paddingRight: 40,
+  },
+  inputIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+  },
+  locationInputContainer: {
+    position: 'relative',
+  },
+  locationInput: {
+    paddingLeft: 44,
+    paddingRight: 40,
+  },
+  locationInputIcon: {
+    position: 'absolute',
+    left: 16,
+    top: 14,
+    zIndex: 1,
+  },
+  locationLoadingIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: 80,
+    left: 0,
+    right: 0,
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  suggestionsList: {
+    flex: 1,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#303030',
+    lineHeight: 20,
+  },
+  
+  mapPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  mapPickerButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1271FF',
+  },
+  locationModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  locationModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  locationModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#303030',
+  },
+  map: {
+    flex: 1,
+  },
+  mapInstructions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  mapInstructionsText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  locationModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
   textarea: {
     minHeight: 100,
     textAlignVertical: "top",
@@ -1023,91 +1495,6 @@ const styles = StyleSheet.create({
     color: "#303030",
     marginBottom: 4,
     letterSpacing: -0.3,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  addFieldButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F0F7FF",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#1271FF",
-  },
-  customFieldCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  customFieldContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  customFieldHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  customFieldLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#303030",
-    marginLeft: 8,
-    flex: 1,
-  },
-  customFieldMeta: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginLeft: 28,
-    marginBottom: 2,
-  },
-  customFieldOptions: {
-    fontSize: 12,
-    color: "#1271FF",
-    marginLeft: 28,
-    fontWeight: "500",
-  },
-  customFieldActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  iconButton: {
-    padding: 6,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#6B7280",
-    fontWeight: "500",
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#9CA3AF",
   },
   typeGrid: {
     flexDirection: "row",
@@ -1188,6 +1575,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 0,
+  },
+  iconButton: {
+    padding: 6,
   },
   switchContainer: {
     flexDirection: "row",

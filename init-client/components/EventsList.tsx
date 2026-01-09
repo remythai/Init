@@ -1,9 +1,12 @@
 //components/EventsList.tsx
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  Animated,
   Image,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { CreateEventDialog } from "./CreateEventDialog";
+
 
 export interface Event {
   id: string;
@@ -26,6 +30,7 @@ export interface Event {
   isRegistered?: boolean;
 }
 
+
 interface EventsListProps {
   events: Event[];
   onEventClick: (event: Event) => void;
@@ -33,6 +38,7 @@ interface EventsListProps {
   userType?: "user" | "organizer";
   onCreateEvent?: () => void;
 }
+
 
 export function EventsList({
   events,
@@ -45,10 +51,41 @@ export function EventsList({
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
+  const [keyboardOffset] = useState(new Animated.Value(0));
+
   const [maxDistance, setMaxDistance] = useState(50);
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>("all");
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(keyboardOffset, {
+          toValue: e.endCoordinates.height - 70,
+          duration: e.duration || 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(keyboardOffset, {
+          toValue: 0,
+          duration: e.duration || 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   const filteredEvents = events.filter((event) => {
     const matchesFilter = activeFilter === "all" ? true : event.isRegistered;
@@ -155,6 +192,7 @@ export function EventsList({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {filteredEvents.length === 0 ? (
           <View style={styles.emptyState}>
@@ -263,9 +301,14 @@ export function EventsList({
         )}
       </ScrollView>
 
-      {/* Filter Tabs */}
+      {/* Filter Tabs - Maintenant animé pour suivre le clavier */}
       {userType === "user" && (
-        <View style={styles.filterTabs}>
+        <Animated.View 
+          style={[
+            styles.filterTabs, 
+            { bottom: Animated.add(24, keyboardOffset) }
+          ]}
+        >
           <View style={styles.tabsContainer}>
             <Pressable
               style={[
@@ -300,8 +343,9 @@ export function EventsList({
               </Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       )}
+
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
@@ -474,6 +518,7 @@ export function EventsList({
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -656,7 +701,6 @@ const styles = StyleSheet.create({
   },
   filterTabs: {
     position: "absolute",
-    bottom: 24,
     left: 16,
     right: 16,
     backgroundColor: "transparent",

@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { BackHandler, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 export default function MainLayout() {
   const router = useRouter();
@@ -12,6 +13,24 @@ export default function MainLayout() {
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
 
   const shouldHideNavigation = isInEventTabs || isInEventDetail || isInConversation;
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      const isOnEventsTab = segments[1] === 'events' && segments.length === 2;
+      
+      if (isOnEventsTab) {
+        BackHandler.exitApp();
+        return true;
+      }
+      
+      router.push('/(main)/events');
+      return true; 
+    });
+
+    return () => backHandler.remove();
+  }, [segments, router]);
 
   return (
     <View style={styles.container}>
@@ -63,15 +82,15 @@ export default function MainLayout() {
             title: "Événements",
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="event" size={24} color={color} />
-              ),
-            }}
+            ),
+          }}
         />
         <Tabs.Screen
           name="messagery"
           options={{
             title: "Messages",
             tabBarIcon: ({ color }) => (
-            <MaterialIcons name="message" size={24} color={color} />
+              <MaterialIcons name="message" size={24} color={color} />
             ),
           }}
         />

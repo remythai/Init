@@ -1,18 +1,21 @@
-// events/[id]/_layout.tsx
-import { MaterialIcons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+//app/(main)/events/[id]/_layout.tsx
 import { authService } from '@/services/auth.service';
 import { eventService } from '@/services/event.service';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 export default function EventLayout() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const segments = useSegments();
+  const pathname = usePathname();
   
   const [userType, setUserType] = useState<"user" | "organizer" | null>(null);
   const isInEventTabs = segments.includes('(event-tabs)');
+  
+  const isInEventConversation = pathname.match(/\/events\/[^/]+\/\(event-tabs\)\/messagery\/[^/]+$/) !== null;
 
   useEffect(() => {
     checkUserType();
@@ -111,7 +114,8 @@ export default function EventLayout() {
 
   return (
     <View style={styles.container}>
-      {!isInEventTabs && (
+      {/* Cache le header dans les event-tabs ET dans les conversations */}
+      {!isInEventTabs && !isInEventConversation && (
         <View style={styles.header}>
           <Pressable 
             onPress={() => router.push('/events')}
@@ -140,7 +144,12 @@ export default function EventLayout() {
 
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="(event-tabs)" />
+        <Stack.Screen 
+          name="(event-tabs)" 
+          options={{ 
+            headerShown: false,
+          }} 
+        />
       </Stack>
     </View>
   );

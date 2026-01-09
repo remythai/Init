@@ -105,18 +105,15 @@ export function EventDetail({
     event.customFields.forEach((field) => {
       const value = profilInfo[field.id];
 
-      // Vérification champ requis
       if (field.required && (value === undefined || value === null || value === "")) {
         errors[field.id] = `Le champ "${field.label}" est requis`;
         return;
       }
 
-      // Si le champ n'est pas requis et vide, on passe
       if (!field.required && (value === undefined || value === null || value === "")) {
         return;
       }
 
-      // Validation email
       if (field.type === "email" && typeof value === "string") {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
@@ -124,7 +121,6 @@ export function EventDetail({
         }
       }
 
-      // Validation téléphone
       if (field.type === "phone" && typeof value === "string") {
         const phoneRegex = /^[0-9\s\-\+\(\)]+$/;
         if (!phoneRegex.test(value) || value.replace(/\D/g, "").length < 10) {
@@ -132,7 +128,6 @@ export function EventDetail({
         }
       }
 
-      // Validation number
       if (field.type === "number") {
         const num = Number(value);
         if (Number.isNaN(num)) {
@@ -147,7 +142,6 @@ export function EventDetail({
         }
       }
 
-      // Validation pattern personnalisé
       if (field.pattern && typeof value === "string") {
         const regex = new RegExp(field.pattern);
         if (!regex.test(value)) {
@@ -155,7 +149,6 @@ export function EventDetail({
         }
       }
 
-      // Validation multiselect
       if (field.type === "multiselect" && field.required) {
         if (!Array.isArray(value) || value.length === 0) {
           errors[field.id] = "Veuillez sélectionner au moins une option";
