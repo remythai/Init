@@ -1,4 +1,5 @@
 import { Heart, Users, Briefcase, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -25,10 +26,13 @@ export default function Home() {
               Init réinvente la rencontre en créant des moments réels autour d'événements qui vous ressemblent.
             </p>
             <div className="flex justify-center pt-2 md:pt-4">
-              <button className="bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 md:px-8 py-4 md:py-6 rounded-full text-base md:text-lg group flex items-center">
+              <Link
+                href="/auth"
+                className="bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 md:px-8 py-4 md:py-6 rounded-full text-base md:text-lg group flex items-center transition-colors"
+              >
                 S'inscrire gratuitement
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -159,9 +163,12 @@ export default function Home() {
           <p className="font-roboto text-lg md:text-2xl text-white/60 mb-8 md:mb-12 max-w-2xl mx-auto px-4 md:px-0">
             Rejoignez des milliers de personnes qui créent des connexions authentiques
           </p>
-          <button className="bg-white hover:bg-gray-100 text-[#303030] px-8 md:px-12 py-5 md:py-7 rounded-full text-lg md:text-xl font-poppins font-semibold">
+          <Link
+            href="/auth"
+            className="inline-block bg-white hover:bg-gray-100 text-[#303030] px-8 md:px-12 py-5 md:py-7 rounded-full text-lg md:text-xl font-poppins font-semibold transition-colors"
+          >
             S'inscrire gratuitement
-          </button>
+          </Link>
           <p className="font-roboto text-white/40 mt-4 md:mt-6 text-sm md:text-base">
             Gratuit • Sans engagement
           </p>
