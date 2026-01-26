@@ -62,4 +62,96 @@ router.get(
   asyncHandler(MatchController.getEventMatches)
 );
 
+// ============================================================================
+// MESSAGING ROUTES
+// ============================================================================
+
+/**
+ * GET /api/matching/conversations
+ * Get all conversations grouped by event
+ */
+router.get(
+  '/conversations',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.getAllConversations)
+);
+
+/**
+ * GET /api/matching/events/:eventId/conversations
+ * Get conversations for a specific event
+ */
+router.get(
+  '/events/:eventId/conversations',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.getEventConversations)
+);
+
+/**
+ * GET /api/matching/matches/:matchId/messages
+ * Get messages for a match (general context)
+ */
+router.get(
+  '/matches/:matchId/messages',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.getMessages)
+);
+
+/**
+ * POST /api/matching/matches/:matchId/messages
+ * Send a message (general context)
+ */
+router.post(
+  '/matches/:matchId/messages',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.sendMessage)
+);
+
+/**
+ * GET /api/matching/events/:eventId/matches/:matchId/messages
+ * Get messages for a match (event context)
+ */
+router.get(
+  '/events/:eventId/matches/:matchId/messages',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.getMessages)
+);
+
+/**
+ * POST /api/matching/events/:eventId/matches/:matchId/messages
+ * Send a message (event context)
+ */
+router.post(
+  '/events/:eventId/matches/:matchId/messages',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.sendMessage)
+);
+
+/**
+ * PUT /api/matching/messages/:messageId/read
+ * Mark a message as read
+ */
+router.put(
+  '/messages/:messageId/read',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.markAsRead)
+);
+
+/**
+ * PUT /api/matching/messages/:messageId/like
+ * Toggle like on a message
+ */
+router.put(
+  '/messages/:messageId/like',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.toggleLike)
+);
+
 export default router;

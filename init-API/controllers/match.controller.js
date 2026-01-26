@@ -207,5 +207,227 @@ export const MatchController = {
       total: matches.length,
       by_event: Object.values(grouped)
     });
+  },
+
+  // =========================================================================
+  // MESSAGING
+  // =========================================================================
+
+  /**
+   * GET /api/matching/conversations
+   * Get all conversations grouped by event
+   */
+  async getAllConversations(req, res) {
+    const userId = req.user.id;
+
+    const conversations = await MatchModel.getAllConversations(userId);
+
+    // Group by event
+    const grouped = conversations.reduce((acc, conv) => {
+      const eventKey = conv.event_id;
+      if (!acc[eventKey]) {
+        acc[eventKey] = {
+          event: {
+            id: conv.event_id,
+            name: conv.event_name
+          },
+          conversations: []
+        };
+      }
+      acc[eventKey].conversations.push({
+        match_id: conv.match_id,
+        user: {
+          id: conv.user_id,
+          firstname: conv.firstname,
+          lastname: conv.lastname,
+          photos: conv.photos
+        },
+        last_message: conv.last_message ? {
+          content: conv.last_message.content,
+          sent_at: conv.last_message.sent_at,
+          is_mine: conv.last_message.sender_id === userId
+        } : null,
+        unread_count: conv.unread_count
+      });
+      return acc;
+    }, {});
+
+    return success(res, Object.values(grouped));
+  },
+
+  /**
+   * GET /api/matching/events/:eventId/conversations
+   * Get conversations for a specific event
+   */
+  async getEventConversations(req, res) {
+    const eventId = parseInt(req.params.eventId);
+    const userId = req.user.id;
+
+    // Check event exists
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    // Check user is registered
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new ForbiddenError('Vous devez être inscrit à cet événement');
+    }
+
+    const conversations = await MatchModel.getConversationsByEvent(userId, eventId);
+
+    const formatted = conversations.map(conv => ({
+      match_id: conv.match_id,
+      user: {
+        id: conv.user_id,
+        firstname: conv.firstname,
+        lastname: conv.lastname,
+        photos: conv.photos
+      },
+      last_message: conv.last_message ? {
+        content: conv.last_message.content,
+        sent_at: conv.last_message.sent_at,
+        is_mine: conv.last_message.sender_id === userId
+      } : null,
+      unread_count: conv.unread_count
+    }));
+
+    return success(res, {
+      event: { id: eventId, name: event.name },
+      conversations: formatted
+    });
+  },
+
+  /**
+   * GET /api/matching/matches/:matchId/messages
+   * GET /api/matching/events/:eventId/matches/:matchId/messages
+   * Get messages for a match
+   */
+  async getMessages(req, res) {
+    const matchId = parseInt(req.params.matchId);
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+    const beforeId = req.query.before ? parseInt(req.query.before) : null;
+
+    // Check match exists and user is part of it
+    const match = await MatchModel.getMatchById(matchId, userId);
+    if (!match) {
+      throw new NotFoundError('Conversation non trouvée');
+    }
+
+    // If eventId is in params, verify it matches
+    if (req.params.eventId) {
+      const eventId = parseInt(req.params.eventId);
+      if (match.event_id !== eventId) {
+        throw new NotFoundError('Conversation non trouvée pour cet événement');
+      }
+    }
+
+    // Mark messages as read
+    await MatchModel.markAllMessagesAsRead(matchId, userId);
+
+    // Get messages
+    const messages = await MatchModel.getMessages(matchId, limit, beforeId);
+
+    // Get other user info
+    const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+    const otherUser = await MatchModel.getUserBasicInfo(otherUserId);
+
+    return success(res, {
+      match: {
+        id: matchId,
+        event_id: match.event_id,
+        event_name: match.event_name,
+        user: otherUser
+      },
+      messages
+    });
+  },
+
+  /**
+   * POST /api/matching/matches/:matchId/messages
+   * POST /api/matching/events/:eventId/matches/:matchId/messages
+   * Send a message
+   */
+  async sendMessage(req, res) {
+    const matchId = parseInt(req.params.matchId);
+    const userId = req.user.id;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      throw new ValidationError('Le contenu du message est requis');
+    }
+
+    // Check match exists and user is part of it
+    const match = await MatchModel.getMatchById(matchId, userId);
+    if (!match) {
+      throw new NotFoundError('Conversation non trouvée');
+    }
+
+    // If eventId is in params, verify it matches
+    if (req.params.eventId) {
+      const eventId = parseInt(req.params.eventId);
+      if (match.event_id !== eventId) {
+        throw new NotFoundError('Conversation non trouvée pour cet événement');
+      }
+    }
+
+    const message = await MatchModel.createMessage(matchId, userId, content.trim());
+
+    return success(res, message, 'Message envoyé');
+  },
+
+  /**
+   * PUT /api/matching/messages/:messageId/read
+   * Mark a message as read
+   */
+  async markAsRead(req, res) {
+    const messageId = parseInt(req.params.messageId);
+    const userId = req.user.id;
+
+    // Get message with match info
+    const message = await MatchModel.getMessageById(messageId);
+    if (!message) {
+      throw new NotFoundError('Message non trouvé');
+    }
+
+    // Check user is part of the match
+    if (message.user1_id !== userId && message.user2_id !== userId) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    // Only recipient can mark as read
+    if (message.sender_id === userId) {
+      throw new ValidationError('Vous ne pouvez pas marquer vos propres messages comme lus');
+    }
+
+    const updated = await MatchModel.markMessageAsRead(messageId);
+
+    return success(res, { is_read: updated.is_read });
+  },
+
+  /**
+   * PUT /api/matching/messages/:messageId/like
+   * Toggle like on a message
+   */
+  async toggleLike(req, res) {
+    const messageId = parseInt(req.params.messageId);
+    const userId = req.user.id;
+
+    // Get message with match info
+    const message = await MatchModel.getMessageById(messageId);
+    if (!message) {
+      throw new NotFoundError('Message non trouvé');
+    }
+
+    // Check user is part of the match
+    if (message.user1_id !== userId && message.user2_id !== userId) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    const updated = await MatchModel.toggleMessageLike(messageId);
+
+    return success(res, { is_liked: updated.is_liked });
   }
 };
