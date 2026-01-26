@@ -8,6 +8,7 @@ import userRoutes from './routes/user.routes.js';
 import orgaRoutes from './routes/orga.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
+import whitelistRoutes from './routes/whitelist.routes.js';
 
 import { errorHandler } from './utils/errors.js';
 
@@ -54,6 +55,7 @@ app.get('/api-docs.json', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/events', whitelistRoutes); // Whitelist routes under /api/events/:id/whitelist
 app.use('/api/matching', matchRoutes);
 
 // Health route

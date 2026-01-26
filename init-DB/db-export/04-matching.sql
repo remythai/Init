@@ -11,6 +11,7 @@ CREATE TABLE public.matches (
     user1_id integer NOT NULL,
     user2_id integer NOT NULL,
     event_id integer NOT NULL,
+    is_archived boolean DEFAULT false NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,6 +52,7 @@ CREATE UNIQUE INDEX unique_match_pair_event ON public.matches USING btree (LEAST
 CREATE INDEX idx_matches_user1 ON public.matches USING btree (user1_id);
 CREATE INDEX idx_matches_user2 ON public.matches USING btree (user2_id);
 CREATE INDEX idx_matches_event ON public.matches USING btree (event_id);
+CREATE INDEX idx_matches_archived ON public.matches USING btree (is_archived) WHERE is_archived = false;
 
 -- -----------------------------------------------------------------------------
 -- Table: messages

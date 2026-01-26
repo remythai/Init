@@ -1,5 +1,7 @@
 import { EventModel } from '../models/event.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
+import { UserModel } from '../models/user.model.js';
+import { WhitelistModel } from '../models/whitelist.model.js';
 
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
@@ -190,16 +192,27 @@ export const EventController = {
     const eventId = req.params.id;
     const userId = req.user.id;
     const { profil_info, access_password } = req.body;
-  
+
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-  
+
     if (!event.is_public) {
       throw new ForbiddenError('Cet événement n\'est pas public');
     }
-  
+
+    // Check whitelist if enabled
+    if (event.has_whitelist) {
+      const user = await UserModel.findById(userId);
+      const isWhitelisted = await WhitelistModel.isWhitelisted(eventId, user.tel);
+      if (!isWhitelisted) {
+        throw new ForbiddenError('Vous n\'êtes pas autorisé à accéder à cet événement');
+      }
+      // Link user to whitelist entry
+      await WhitelistModel.linkUser(user.tel, userId);
+    }
+
     if (event.has_password_access) {
       if (!access_password) {
         throw new ValidationError('Un mot de passe est requis pour accéder à cet événement');
@@ -209,7 +222,7 @@ export const EventController = {
         throw new ValidationError('Mot de passe incorrect');
       }
     }
-  
+
     const existing = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (existing) {
       throw new ConflictError('Vous êtes déjà inscrit à cet événement');
