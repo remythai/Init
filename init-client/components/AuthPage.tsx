@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { AuthInput, AuthButton, AuthError } from "@/components/auth";
+import { DatePicker } from "@/components/DatePicker";
 
 interface AuthPageProps {
   onAuth: (
@@ -46,14 +47,14 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
   const validateAge = (dateStr: string): boolean => {
     const birthDate = new Date(dateStr);
     if (isNaN(birthDate.getTime())) return false;
-    
+
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     return age >= 18;
   };
 
@@ -82,7 +83,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
           return;
         }
       }
-      
+
       if (!password) {
         setError("Le mot de passe est requis");
         return;
@@ -144,7 +145,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
           }
         }
       }
-      
+
       if (!password || password.length < 8) {
         setError("Le mot de passe doit contenir au moins 8 caractères");
         return;
@@ -514,18 +515,11 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                     Format: 10-20 caractères (chiffres, +, -, (), espaces)
                   </ThemedText>
                 </View>
-                <View>
-                  <AuthInput
-                    label="Date de naissance * (18 ans minimum)"
-                    placeholder="AAAA-MM-JJ (ex: 2000-01-15)"
-                    value={birthDate}
-                    onChangeText={setBirthDate}
-                    editable={!loading}
-                  />
-                  <ThemedText style={styles.hint}>
-                    Format: AAAA-MM-JJ (exemple: 2000-01-15)
-                  </ThemedText>
-                </View>
+                <DatePicker
+                  value={birthDate}
+                  onChange={setBirthDate}
+                  editable={!loading}
+                />
                 <AuthInput
                   label="Email (optionnel)"
                   placeholder="votre@email.com"
