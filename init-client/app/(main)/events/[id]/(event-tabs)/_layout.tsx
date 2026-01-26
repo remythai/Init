@@ -9,34 +9,33 @@ export default function EventTabsLayout() {
   const { id } = useLocalSearchParams();
   const segments = useSegments();
 
-  const isInConversation = segments[segments.length - 2] === 'messagery' && 
-                           segments[segments.length - 1] !== 'index';
+  const isInConversation = segments[segments.length - 2] === 'messagery' &&
+    segments[segments.length - 1] !== 'index';
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      console.log('🔍 Segments:', segments);
-      
-      const eventTabsIndex = segments.findIndex(s => s === '(event-tabs)');
-      
-      if (eventTabsIndex === -1) return false;
-      
-      const currentTab = segments[eventTabsIndex + 1];
-      
-      console.log('📍 Current tab:', currentTab);
+      // ✅ Si on est dans une conversation, laisser [id].tsx gérer
+      if (isInConversation) {
+        return false; // Laisse le BackHandler de la conversation prendre le relais
+      }
 
+      const currentTab = segments[eventTabsIndex + 1];
+
+      // ✅ Navigation selon le tab actuel
       if (currentTab === 'swiper') {
-        console.log('✅ Swiper → Events');
-        router.push('/(main)/events');
+        router.replace('/(main)/events');
         return true;
-      } else if (currentTab === 'profile') {
-        console.log('✅ Profile → Swiper');
-        router.push(`/(main)/events/${id}/(event-tabs)/swiper`);
+      }
+
+      if (currentTab === 'messagery') {
+        router.replace(`/(main)/events/${id}/(event-tabs)/swiper`);
         return true;
-      } else if (currentTab === 'messagery') {
-        console.log('✅ Messagery → Swiper');
-        router.push(`/(main)/events/${id}/(event-tabs)/swiper`);
+      }
+
+      if (currentTab === 'profile') {
+        router.replace(`/(main)/events/${id}/(event-tabs)/swiper`);
         return true;
       }
 
@@ -44,7 +43,7 @@ export default function EventTabsLayout() {
     });
 
     return () => backHandler.remove();
-  }, [segments, id, router]);
+  }, [segments, id, router, isInConversation]);
 
   if (isInConversation) {
     return (

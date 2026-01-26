@@ -1,10 +1,8 @@
-import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  Flag,
-  MoreVertical,
-  Send,
-} from "lucide-react-native";
+// app/(main)/events/[id]/(event-tabs)/messagery/[id].tsx
+import { useEvent } from "@/context/EventContext";
+import { matchService } from "@/services/match.service";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft, Flag, MoreVertical, Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BackHandler,
@@ -21,203 +19,73 @@ import {
   View,
 } from "react-native";
 
+interface ApiMessage {
+  id: number;
+  sender_id: number;
+  content: string;
+  sent_at: string;
+  is_read: boolean;
+  is_liked: boolean;
+}
 
 interface Message {
   id: string;
-  senderId: string;
+  senderId: "me" | "other";
   text: string;
   timestamp: string;
 }
 
-
 export default function ConversationPage() {
   const router = useRouter();
-  const { id: conversationId } = useLocalSearchParams();
-  const globalParams = useGlobalSearchParams();
-  const eventId = globalParams.id;
-  
+  const { currentEventId } = useEvent();
+  const params = useLocalSearchParams<{ id: string }>();
+  const matchId = params.id ? parseInt(params.id) : 0;
+
+  // ✅ Log pour debug
+  console.log('💬 Conversation - matchId:', matchId, 'currentEventId:', currentEventId, 'params:', params);
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messageText, setMessageText] = useState("");
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showDropdownMenu, setShowDropdownMenu] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      senderId: "other",
-      text: "Salut ! Content de te rencontrer à l'événement !",
-      timestamp: "09:15",
-    },
-    {
-      id: "2",
-      senderId: "me",
-      text: "Salut ! Oui c'était super !",
-      timestamp: "09:18",
-    },
-    {
-      id: "3",
-      senderId: "other",
-      text: "Tu vas souvent à ce genre d'événements ?",
-      timestamp: "09:20",
-    },
-    {
-      id: "4",
-      senderId: "me",
-      text: "Oui, j'adore découvrir de nouveaux endroits et rencontrer des gens",
-      timestamp: "09:22",
-    },
-    {
-      id: "5",
-      senderId: "other",
-      text: "C'est cool ! Moi aussi j'essaie d'y aller régulièrement",
-      timestamp: "09:25",
-    },
-    {
-      id: "6",
-      senderId: "me",
-      text: "Tu as préféré quoi hier soir ?",
-      timestamp: "09:27",
-    },
-    {
-      id: "7",
-      senderId: "other",
-      text: "Franchement l'ambiance était incroyable, et la musique était parfaite",
-      timestamp: "09:30",
-    },
-    {
-      id: "8",
-      senderId: "me",
-      text: "Ouais carrément ! Le DJ était vraiment bon",
-      timestamp: "09:32",
-    },
-    {
-      id: "9",
-      senderId: "other",
-      text: "Tu connais d'autres bons événements à venir ?",
-      timestamp: "09:35",
-    },
-    {
-      id: "10",
-      senderId: "me",
-      text: "Il y a un concert la semaine prochaine au Zenith, ça devrait être pas mal",
-      timestamp: "09:38",
-    },
-    {
-      id: "11",
-      senderId: "other",
-      text: "Ah ouais ? C'est quel genre de musique ?",
-      timestamp: "09:40",
-    },
-    {
-      id: "12",
-      senderId: "me",
-      text: "Plutôt électro/house, mais avec un bon mix",
-      timestamp: "09:42",
-    },
-    {
-      id: "13",
-      senderId: "other",
-      text: "Ça me tente bien ! Tu y vas avec des amis ?",
-      timestamp: "09:45",
-    },
-    {
-      id: "14",
-      senderId: "me",
-      text: "Oui on sera un petit groupe, tu veux te joindre à nous ?",
-      timestamp: "09:47",
-    },
-    {
-      id: "15",
-      senderId: "other",
-      text: "Carrément ! Ça serait cool 😊",
-      timestamp: "09:50",
-    },
-    {
-      id: "16",
-      senderId: "me",
-      text: "Super ! Je t'envoie les détails plus tard dans la semaine",
-      timestamp: "09:52",
-    },
-    {
-      id: "17",
-      senderId: "other",
-      text: "Parfait, merci ! Au fait, tu fais quoi dans la vie ?",
-      timestamp: "10:00",
-    },
-    {
-      id: "18",
-      senderId: "me",
-      text: "Je suis développeur web, et toi ?",
-      timestamp: "10:02",
-    },
-    {
-      id: "19",
-      senderId: "other",
-      text: "Ah cool ! Moi je suis dans le design graphique",
-      timestamp: "10:05",
-    },
-    {
-      id: "20",
-      senderId: "me",
-      text: "Sympa ! On pourrait même collaborer un jour 😄",
-      timestamp: "10:07",
-    },
-    {
-      id: "21",
-      senderId: "other",
-      text: "Pourquoi pas ! J'aime bien travailler avec des devs qui comprennent le design",
-      timestamp: "10:10",
-    },
-    {
-      id: "22",
-      senderId: "me",
-      text: "Haha oui c'est important la communication entre dev et design",
-      timestamp: "10:12",
-    },
-    {
-      id: "23",
-      senderId: "other",
-      text: "Totalement d'accord ! Bon je dois y aller, on se reparle bientôt ?",
-      timestamp: "10:15",
-    },
-    {
-      id: "24",
-      senderId: "me",
-      text: "Oui bien sûr ! Bonne journée 👋",
-      timestamp: "10:17",
-    },
-    {
-      id: "25",
-      senderId: "other",
-      text: "Toi aussi ! À plus",
-      timestamp: "10:18",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [otherUserName, setOtherUserName] = useState<string>("Match");
+  const [eventName, setEventName] = useState<string>("Événement");
 
-  const selectedMatch = {
-    id: conversationId as string,
-    name: "Marie",
-    eventName: "Soirée Jazz",
-  };
+  // ✅ Retour vers la messagerie d'event avec l'ID explicite
+  const goBackToMessagery = useCallback(() => {
+    if (currentEventId) {
+      console.log('🔙 Retour vers messagery, eventId:', currentEventId);
+      // ✅ IMPORTANT : Inclure l'ID de l'événement dans l'URL
+      router.replace(`/(main)/events/${currentEventId}/(event-tabs)/messagery`);
+    } else {
+      console.warn('⚠️ Pas de currentEventId, retour vers events');
+      router.replace('/(main)/events');
+    }
+  }, [currentEventId, router]);
 
-  const goBackToMessagery = () => {
-    router.push(`/(main)/events/${eventId}/(event-tabs)/messagery`);
-  };
-
+  // ✅ Back hardware Android
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         goBackToMessagery();
-        return true;
+        return true; // ✅ Empêche le comportement par défaut
       };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => {
-        subscription.remove();
-      };
-    }, [eventId])
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => subscription.remove();
+    }, [goBackToMessagery])
   );
+
+  // Auto scroll en bas
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -225,42 +93,82 @@ export default function ConversationPage() {
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => {
-        scrollToBottom();
-      }
+      "keyboardDidShow",
+      scrollToBottom
     );
-
-    return () => {
-      keyboardDidShowListener.remove();
-    };
+    return () => keyboardDidShowListener.remove();
   }, []);
 
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
+  // Chargement des messages depuis l'API
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        if (!matchId) return;
 
-  const handleSendMessage = () => {
-    if (!messageText.trim()) return;
+        const res = await matchService.getMessages(matchId);
+        const { match, messages: apiMessages } = res;
 
-    const newMessage: Message = {
+        setEventName(match.event_name || "Événement");
+        setOtherUserName(
+          `${match.user.firstname} ${match.user.lastname}`.trim() || "Match"
+        );
+
+        const mapped: Message[] = apiMessages.map((m: ApiMessage) => ({
+          id: m.id.toString(),
+          senderId: m.sender_id === match.user.id ? "other" : "me",
+          text: m.content,
+          timestamp: new Date(m.sent_at).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+
+        setMessages(mapped);
+      } catch (e) {
+        console.error("Erreur chargement messages:", e);
+      }
+    };
+
+    loadMessages();
+  }, [matchId]);
+
+  // Envoi de message
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !matchId) return;
+
+    const content = messageText.trim();
+    setMessageText("");
+
+    const optimistic: Message = {
       id: Date.now().toString(),
       senderId: "me",
-      text: messageText,
+      text: content,
       timestamp: new Date().toLocaleTimeString("fr-FR", {
         hour: "2-digit",
         minute: "2-digit",
       }),
     };
+    setMessages((prev) => [...prev, optimistic]);
 
-    setMessages([...messages, newMessage]);
-    setMessageText("");
+    try {
+      const sent = await matchService.sendMessage(matchId, content);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === optimistic.id
+            ? {
+                ...m,
+                id: sent.id.toString(),
+              }
+            : m
+        )
+      );
+    } catch (e) {
+      console.error("Erreur envoi message:", e);
+    }
   };
 
   const handleReport = () => {
-    console.log("Signalement de l'utilisateur:", selectedMatch.name);
+    console.log("Signalement de l'utilisateur:", otherUserName);
     setShowReportDialog(false);
   };
 
@@ -278,14 +186,12 @@ export default function ConversationPage() {
 
         <View style={styles.headerCenter}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {selectedMatch.name.charAt(0)}
-            </Text>
+            <Text style={styles.avatarText}>{otherUserName.charAt(0)}</Text>
           </View>
           <View>
-            <Text style={styles.headerName}>{selectedMatch.name}</Text>
+            <Text style={styles.headerName}>{otherUserName}</Text>
             <Text style={styles.headerSubtitle}>
-              Match via {selectedMatch.eventName}
+              Match via {eventName}
             </Text>
           </View>
         </View>
@@ -310,19 +216,25 @@ export default function ConversationPage() {
             key={message.id}
             style={[
               styles.messageRow,
-              message.senderId === "me" ? styles.messageRowRight : styles.messageRowLeft,
+              message.senderId === "me"
+                ? styles.messageRowRight
+                : styles.messageRowLeft,
             ]}
           >
             <View
               style={[
                 styles.messageBubble,
-                message.senderId === "me" ? styles.messageBubbleMe : styles.messageBubbleOther,
+                message.senderId === "me"
+                  ? styles.messageBubbleMe
+                  : styles.messageBubbleOther,
               ]}
             >
               <Text
                 style={[
                   styles.messageText,
-                  message.senderId === "me" ? styles.messageTextMe : styles.messageTextOther,
+                  message.senderId === "me"
+                    ? styles.messageTextMe
+                    : styles.messageTextOther,
                 ]}
               >
                 {message.text}
@@ -330,7 +242,9 @@ export default function ConversationPage() {
               <Text
                 style={[
                   styles.messageTime,
-                  message.senderId === "me" ? styles.messageTimeMe : styles.messageTimeOther,
+                  message.senderId === "me"
+                    ? styles.messageTimeMe
+                    : styles.messageTimeOther,
                 ]}
               >
                 {message.timestamp}
@@ -393,11 +307,12 @@ export default function ConversationPage() {
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogBox}>
             <Text style={styles.dialogTitle}>
-              Signaler {selectedMatch.name}
+              Signaler {otherUserName}
             </Text>
             <Text style={styles.dialogDescription}>
-              Voulez-vous vraiment signaler cet utilisateur ? Cette action permettra à notre
-              équipe de modération d'examiner le comportement de cette personne.
+              Voulez-vous vraiment signaler cet utilisateur ? Cette action
+              permettra à notre équipe de modération d'examiner le comportement
+              de cette personne.
             </Text>
             <View style={styles.dialogActions}>
               <TouchableOpacity
@@ -420,13 +335,8 @@ export default function ConversationPage() {
   );
 }
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -438,10 +348,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#303030",
   },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
-  },
+  headerButton: { padding: 8, borderRadius: 8 },
   headerCenter: {
     flexDirection: "row",
     alignItems: "center",
@@ -456,69 +363,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    color: "#303030",
-    fontWeight: "600",
-  },
-  headerName: {
-    fontWeight: "600",
-    color: "white",
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-
-  messagesContainer: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  messagesContent: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  messageRow: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  messageRowRight: {
-    justifyContent: "flex-end",
-  },
-  messageRowLeft: {
-    justifyContent: "flex-start",
-  },
+  avatarText: { color: "#303030", fontWeight: "600" },
+  headerName: { fontWeight: "600", color: "white" },
+  headerSubtitle: { fontSize: 12, color: "rgba(255, 255, 255, 0.7)" },
+  messagesContainer: { flex: 1, backgroundColor: "#F5F5F5" },
+  messagesContent: { padding: 16, paddingBottom: 8 },
+  messageRow: { flexDirection: "row", marginBottom: 12 },
+  messageRowRight: { justifyContent: "flex-end" },
+  messageRowLeft: { justifyContent: "flex-start" },
   messageBubble: {
     maxWidth: "75%",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  messageBubbleMe: {
-    backgroundColor: "#303030",
-  },
-  messageBubbleOther: {
-    backgroundColor: "white",
-  },
-  messageText: {
-    fontSize: 14,
-  },
-  messageTextMe: {
-    color: "white",
-  },
-  messageTextOther: {
-    color: "#303030",
-  },
-  messageTime: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  messageTimeMe: {
-    color: "#E3F2FD",
-  },
-  messageTimeOther: {
-    color: "#9E9E9E",
-  },
-
+  messageBubbleMe: { backgroundColor: "#303030" },
+  messageBubbleOther: { backgroundColor: "white" },
+  messageText: { fontSize: 14 },
+  messageTextMe: { color: "white" },
+  messageTextOther: { color: "#303030" },
+  messageTime: { fontSize: 12, marginTop: 4 },
+  messageTimeMe: { color: "#E3F2FD" },
+  messageTimeOther: { color: "#9E9E9E" },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -547,7 +413,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -572,10 +437,7 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 8,
   },
-  dropdownItemText: {
-    color: "#DC2626",
-  },
-
+  dropdownItemText: { color: "#DC2626" },
   dialogOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -590,15 +452,8 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
   },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  dialogDescription: {
-    color: "#757575",
-    marginBottom: 24,
-  },
+  dialogTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  dialogDescription: { color: "#757575", marginBottom: 24 },
   dialogActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -611,16 +466,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#BDBDBD",
   },
-  dialogButtonCancelText: {
-    color: "#000",
-  },
+  dialogButtonCancelText: { color: "#000" },
   dialogButtonConfirm: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     backgroundColor: "#DC2626",
   },
-  dialogButtonConfirmText: {
-    color: "white",
-  },
+  dialogButtonConfirmText: { color: "white" },
 });
