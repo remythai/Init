@@ -10,7 +10,7 @@ CREATE TABLE public.matches (
     id integer NOT NULL,
     user1_id integer NOT NULL,
     user2_id integer NOT NULL,
-    event_id integer,
+    event_id integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -34,18 +34,23 @@ ALTER TABLE ONLY public.matches ADD CONSTRAINT matches_pkey PRIMARY KEY (id);
 -- Foreign keys
 ALTER TABLE ONLY public.matches
     ADD CONSTRAINT matches_user1_id_fkey
-    FOREIGN KEY (user1_id) REFERENCES public.users(id);
+    FOREIGN KEY (user1_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.matches
     ADD CONSTRAINT matches_user2_id_fkey
-    FOREIGN KEY (user2_id) REFERENCES public.users(id);
+    FOREIGN KEY (user2_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.matches
-    ADD CONSTRAINT matches_first_event_id_fkey
-    FOREIGN KEY (event_id) REFERENCES public.events(id);
+    ADD CONSTRAINT matches_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
 
--- Unique index to prevent duplicate matches (A-B same as B-A)
-CREATE UNIQUE INDEX unique_match_pair ON public.matches USING btree (LEAST(user1_id, user2_id), GREATEST(user1_id, user2_id));
+-- Unique index to prevent duplicate matches per event (A-B same as B-A for a given event)
+CREATE UNIQUE INDEX unique_match_pair_event ON public.matches USING btree (LEAST(user1_id, user2_id), GREATEST(user1_id, user2_id), event_id);
+
+-- Index for faster user match lookups
+CREATE INDEX idx_matches_user1 ON public.matches USING btree (user1_id);
+CREATE INDEX idx_matches_user2 ON public.matches USING btree (user2_id);
+CREATE INDEX idx_matches_event ON public.matches USING btree (event_id);
 
 -- -----------------------------------------------------------------------------
 -- Table: messages

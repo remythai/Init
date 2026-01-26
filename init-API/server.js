@@ -7,6 +7,7 @@ import { swaggerSpec } from './config/swagger.config.js';
 import userRoutes from './routes/user.routes.js';
 import orgaRoutes from './routes/orga.routes.js';
 import eventRoutes from './routes/event.routes.js';
+import matchRoutes from './routes/match.routes.js';
 
 import { errorHandler } from './utils/errors.js';
 
@@ -53,6 +54,7 @@ app.get('/api-docs.json', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/matching', matchRoutes);
 
 // Health route
 app.get('/health', (req, res) => {
