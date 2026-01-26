@@ -10,10 +10,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 export const OrgaController = {
   async register(req, res) {
-    const { nom, mail, description, tel, password } = req.body;
+    const { name, mail, description, tel, password } = req.body;
 
-    if (!nom || !mail || !password) {
-      throw new ValidationError('Nom, email et mot de passe sont requis');
+    if (!name || !mail || !password) {
+      throw new ValidationError('name, email et mot de passe sont requis');
     }
 
     if (password.length < 8) {
@@ -35,7 +35,7 @@ export const OrgaController = {
     const password_hash = await bcrypt.hash(password, 10);
 
     const orga = await OrgaModel.create({
-      nom,
+      name,
       mail,
       description,
       tel,
@@ -72,14 +72,14 @@ export const OrgaController = {
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
 
-    await TokenModel.create(orga.id, refreshToken, expiry);
+    await TokenModel.create(orga.id, refreshToken, expiry, 'orga');
 
     return success(res, {
       accessToken,
       refreshToken,
       orga: {
         id: orga.id,
-        nom: orga.nom,
+        name: orga.name,
         mail: orga.mail,
         description: orga.description
       }
@@ -97,10 +97,10 @@ export const OrgaController = {
   },
 
   async updateProfile(req, res) {
-    const { nom, mail, description, tel } = req.body;
+    const { name, mail, description, tel } = req.body;
     const updates = {};
 
-    if (nom) updates.nom = nom;
+    if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (mail) updates.mail = mail;
     if (tel) updates.tel = tel;
@@ -125,8 +125,11 @@ export const OrgaController = {
       throw new UnauthorizedError('Refresh token invalide ou expiré');
     }
 
+    const entityId = tokenEntry.orga_id || tokenEntry.user_id;
+    const role = tokenEntry.user_type;
+
     const accessToken = jwt.sign(
-      { id: tokenEntry.user_id, role: 'orga' },
+      { id: entityId, role: role },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -145,6 +148,7 @@ export const OrgaController = {
   },
 
   async deleteAccount(req, res) {
+    await TokenModel.deleteAllForUser(req.user.id, 'orga');
     await OrgaModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
   }

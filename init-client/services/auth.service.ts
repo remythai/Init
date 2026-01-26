@@ -1,3 +1,5 @@
+//auth.service.ts
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -26,6 +28,27 @@ export interface AuthResponse {
   refreshToken: string;
   user?: any;
   orga?: any;
+}
+
+export interface User {
+  id: number;
+  firstname: string;
+  lastname: string;
+  tel: string;
+  mail?: string;
+  birthday?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Orga {
+  id: number;
+  nom: string;
+  mail: string;
+  description?: string;
+  tel?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 class AuthService {
@@ -148,7 +171,7 @@ class AuthService {
 
     const body = isOrganizer
       ? {
-          nom: data.name,
+          name: data.name,
           mail: data.email,
           password: data.password,
           description: data.description,
@@ -189,6 +212,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     const token = await this.getToken();
+    const refreshToken = await this.getRefreshToken();
     const userType = await this.getUserType();
 
     if (token && userType) {
@@ -200,6 +224,7 @@ class AuthService {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({ refreshToken }),
         });
       } catch (error) {
         console.error('Logout error:', error);
@@ -291,7 +316,100 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
-    return !!token;
+    
+    if (!token) {
+      console.log('🔐 No token found');
+      return false;
+    }
+  
+    try {
+      const userType = await this.getUserType();
+      if (!userType) {
+        console.log('🔐 No user type found');
+        await this.clearAuth();
+        return false;
+      }
+  
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      if (!response.ok) {
+        console.log('🔐 Token invalid, clearing auth');
+        await this.clearAuth();
+        return false;
+      }
+  
+      console.log('🔐 Token valid');
+      return true;
+    } catch (error) {
+      console.error('🔐 Error checking token:', error);
+      await this.clearAuth();
+      return false;
+    }
+  }
+
+  async getCurrentProfile(): Promise<User | Orga | null> {
+    try {
+      const userType = await this.getUserType();
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      
+      const response = await this.authenticatedFetch(endpoint);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la récupération du profil');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('Error fetching current profile:', error);
+      return null;
+    }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    const userType = await this.getUserType();
+    if (userType !== 'user') return null;
+    return await this.getCurrentProfile() as User | null;
+  }
+
+  async getCurrentOrga(): Promise<Orga | null> {
+    const userType = await this.getUserType();
+    if (userType !== 'orga') return null;
+    return await this.getCurrentProfile() as Orga | null;
+  }
+
+  async updateCurrentProfile(updates: Partial<User | Orga>): Promise<User | Orga | null> {
+    try {
+      const userType = await this.getUserType();
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      
+      const response = await this.authenticatedFetch(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour du profil');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  }
+
+  async updateCurrentUser(updates: Partial<User>): Promise<User | null> {
+    return await this.updateCurrentProfile(updates) as User | null;
+  }
+
+  async updateCurrentOrga(updates: Partial<Orga>): Promise<Orga | null> {
+    return await this.updateCurrentProfile(updates) as Orga | null;
   }
 }
 

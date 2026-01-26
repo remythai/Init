@@ -1,5 +1,4 @@
-// context/ThemeContext.tsx
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme } from '../constants/theme';
 
@@ -9,6 +8,7 @@ interface ThemeContextType {
   theme: Theme;
   isDark: boolean;
   toggleTheme: () => void;
+  isLoading: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -16,8 +16,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDark, setIsDark] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoaded = useRef(false);
 
   useEffect(() => {
+    if (hasLoaded.current) return;
+
     const loadTheme = async () => {
       try {
         const savedTheme = await AsyncStorage.getItem('theme');
@@ -28,6 +31,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error('Erreur lors du chargement du thème:', error);
       } finally {
         setIsLoading(false);
+        hasLoaded.current = true;
       }
     };
 
@@ -44,14 +48,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const currentTheme = isDark ? darkTheme : lightTheme;
-
-  if (isLoading) {
-    return null; // ou un splash screen
-  }
+  const contextValue = useMemo(() => ({
+    theme: isDark ? darkTheme : lightTheme,
+    isDark,
+    toggleTheme,
+    isLoading,
+  }), [isDark, isLoading]);
 
   return (
-    <ThemeContext.Provider value={{ theme: currentTheme, isDark, toggleTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

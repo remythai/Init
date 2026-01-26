@@ -6,6 +6,8 @@ import { swaggerSpec } from './config/swagger.config.js';
 
 import userRoutes from './routes/user.routes.js';
 import orgaRoutes from './routes/orga.routes.js';
+import eventRoutes from './routes/event.routes.js';
+import matchRoutes from './routes/match.routes.js';
 
 import { errorHandler } from './utils/errors.js';
 
@@ -43,7 +45,6 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   }
 }));
 
-// Endpoint pour obtenir la spec OpenAPI en JSON
 app.get('/api-docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
@@ -52,8 +53,10 @@ app.get('/api-docs.json', (req, res) => {
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/matching', matchRoutes);
 
-// Route de santé
+// Health route
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
@@ -63,7 +66,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route non trouvée' });
 });
 
-// Error handler (doit être en dernier)
+// Error handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
