@@ -86,19 +86,59 @@ ALTER TABLE ONLY public.event_photos
 
 -- -----------------------------------------------------------------------------
 -- Table: event_whitelist
--- Description: Whitelist for private events
--- NOTE: Currently only stores event_id - consider adding user_id for full functionality
+-- Description: Phone-based whitelist for controlling event access
 -- -----------------------------------------------------------------------------
 CREATE TABLE public.event_whitelist (
-    event_id integer NOT NULL
+    id integer NOT NULL,
+    event_id integer NOT NULL,
+    phone character varying(20) NOT NULL,
+    status character varying(20) DEFAULT 'active' NOT NULL,
+    source character varying(20) DEFAULT 'manual' NOT NULL,
+    user_id integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    removed_at timestamp without time zone,
+    CONSTRAINT event_whitelist_status_check CHECK (status IN ('active', 'removed')),
+    CONSTRAINT event_whitelist_source_check CHECK (source IN ('manual', 'csv', 'xml'))
 );
 
 ALTER TABLE public.event_whitelist OWNER TO dating_admin;
 
--- Foreign key
+CREATE SEQUENCE public.event_whitelist_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.event_whitelist_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.event_whitelist_id_seq OWNED BY public.event_whitelist.id;
+ALTER TABLE ONLY public.event_whitelist ALTER COLUMN id SET DEFAULT nextval('public.event_whitelist_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.event_whitelist ADD CONSTRAINT event_whitelist_pkey PRIMARY KEY (id);
+
+-- Unique constraint (one phone per event)
+ALTER TABLE ONLY public.event_whitelist ADD CONSTRAINT event_whitelist_event_phone_unique UNIQUE (event_id, phone);
+
+-- Foreign keys
 ALTER TABLE ONLY public.event_whitelist
     ADD CONSTRAINT event_whitelist_event_id_fkey
     FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.event_whitelist
+    ADD CONSTRAINT event_whitelist_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+-- Indexes
+CREATE INDEX idx_event_whitelist_phone ON public.event_whitelist USING btree (phone);
+CREATE INDEX idx_event_whitelist_event_status ON public.event_whitelist USING btree (event_id, status);
+
+-- Trigger
+CREATE TRIGGER update_event_whitelist_updated_at
+    BEFORE UPDATE ON public.event_whitelist
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- -----------------------------------------------------------------------------
 -- Table: event_link_access

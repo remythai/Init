@@ -365,6 +365,11 @@ export const MatchController = {
       throw new NotFoundError('Conversation non trouvée');
     }
 
+    // Check if match is archived (read-only)
+    if (match.is_archived) {
+      throw new ForbiddenError('Cette conversation est archivée et en lecture seule');
+    }
+
     // If eventId is in params, verify it matches
     if (req.params.eventId) {
       const eventId = parseInt(req.params.eventId);
