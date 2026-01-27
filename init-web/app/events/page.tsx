@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, MapPin, Calendar, Users, MoreVertical, X, Plus } from "lucide-react";
+import { Search, MapPin, Calendar, Users, MoreVertical, X, Plus, Trash2, Edit2, User } from "lucide-react";
 import { authService } from "../services/auth.service";
 import {
   eventService,
@@ -38,13 +38,211 @@ export default function EventsPage() {
     location: "",
     max_participants: "",
     is_public: true,
+    has_whitelist: false,
     has_link_access: true,
+    has_password_access: false,
+    access_password: "",
+    cooldown: "",
     theme: "Professionnel",
   });
+
+  // Custom Fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [showCustomFieldForm, setShowCustomFieldForm] = useState(false);
+  const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
+  const [currentField, setCurrentField] = useState<CustomField>({
+    id: "",
+    type: "text",
+    label: "",
+    required: false,
+    options: [],
+  });
+  const [newOption, setNewOption] = useState({ label: "", value: "" });
+
+  // Address autocomplete
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Date filter
+  const [dateFilter, setDateFilter] = useState<string>("all");
+
+  // Success message
+  const [successMessage, setSuccessMessage] = useState("");
+
+  interface CustomField {
+    id: string;
+    type: string;
+    label: string;
+    required?: boolean;
+    placeholder?: string;
+    options?: { label: string; value: string }[];
+  }
+
+  interface AddressSuggestion {
+    place_id: number;
+    display_name: string;
+    lat: string;
+    lon: string;
+    address?: {
+      road?: string;
+      house_number?: string;
+      postcode?: string;
+      city?: string;
+      town?: string;
+      village?: string;
+      municipality?: string;
+    };
+  }
+
+  const fieldTypes = [
+    { value: "text", label: "Texte court" },
+    { value: "textarea", label: "Texte long" },
+    { value: "number", label: "Nombre" },
+    { value: "email", label: "Email" },
+    { value: "phone", label: "Telephone" },
+    { value: "date", label: "Date" },
+    { value: "checkbox", label: "Case a cocher" },
+    { value: "select", label: "Menu deroulant" },
+    { value: "radio", label: "Choix unique" },
+    { value: "multiselect", label: "Choix multiples" },
+  ];
+
+  const needsOptions = ["select", "radio", "multiselect"].includes(currentField.type);
 
   useEffect(() => {
     checkAuthAndLoadEvents();
   }, []);
+
+  // Address search effect
+  useEffect(() => {
+    if (formData.location.length > 2) {
+      const timer = setTimeout(() => {
+        searchAddress(formData.location);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [formData.location]);
+
+  const searchAddress = async (query: string) => {
+    setLoadingSuggestions(true);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        query
+      )}&limit=5&countrycodes=fr&addressdetails=1`;
+
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "EventApp/1.0",
+        },
+      });
+      const data = await response.json();
+
+      setAddressSuggestions(data);
+      setShowSuggestions(data.length > 0);
+    } catch (error) {
+      console.error("Erreur recherche adresse:", error);
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const selectAddress = (suggestion: AddressSuggestion) => {
+    let shortAddress = "";
+
+    if (suggestion.address) {
+      const addr = suggestion.address;
+      const street =
+        addr.house_number && addr.road
+          ? `${addr.house_number} ${addr.road}`
+          : addr.road || "";
+      const postcode = addr.postcode || "";
+      const city =
+        addr.city || addr.town || addr.village || addr.municipality || "";
+
+      if (street && postcode && city) {
+        shortAddress = `${street}, ${postcode} ${city}`;
+      } else if (street && city) {
+        shortAddress = `${street}, ${city}`;
+      } else if (postcode && city) {
+        shortAddress = `${postcode} ${city}`;
+      } else {
+        const parts = suggestion.display_name.split(", ");
+        shortAddress = parts.slice(0, 3).join(", ");
+      }
+    } else {
+      const parts = suggestion.display_name.split(", ");
+      shortAddress = parts.slice(0, 3).join(", ");
+    }
+
+    setFormData({ ...formData, location: shortAddress });
+    setShowSuggestions(false);
+  };
+
+  // Custom fields handlers
+  const handleAddOption = () => {
+    if (!newOption.value.trim() || !newOption.label.trim()) {
+      return;
+    }
+
+    setCurrentField({
+      ...currentField,
+      options: [...(currentField.options || []), { ...newOption }],
+    });
+    setNewOption({ value: "", label: "" });
+  };
+
+  const handleRemoveOption = (index: number) => {
+    const updatedOptions =
+      currentField.options?.filter((_, i) => i !== index) || [];
+    setCurrentField({ ...currentField, options: updatedOptions });
+  };
+
+  const handleSaveCustomField = () => {
+    if (!currentField.id.trim() || !currentField.label.trim()) {
+      return;
+    }
+
+    if (needsOptions && (!currentField.options || currentField.options.length === 0)) {
+      return;
+    }
+
+    if (editingFieldIndex !== null) {
+      const updatedFields = [...customFields];
+      updatedFields[editingFieldIndex] = currentField;
+      setCustomFields(updatedFields);
+    } else {
+      if (customFields.some((f) => f.id === currentField.id)) {
+        return;
+      }
+      setCustomFields([...customFields, currentField]);
+    }
+
+    setCurrentField({
+      id: "",
+      type: "text",
+      label: "",
+      required: false,
+      options: [],
+    });
+    setShowCustomFieldForm(false);
+    setEditingFieldIndex(null);
+  };
+
+  const handleEditCustomField = (index: number) => {
+    setCurrentField({ ...customFields[index] });
+    setEditingFieldIndex(index);
+    setShowCustomFieldForm(true);
+  };
+
+  const handleDeleteCustomField = (index: number) => {
+    setCustomFields(customFields.filter((_, i) => i !== index));
+  };
 
   const checkAuthAndLoadEvents = async () => {
     if (!authService.isAuthenticated()) {
@@ -90,7 +288,11 @@ export default function EventsPage() {
 
     // Validation
     if (!formData.name.trim()) {
-      setCreateError("Le nom de l'événement est requis");
+      setCreateError("Le nom de l'evenement est requis");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setCreateError("La description est requise");
       return;
     }
     if (!formData.location.trim()) {
@@ -98,7 +300,7 @@ export default function EventsPage() {
       return;
     }
     if (!formData.start_at) {
-      setCreateError("La date de début est requise");
+      setCreateError("La date de debut est requise");
       return;
     }
     if (!formData.end_at) {
@@ -108,31 +310,60 @@ export default function EventsPage() {
 
     const startDate = new Date(formData.start_at);
     const endDate = new Date(formData.end_at);
+    const now = new Date();
+
+    if (startDate < now) {
+      setCreateError("La date de debut ne peut pas etre dans le passe");
+      return;
+    }
 
     if (endDate <= startDate) {
-      setCreateError("La date de fin doit être après la date de début");
+      setCreateError("La date de fin doit etre apres la date de debut");
       return;
     }
 
     const maxParticipants = parseInt(formData.max_participants);
-    if (formData.max_participants && (isNaN(maxParticipants) || maxParticipants < 1)) {
-      setCreateError("Le nombre de participants doit être supérieur à 0");
+    if (!formData.max_participants || isNaN(maxParticipants) || maxParticipants < 1) {
+      setCreateError("Le nombre de participants doit etre superieur a 0");
+      return;
+    }
+
+    if (formData.has_password_access && !formData.access_password.trim()) {
+      setCreateError("Un mot de passe est requis quand l'acces par mot de passe est active");
+      return;
+    }
+
+    if (formData.cooldown && isNaN(parseInt(formData.cooldown))) {
+      setCreateError("Le cooldown doit etre un nombre");
       return;
     }
 
     setCreating(true);
 
     try {
-      await eventService.createEvent({
+      const eventData: Parameters<typeof eventService.createEvent>[0] = {
         name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
+        description: formData.description.trim(),
         start_at: startDate.toISOString(),
         end_at: endDate.toISOString(),
         location: formData.location.trim(),
-        max_participants: maxParticipants || 50,
+        max_participants: maxParticipants,
         is_public: formData.is_public,
+        has_whitelist: formData.has_whitelist,
         has_link_access: formData.has_link_access,
-      });
+        has_password_access: formData.has_password_access,
+        custom_fields: customFields.length > 0 ? customFields : undefined,
+      };
+
+      if (formData.has_password_access && formData.access_password) {
+        eventData.access_password = formData.access_password;
+      }
+
+      if (formData.cooldown) {
+        eventData.cooldown = `${formData.cooldown} hours`;
+      }
+
+      await eventService.createEvent(eventData);
 
       // Reset form
       setFormData({
@@ -143,14 +374,21 @@ export default function EventsPage() {
         location: "",
         max_participants: "",
         is_public: true,
+        has_whitelist: false,
         has_link_access: true,
+        has_password_access: false,
+        access_password: "",
+        cooldown: "",
         theme: "Professionnel",
       });
+      setCustomFields([]);
 
       setIsCreateOpen(false);
+      setSuccessMessage("Evenement cree avec succes !");
+      setTimeout(() => setSuccessMessage(""), 3000);
       await loadEvents(userType);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur lors de la création";
+      const message = err instanceof Error ? err.message : "Erreur lors de la creation";
       setCreateError(message);
     } finally {
       setCreating(false);
@@ -174,10 +412,17 @@ export default function EventsPage() {
     { value: "all", label: "Tous" },
     { value: "musique", label: "Musique" },
     { value: "professionnel", label: "Pro" },
-    { value: "étudiant", label: "Étudiant" },
+    { value: "étudiant", label: "Etudiant" },
     { value: "sport", label: "Sport" },
-    { value: "café", label: "Café" },
-    { value: "fête", label: "Fête" },
+    { value: "café", label: "Cafe" },
+    { value: "fête", label: "Fete" },
+  ];
+
+  const dateFilters = [
+    { value: "all", label: "Toutes les dates" },
+    { value: "today", label: "Aujourd'hui" },
+    { value: "week", label: "Cette semaine" },
+    { value: "month", label: "Ce mois-ci" },
   ];
 
   const themeOptions = [
@@ -201,10 +446,17 @@ export default function EventsPage() {
     const matchesAvailability =
       !onlyAvailable || event.participants < event.maxParticipants;
 
-    return matchesFilter && matchesSearch && matchesTheme && matchesAvailability;
+    let matchesDate = true;
+    if (dateFilter === "today") {
+      matchesDate =
+        event.date.toLowerCase().includes("aujourd'hui") ||
+        event.date.toLowerCase().includes("aujourd");
+    }
+
+    return matchesFilter && matchesSearch && matchesTheme && matchesAvailability && matchesDate;
   });
 
-  const hasActiveFilters = selectedTheme !== "all" || onlyAvailable;
+  const hasActiveFilters = selectedTheme !== "all" || onlyAvailable || dateFilter !== "all";
 
   if (loading) {
     return (
@@ -231,14 +483,30 @@ export default function EventsPage() {
               className="h-16 w-auto"
             />
           </Link>
-          <button
-            onClick={handleLogout}
-            className="text-white/70 hover:text-white text-sm transition-colors"
-          >
-            Déconnexion
-          </button>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            >
+              <User className="w-5 h-5" />
+              <span className="hidden md:inline">Mon Profil</span>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-white/70 hover:text-white text-sm transition-colors"
+            >
+              Deconnexion
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-24 left-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg text-center max-w-md mx-auto">
+          {successMessage}
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="pt-20 pb-32">
@@ -416,11 +684,11 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Floating Action Button (for organizers) */}
+      {/* Floating Action Button (for organizers) - Like mobile CreateEventDialog */}
       {userType === "orga" && (
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-[#1271FF] hover:bg-[#0d5dd8] text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-40"
+          className="fixed bottom-8 right-6 w-16 h-16 bg-[#1271FF] hover:bg-[#0d5dd8] text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-40"
         >
           <Plus className="w-8 h-8" />
         </button>
@@ -482,7 +750,7 @@ export default function EventsPage() {
                       Places disponibles uniquement
                     </p>
                     <p className="text-sm text-gray-500">
-                      Masquer les événements complets
+                      Masquer les evenements complets
                     </p>
                   </div>
                   <div
@@ -498,6 +766,28 @@ export default function EventsPage() {
                   </div>
                 </button>
               </div>
+
+              {/* Date Filter */}
+              <div>
+                <label className="block text-sm font-semibold text-[#303030] mb-3">
+                  Date
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {dateFilters.map((filter) => (
+                    <button
+                      key={filter.value}
+                      onClick={() => setDateFilter(filter.value)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        dateFilter === filter.value
+                          ? "bg-[#303030] text-white"
+                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Modal Actions */}
@@ -506,6 +796,7 @@ export default function EventsPage() {
                 onClick={() => {
                   setSelectedTheme("all");
                   setOnlyAvailable(false);
+                  setDateFilter("all");
                 }}
                 className="flex-1 py-3 rounded-lg border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
               >
@@ -595,12 +886,12 @@ export default function EventsPage() {
               {/* Description */}
               <div>
                 <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  Description
+                  Description *
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Décrivez votre événement..."
+                  placeholder="Decrivez votre evenement..."
                   rows={3}
                   disabled={creating}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
@@ -635,31 +926,63 @@ export default function EventsPage() {
                 </div>
               </div>
 
-              {/* Location */}
-              <div>
+              {/* Location with autocomplete */}
+              <div className="relative">
                 <label className="block text-sm font-semibold text-[#303030] mb-2">
                   Lieu *
                 </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Ex: Station F, Paris 13e"
-                  disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
-                />
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    placeholder="Commencez a taper une adresse..."
+                    disabled={creating}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  />
+                  {loadingSuggestions && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="w-5 h-5 border-2 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Address Suggestions */}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.place_id}
+                        type="button"
+                        onClick={() => selectAddress(suggestion)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-0"
+                      >
+                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-[#303030] line-clamp-2">
+                          {suggestion.display_name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Max Participants */}
               <div>
                 <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  Nombre maximum de participants
+                  Nombre maximum de participants *
                 </label>
                 <input
                   type="number"
                   value={formData.max_participants}
                   onChange={(e) => setFormData({ ...formData, max_participants: e.target.value })}
-                  placeholder="50"
+                  placeholder="Ex: 50"
                   min="1"
                   disabled={creating}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
@@ -668,7 +991,7 @@ export default function EventsPage() {
 
               {/* Access Settings */}
               <div className="space-y-3 pt-4 border-t">
-                <h3 className="font-semibold text-[#303030]">Paramètres d'accès</h3>
+                <h3 className="font-semibold text-[#303030]">Parametres d'acces</h3>
 
                 <button
                   type="button"
@@ -677,7 +1000,7 @@ export default function EventsPage() {
                   className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Événement public</p>
+                    <p className="font-medium text-[#303030]">Evenement public</p>
                     <p className="text-sm text-gray-500">Visible par tous les utilisateurs</p>
                   </div>
                   <div
@@ -695,12 +1018,35 @@ export default function EventsPage() {
 
                 <button
                   type="button"
+                  onClick={() => setFormData({ ...formData, has_whitelist: !formData.has_whitelist })}
+                  disabled={creating}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                >
+                  <div className="text-left">
+                    <p className="font-medium text-[#303030]">Liste blanche</p>
+                    <p className="text-sm text-gray-500">Restreindre l'acces a certaines personnes</p>
+                  </div>
+                  <div
+                    className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                      formData.has_whitelist ? "bg-[#1271FF]" : "bg-gray-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                        formData.has_whitelist ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setFormData({ ...formData, has_link_access: !formData.has_link_access })}
                   disabled={creating}
                   className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Accès par lien</p>
+                    <p className="font-medium text-[#303030]">Acces par lien</p>
                     <p className="text-sm text-gray-500">Autoriser l'inscription via un lien</p>
                   </div>
                   <div
@@ -715,6 +1061,124 @@ export default function EventsPage() {
                     />
                   </div>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, has_password_access: !formData.has_password_access })}
+                  disabled={creating}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                >
+                  <div className="text-left">
+                    <p className="font-medium text-[#303030]">Acces par mot de passe</p>
+                    <p className="text-sm text-gray-500">Proteger l'evenement par mot de passe</p>
+                  </div>
+                  <div
+                    className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                      formData.has_password_access ? "bg-[#1271FF]" : "bg-gray-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                        formData.has_password_access ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {formData.has_password_access && (
+                  <div>
+                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                      Mot de passe d'acces *
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.access_password}
+                      onChange={(e) => setFormData({ ...formData, access_password: e.target.value })}
+                      placeholder="Entrez un mot de passe"
+                      disabled={creating}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Fields */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-[#303030]">Champs personnalises</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomFieldForm(true)}
+                    disabled={creating}
+                    className="flex items-center gap-1 text-[#1271FF] hover:text-[#0d5dd8] text-sm font-medium disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ajouter
+                  </button>
+                </div>
+
+                {customFields.length > 0 && (
+                  <div className="space-y-2">
+                    {customFields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium text-[#303030]">{field.label}</p>
+                          <p className="text-xs text-gray-500">
+                            {fieldTypes.find((t) => t.value === field.type)?.label} {field.required && "- Requis"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditCustomField(index)}
+                            className="p-1 text-gray-500 hover:text-[#1271FF]"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCustomField(index)}
+                            className="p-1 text-gray-500 hover:text-red-500"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {customFields.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">
+                    Ajoutez des champs pour collecter des informations supplementaires
+                  </p>
+                )}
+              </div>
+
+              {/* Advanced Settings */}
+              <div className="space-y-3 pt-4 border-t">
+                <h3 className="font-semibold text-[#303030]">Parametres avances</h3>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#303030] mb-2">
+                    Cooldown (en heures)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.cooldown}
+                    onChange={(e) => setFormData({ ...formData, cooldown: e.target.value })}
+                    placeholder="Ex: 24"
+                    min="0"
+                    disabled={creating}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Delai avant de pouvoir s'inscrire a nouveau
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -732,7 +1196,242 @@ export default function EventsPage() {
                 disabled={creating}
                 className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
               >
-                {creating ? "Création..." : "Créer l'événement"}
+                {creating ? "Creation..." : "Creer l'evenement"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Modal */}
+      {showCustomFieldForm && (
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              setShowCustomFieldForm(false);
+              setEditingFieldIndex(null);
+              setCurrentField({
+                id: "",
+                type: "text",
+                label: "",
+                required: false,
+                options: [],
+              });
+            }}
+          />
+          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="font-poppins text-xl font-semibold text-[#303030]">
+                {editingFieldIndex !== null ? "Modifier" : "Ajouter"} un champ
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCustomFieldForm(false);
+                  setEditingFieldIndex(null);
+                  setCurrentField({
+                    id: "",
+                    type: "text",
+                    label: "",
+                    required: false,
+                    options: [],
+                  });
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-[#303030]" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-5 overflow-y-auto max-h-[60vh]">
+              {/* Field ID */}
+              <div>
+                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                  ID du champ *
+                </label>
+                <input
+                  type="text"
+                  value={currentField.id}
+                  onChange={(e) =>
+                    setCurrentField({ ...currentField, id: e.target.value })
+                  }
+                  placeholder="Ex: linkedin_url"
+                  disabled={editingFieldIndex !== null}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Identifiant unique (sans espaces)
+                </p>
+              </div>
+
+              {/* Field Label */}
+              <div>
+                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                  Label *
+                </label>
+                <input
+                  type="text"
+                  value={currentField.label}
+                  onChange={(e) =>
+                    setCurrentField({ ...currentField, label: e.target.value })
+                  }
+                  placeholder="Ex: Profil LinkedIn"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                />
+              </div>
+
+              {/* Field Type */}
+              <div>
+                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                  Type de champ *
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {fieldTypes.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() =>
+                        setCurrentField({ ...currentField, type: type.value })
+                      }
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        currentField.type === type.value
+                          ? "bg-[#1271FF] text-white"
+                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Placeholder */}
+              <div>
+                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                  Placeholder (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={currentField.placeholder || ""}
+                  onChange={(e) =>
+                    setCurrentField({ ...currentField, placeholder: e.target.value })
+                  }
+                  placeholder="Ex: https://linkedin.com/in/..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                />
+              </div>
+
+              {/* Required Toggle */}
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentField({ ...currentField, required: !currentField.required })
+                }
+                className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
+                <div className="text-left">
+                  <p className="font-medium text-[#303030]">Champ requis</p>
+                  <p className="text-sm text-gray-500">Obligatoire lors de l'inscription</p>
+                </div>
+                <div
+                  className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                    currentField.required ? "bg-[#1271FF]" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                      currentField.required ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Options for select/radio/multiselect */}
+              {needsOptions && (
+                <div className="space-y-3 pt-4 border-t">
+                  <label className="block text-sm font-semibold text-[#303030]">
+                    Options *
+                  </label>
+
+                  {currentField.options && currentField.options.length > 0 && (
+                    <div className="space-y-2">
+                      {currentField.options.map((option, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <p className="font-medium text-[#303030]">{option.label}</p>
+                            <p className="text-xs text-gray-500">{option.value}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(index)}
+                            className="p-1 text-red-500 hover:text-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newOption.value}
+                      onChange={(e) =>
+                        setNewOption({ ...newOption, value: e.target.value })
+                      }
+                      placeholder="Valeur"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={newOption.label}
+                      onChange={(e) =>
+                        setNewOption({ ...newOption, label: e.target.value })
+                      }
+                      placeholder="Label"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddOption}
+                      className="px-3 py-2 bg-[#1271FF] text-white rounded-lg hover:bg-[#0d5dd8]"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 p-5 border-t">
+              <button
+                onClick={() => {
+                  setShowCustomFieldForm(false);
+                  setEditingFieldIndex(null);
+                  setCurrentField({
+                    id: "",
+                    type: "text",
+                    label: "",
+                    required: false,
+                    options: [],
+                  });
+                }}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveCustomField}
+                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors"
+              >
+                {editingFieldIndex !== null ? "Modifier" : "Ajouter"}
               </button>
             </div>
           </div>

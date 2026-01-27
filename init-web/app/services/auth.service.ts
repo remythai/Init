@@ -328,6 +328,85 @@ class AuthService {
       return null;
     }
   }
+
+  async getCurrentUser(): Promise<User | null> {
+    const userType = this.getUserType();
+    if (userType !== 'user') return null;
+    return await this.getCurrentProfile() as User | null;
+  }
+
+  async getCurrentOrga(): Promise<Orga | null> {
+    const userType = this.getUserType();
+    if (userType !== 'orga') return null;
+    return await this.getCurrentProfile() as Orga | null;
+  }
+
+  async updateCurrentProfile(updates: Partial<User | Orga>): Promise<User | Orga | null> {
+    try {
+      const userType = this.getUserType();
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+
+      const response = await this.authenticatedFetch(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour du profil');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  }
+
+  async updateCurrentUser(updates: Partial<User>): Promise<User | null> {
+    return await this.updateCurrentProfile(updates) as User | null;
+  }
+
+  async updateCurrentOrga(updates: Partial<Orga>): Promise<Orga | null> {
+    return await this.updateCurrentProfile(updates) as Orga | null;
+  }
+
+  async validateToken(): Promise<boolean> {
+    const token = this.getToken();
+
+    if (!token) {
+      console.log('No token found');
+      return false;
+    }
+
+    try {
+      const userType = this.getUserType();
+      if (!userType) {
+        console.log('No user type found');
+        this.clearAuth();
+        return false;
+      }
+
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        console.log('Token invalid, clearing auth');
+        this.clearAuth();
+        return false;
+      }
+
+      console.log('Token valid');
+      return true;
+    } catch (error) {
+      console.error('Error checking token:', error);
+      this.clearAuth();
+      return false;
+    }
+  }
 }
 
 export const authService = new AuthService();
