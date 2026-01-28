@@ -1558,12 +1558,15 @@ const styles = StyleSheet.create({
   addOptionForm: {
     flexDirection: "row",
     gap: 10,
-    alignItems: "flex-start",
+    alignItems: "flex-end",
+    overflow: "hidden",
   },
   optionInputs: {
     flex: 1,
+    minWidth: 0,
     gap: 10,
   },
+  
   optionInput: {
     marginBottom: 0,
   },
@@ -1574,8 +1577,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#1271FF",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 0,
-  },
+    alignSelf: "flex-end",
+  },  
   iconButton: {
     padding: 6,
   },
