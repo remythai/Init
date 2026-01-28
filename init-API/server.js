@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 
@@ -8,12 +9,18 @@ import userRoutes from './routes/user.routes.js';
 import orgaRoutes from './routes/orga.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
+import whitelistRoutes from './routes/whitelist.routes.js';
 
 import { errorHandler } from './utils/errors.js';
+import { initializeSocket } from './socket/index.js';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+const io = initializeSocket(httpServer);
 
 // Middleware
 app.use(express.json());
@@ -21,9 +28,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  res.header('Access-Control-Allow-Origin', origin || '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -54,6 +63,7 @@ app.get('/api-docs.json', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/events', whitelistRoutes); // Whitelist routes under /api/events/:id/whitelist
 app.use('/api/matching', matchRoutes);
 
 // Health route
@@ -71,8 +81,9 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
+  console.log(`🔌 WebSocket ready`);
 });

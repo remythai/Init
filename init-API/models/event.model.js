@@ -83,7 +83,7 @@ export const EventModel = {
 
   async findPublicEventsWithUserInfo(userId = null, filters = {}) {
     let query = `
-      SELECT 
+      SELECT
         e.id,
         e.name,
         e.location,
@@ -102,7 +102,8 @@ export const EventModel = {
     let paramCount = userId ? 2 : 1;
 
     if (filters.upcoming) {
-      query += ` AND e.start_at >= NOW()`;
+      // Show events that haven't ended yet (including ongoing events)
+      query += ` AND e.end_at >= NOW()`;
     }
 
     if (filters.location) {
@@ -156,7 +157,8 @@ export const EventModel = {
     let paramCount = 2;
 
     if (filters.upcoming) {
-      query += ` AND e.start_at >= NOW()`;
+      // Show events that haven't ended yet (including ongoing events)
+      query += ` AND e.end_at >= NOW()`;
     }
 
     if (filters.past) {
