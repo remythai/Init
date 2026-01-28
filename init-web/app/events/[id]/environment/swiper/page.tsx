@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Heart, Sparkles, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { X, Heart, Sparkles, ChevronLeft, ChevronRight, Info, UserPlus } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
 import { matchService, Profile, Match } from "../../../../services/match.service";
+import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
+import { SocketUserJoined } from "../../../../services/socket.service";
 
 export default function SwiperPage() {
   const router = useRouter();
@@ -23,6 +25,24 @@ export default function SwiperPage() {
   const [matchId, setMatchId] = useState<number | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [swiping, setSwiping] = useState(false);
+  const [newUserNotification, setNewUserNotification] = useState<SocketUserJoined | null>(null);
+
+  // Handler for when a new user joins the event
+  const handleUserJoined = useCallback((data: SocketUserJoined) => {
+    // Show notification
+    setNewUserNotification(data);
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setNewUserNotification(null);
+    }, 5000);
+  }, []);
+
+  // Use match notifications hook
+  useMatchNotifications({
+    eventId,
+    onUserJoined: handleUserJoined,
+  });
 
   useEffect(() => {
     const initPage = async () => {
@@ -177,6 +197,27 @@ export default function SwiperPage() {
 
   return (
     <div className="h-full flex flex-col p-4">
+      {/* New User Notification */}
+      {newUserNotification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-[#1271FF] text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <UserPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-medium">{newUserNotification.user.firstname} a rejoint l'événement !</p>
+              <p className="text-sm text-white/80">Nouveau profil disponible</p>
+            </div>
+            <button
+              onClick={() => setNewUserNotification(null)}
+              className="ml-2 text-white/60 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col max-w-lg mx-auto w-full min-h-0">
         {/* Swiper Card */}
         {!isFinished && currentProfile ? (

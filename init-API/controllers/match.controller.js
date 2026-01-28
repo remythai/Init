@@ -3,6 +3,7 @@ import { RegistrationModel } from '../models/registration.model.js';
 import { EventModel } from '../models/event.model.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success } from '../utils/responses.js';
+import { emitNewMessage, emitNewMatch, emitConversationUpdate } from '../socket/emitters.js';
 
 export const MatchController = {
   /**
@@ -82,6 +83,18 @@ export const MatchController = {
       // Create match
       const match = await MatchModel.createMatch(userId, targetUserId, eventId);
       const matchedUser = await MatchModel.getUserBasicInfo(targetUserId);
+      const currentUser = await MatchModel.getUserBasicInfo(userId);
+      const event = await EventModel.findById(eventId);
+
+      // Emit match notification to both users via Socket.io
+      emitNewMatch(userId, targetUserId, {
+        match_id: match.id,
+        event_id: eventId,
+        event_name: event?.name,
+        created_at: match.created_at,
+        user1: currentUser,
+        user2: matchedUser
+      });
 
       return success(res, {
         matched: true,
@@ -379,6 +392,22 @@ export const MatchController = {
     }
 
     const message = await MatchModel.createMessage(matchId, userId, content.trim());
+
+    // Emit new message via Socket.io
+    emitNewMessage(matchId, message, userId);
+
+    // Get other user ID to send conversation update
+    const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+
+    // Emit conversation update to the other user
+    emitConversationUpdate(otherUserId, {
+      match_id: matchId,
+      last_message: {
+        content: message.content,
+        sent_at: message.sent_at,
+        is_mine: false
+      }
+    });
 
     return success(res, message, 'Message envoyé');
   },

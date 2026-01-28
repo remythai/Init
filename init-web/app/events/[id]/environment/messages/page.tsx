@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { MessageCircle, Send, ArrowLeft, MoreVertical, Flag } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
 import { matchService, Conversation, Message, Photo } from "../../../../services/match.service";
+import { useRealTimeMessages } from "../../../../hooks/useRealTimeMessages";
+import { SocketConversationUpdate } from "../../../../services/socket.service";
 
 interface ConversationData {
   match: {
@@ -42,6 +44,43 @@ export default function MessagesPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<number | null>(null);
+
+  // Handler for new real-time messages
+  const handleNewMessage = useCallback((message: Message) => {
+    setConversationData((prev) => {
+      if (!prev) return prev;
+      // Check if message already exists to avoid duplicates
+      const exists = prev.messages.some((m) => m.id === message.id);
+      if (exists) return prev;
+      return {
+        ...prev,
+        messages: [...prev.messages, message],
+      };
+    });
+  }, []);
+
+  // Handler for conversation updates (new messages in other conversations)
+  const handleConversationUpdate = useCallback((data: SocketConversationUpdate) => {
+    setConversations((prev) =>
+      prev.map((conv) => {
+        if (conv.match_id === data.match_id) {
+          return {
+            ...conv,
+            last_message: data.last_message,
+            unread_count: selectedMatchId === data.match_id ? conv.unread_count : conv.unread_count + 1,
+          };
+        }
+        return conv;
+      })
+    );
+  }, [selectedMatchId]);
+
+  // Use real-time messages hook
+  const { typingUsers, sendTyping } = useRealTimeMessages({
+    matchId: selectedMatchId,
+    onNewMessage: handleNewMessage,
+    onConversationUpdate: handleConversationUpdate,
+  });
 
   useEffect(() => {
     const initPage = async () => {
@@ -368,14 +407,27 @@ export default function MessagesPage() {
               )}
             </div>
 
+            {/* Typing indicator */}
+            {typingUsers.length > 0 && (
+              <div className="px-4 py-2 bg-white border-t">
+                <p className="text-sm text-gray-500 italic">
+                  {conversationData?.match.user.firstname} est en train d'écrire...
+                </p>
+              </div>
+            )}
+
             {/* Input */}
             <div className="flex-shrink-0 bg-white border-t p-4">
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    sendTyping(e.target.value.length > 0);
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                  onBlur={() => sendTyping(false)}
                   placeholder="Écrivez un message..."
                   maxLength={500}
                   className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030]"
