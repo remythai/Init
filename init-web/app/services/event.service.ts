@@ -10,9 +10,15 @@ export interface EventResponse {
   max_participants: number;
   event_date: string | null;
   start_at?: string;
+  end_at?: string;
   description?: string;
   participant_count?: number | string;
   is_registered?: boolean;
+  is_public?: boolean;
+  has_whitelist?: boolean;
+  has_link_access?: boolean;
+  has_password_access?: boolean;
+  cooldown?: string;
   custom_fields?: CustomField[];
   orga_name?: string;
 }
@@ -71,16 +77,20 @@ class EventService {
       params.append('offset', String(filters.offset));
     }
 
-    const response = await authService.authenticatedFetch(
-      `/api/events/users/list?${params.toString()}`
-    );
+    const url = `/api/events/users/list?${params.toString()}`;
+    console.log('Fetching public events from:', url);
+
+    const response = await authService.authenticatedFetch(url);
+    console.log('Response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Error fetching events:', errorData);
       throw new Error(errorData.error || errorData.message || 'Erreur lors de la récupération des événements');
     }
 
     const data = await response.json();
+    console.log('Events data:', data);
     return data.data;
   }
 
@@ -184,6 +194,78 @@ class EventService {
 
     const data = await response.json();
     return data.data;
+  }
+
+  async getEventById(id: string): Promise<EventResponse> {
+    const userType = authService.getUserType();
+    const endpoint = userType === 'orga'
+      ? `/api/events/${id}`
+      : `/api/events/users/list`;
+
+    const response = await authService.authenticatedFetch(endpoint);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Événement non trouvé');
+    }
+
+    const data = await response.json();
+    if (userType === 'orga') {
+      return data.data;
+    }
+
+    const event = data.data.events.find((e: EventResponse) => e.id === parseInt(id));
+    if (!event) {
+      throw new Error('Événement non trouvé');
+    }
+
+    return event;
+  }
+
+  async updateEvent(eventId: string, updates: Partial<{
+    name: string;
+    description: string;
+    start_at: string;
+    end_at: string;
+    location: string;
+    max_participants: number;
+    is_public: boolean;
+    has_whitelist: boolean;
+    has_link_access: boolean;
+    has_password_access: boolean;
+    access_password: string;
+    cooldown: string;
+    custom_fields: CustomField[];
+  }>): Promise<EventResponse> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la mise à jour');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async deleteEvent(eventId: string): Promise<void> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la suppression');
+    }
   }
 }
 

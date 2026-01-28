@@ -6,15 +6,16 @@ import { WhitelistModel } from '../models/whitelist.model.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
 import { validateCustomFields, validateCustomData } from '../utils/customFieldsSchema.js';
+import { emitUserJoinedEvent } from '../socket/emitters.js';
 
 import bcrypt from 'bcrypt';
 
 export const EventController = {
   async create(req, res) {
-    const { 
-      name, description, start_at, end_at, location, 
-      max_participants, is_public, has_whitelist, has_link_access, 
-      has_password_access, access_password, cooldown, custom_fields 
+    const {
+      name, description, start_at, end_at, location,
+      max_participants, is_public, has_whitelist, has_link_access,
+      has_password_access, access_password, cooldown, custom_fields
     } = req.body;
 
     const start = new Date(start_at);
@@ -249,6 +250,16 @@ export const EventController = {
     }
   
     const registration = await RegistrationModel.create(userId, eventId, profil_info || {});
+
+    // Emit user joined event via Socket.io
+    const user = await UserModel.findById(userId);
+    emitUserJoinedEvent(eventId, {
+      id: user.id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      photos: user.photos || []
+    });
+
     return created(res, registration, 'Inscription réussie');
   },
 
@@ -278,7 +289,7 @@ export const EventController = {
     };
 
     const events = await EventModel.findPublicEventsWithUserInfo(userId, filters);
-    
+
     return success(res, {
       events,
       total: events.length,

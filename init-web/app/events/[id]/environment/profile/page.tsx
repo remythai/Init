@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Camera, Edit2, Check, X } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
+import { matchService } from "../../../../services/match.service";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [matchCount, setMatchCount] = useState(0);
   const [profile, setProfile] = useState<{
     firstname: string;
     lastname: string;
@@ -23,12 +25,25 @@ export default function ProfilePage() {
   const [editedBio, setEditedBio] = useState("");
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
+    const initPage = async () => {
+      const validatedType = await authService.validateAndGetUserType();
 
-    loadProfile();
+      if (!validatedType) {
+        router.push("/auth");
+        return;
+      }
+
+      // Only users can access event environment
+      if (validatedType !== "user") {
+        router.push("/events");
+        return;
+      }
+
+      loadProfile();
+      loadMatchStats();
+    };
+
+    initPage();
   }, [eventId]);
 
   const loadProfile = async () => {
@@ -48,28 +63,41 @@ export default function ProfilePage() {
           }
         }
 
+        // Generate avatar URL based on name
+        const avatarUrl = `https://ui-avatars.com/api/?name=${userData.firstname || "U"}+${userData.lastname || ""}&size=400&background=1271FF&color=fff`;
+
         setProfile({
           firstname: userData.firstname || "Utilisateur",
           lastname: userData.lastname || "",
           age,
           bio: "Passionné(e) par les nouvelles rencontres et les événements networking.",
-          image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+          image: avatarUrl,
         });
         setEditedBio("Passionné(e) par les nouvelles rencontres et les événements networking.");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
-      // Use mock data if API fails
+      // Use fallback data if API fails
       setProfile({
         firstname: "Utilisateur",
         lastname: "",
         age: 25,
         bio: "Passionné(e) par les nouvelles rencontres et les événements networking.",
-        image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+        image: "https://ui-avatars.com/api/?name=U&size=400&background=1271FF&color=fff",
       });
       setEditedBio("Passionné(e) par les nouvelles rencontres et les événements networking.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMatchStats = async () => {
+    try {
+      const data = await matchService.getAllMatches();
+      setMatchCount(data.total || 0);
+    } catch (error) {
+      console.error("Error loading match stats:", error);
+      setMatchCount(0);
     }
   };
 
@@ -175,14 +203,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white/10 rounded-2xl p-4 text-center">
-            <p className="text-3xl font-bold text-white">12</p>
+        <div className="flex justify-center mb-6">
+          <div className="bg-white/10 rounded-2xl p-4 text-center min-w-[140px]">
+            <p className="text-3xl font-bold text-white">{matchCount}</p>
             <p className="text-white/60 text-sm">Matchs</p>
-          </div>
-          <div className="bg-white/10 rounded-2xl p-4 text-center">
-            <p className="text-3xl font-bold text-white">48</p>
-            <p className="text-white/60 text-sm">Likes envoyés</p>
           </div>
         </div>
 
