@@ -77,16 +77,20 @@ class EventService {
       params.append('offset', String(filters.offset));
     }
 
-    const response = await authService.authenticatedFetch(
-      `/api/events/users/list?${params.toString()}`
-    );
+    const url = `/api/events/users/list?${params.toString()}`;
+    console.log('Fetching public events from:', url);
+
+    const response = await authService.authenticatedFetch(url);
+    console.log('Response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Error fetching events:', errorData);
       throw new Error(errorData.error || errorData.message || 'Erreur lors de la récupération des événements');
     }
 
     const data = await response.json();
+    console.log('Events data:', data);
     return data.data;
   }
 

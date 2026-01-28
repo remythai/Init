@@ -11,10 +11,10 @@ import bcrypt from 'bcrypt';
 
 export const EventController = {
   async create(req, res) {
-    const { 
-      name, description, start_at, end_at, location, 
-      max_participants, is_public, has_whitelist, has_link_access, 
-      has_password_access, access_password, cooldown, custom_fields 
+    const {
+      name, description, start_at, end_at, location,
+      max_participants, is_public, has_whitelist, has_link_access,
+      has_password_access, access_password, cooldown, custom_fields
     } = req.body;
 
     const start = new Date(start_at);
@@ -278,7 +278,7 @@ export const EventController = {
     };
 
     const events = await EventModel.findPublicEventsWithUserInfo(userId, filters);
-    
+
     return success(res, {
       events,
       total: events.length,

@@ -29,13 +29,21 @@ export default function EventDetailPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
-    const type = authService.getUserType();
-    setUserType(type);
-    loadEvent(type);
+    const initPage = async () => {
+      // Validate token and get user type
+      const validatedType = await authService.validateAndGetUserType();
+
+      if (!validatedType) {
+        router.push("/auth");
+        return;
+      }
+
+      console.log("Validated user type:", validatedType);
+      setUserType(validatedType);
+      loadEvent(validatedType);
+    };
+
+    initPage();
   }, [eventId]);
 
   const loadEvent = async (type: "user" | "orga" | null) => {
@@ -46,12 +54,28 @@ export default function EventDetailPage() {
       let eventData: EventResponse;
 
       if (type === "orga") {
+        console.log("Loading event as orga, calling /api/events/" + eventId);
         const response = await authService.authenticatedFetch(`/api/events/${eventId}`);
-        if (!response.ok) throw new Error("Evenement non trouve");
-        const data = await response.json();
-        eventData = data.data;
+        if (!response.ok) {
+          // If orga gets 401/403, the token might be invalid or user type mismatch
+          if (response.status === 401 || response.status === 403) {
+            console.warn("Orga endpoint failed, falling back to user endpoint");
+            // Fall back to user endpoint
+            const userResponse = await eventService.getPublicEvents({ upcoming: false, limit: 200 });
+            const found = userResponse.events.find((e) => e.id === parseInt(eventId));
+            if (!found) throw new Error("Evenement non trouve");
+            eventData = found;
+          } else {
+            throw new Error("Evenement non trouve");
+          }
+        } else {
+          const data = await response.json();
+          eventData = data.data;
+        }
       } else {
-        const response = await eventService.getPublicEvents({ limit: 100 });
+        console.log("Loading event as user, calling getPublicEvents");
+        // Fetch without upcoming filter to get all events including past ones
+        const response = await eventService.getPublicEvents({ upcoming: false, limit: 200 });
         const found = response.events.find((e) => e.id === parseInt(eventId));
         if (!found) throw new Error("Evenement non trouve");
         eventData = found;
@@ -238,7 +262,7 @@ export default function EventDetailPage() {
                 <Calendar className="w-5 h-5 text-[#303030] mt-0.5" />
                 <div>
                   <p className="font-semibold text-sm text-[#303030]">Date</p>
-                  <p className="text-sm text-gray-500">{event.date}</p>
+                  <p className="text-sm text-gray-600">{event.date}</p>
                 </div>
               </div>
 
@@ -246,7 +270,7 @@ export default function EventDetailPage() {
                 <Clock className="w-5 h-5 text-[#303030] mt-0.5" />
                 <div>
                   <p className="font-semibold text-sm text-[#303030]">Heure</p>
-                  <p className="text-sm text-gray-500">18:00 - 22:00</p>
+                  <p className="text-sm text-gray-600">18:00 - 22:00</p>
                 </div>
               </div>
 
@@ -254,7 +278,7 @@ export default function EventDetailPage() {
                 <MapPin className="w-5 h-5 text-[#303030] mt-0.5" />
                 <div>
                   <p className="font-semibold text-sm text-[#303030]">Lieu</p>
-                  <p className="text-sm text-gray-500">{event.location}</p>
+                  <p className="text-sm text-gray-600">{event.location}</p>
                 </div>
               </div>
 
@@ -262,7 +286,7 @@ export default function EventDetailPage() {
                 <Users className="w-5 h-5 text-[#303030] mt-0.5" />
                 <div className="flex-1">
                   <p className="font-semibold text-sm text-[#303030]">Participants</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600">
                     {event.participants}/{event.maxParticipants} inscrits
                   </p>
                   {/* Progress Bar */}
@@ -283,7 +307,7 @@ export default function EventDetailPage() {
               <h2 className="font-semibold text-lg text-[#303030] mb-3">
                 A propos de l'evenement
               </h2>
-              <p className="text-gray-500 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 {event.description || "Rejoignez-nous pour un moment unique de partage et de rencontre. Cet evenement est l'occasion parfaite pour elargir votre reseau et faire de nouvelles connexions dans une ambiance conviviale et decontractee."}
               </p>
             </div>
@@ -299,7 +323,7 @@ export default function EventDetailPage() {
                 </div>
                 <div>
                   <p className="font-semibold text-[#303030]">Organisation Init</p>
-                  <p className="text-xs text-gray-500">Organisateur verifie</p>
+                  <p className="text-xs text-gray-600">Organisateur verifie</p>
                 </div>
               </div>
             </div>
@@ -383,7 +407,7 @@ export default function EventDetailPage() {
             <h3 className="font-semibold text-lg text-[#303030] mb-2">
               Supprimer l'evenement
             </h3>
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-gray-600 text-sm mb-6">
               Etes-vous sur de vouloir supprimer cet evenement ? Cette action est irreversible.
             </p>
             <div className="flex flex-col gap-2">
@@ -417,7 +441,7 @@ export default function EventDetailPage() {
             <h3 className="font-semibold text-lg text-[#303030] mb-2">
               Signaler l'evenement
             </h3>
-            <p className="text-gray-500 text-sm mb-4">
+            <p className="text-gray-600 text-sm mb-4">
               Pour quelle raison souhaitez-vous signaler cet evenement ?
             </p>
             <div className="flex flex-col gap-2">

@@ -130,19 +130,19 @@ export default function EventsPage() {
   const searchAddress = async (query: string) => {
     setLoadingSuggestions(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        query
-      )}&limit=5&countrycodes=fr&addressdetails=1`;
+      // Use local API proxy to avoid CORS issues with Nominatim
+      const url = `/api/geocode?q=${encodeURIComponent(query)}`;
 
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "EventApp/1.0",
-        },
-      });
+      const response = await fetch(url);
       const data = await response.json();
 
-      setAddressSuggestions(data);
-      setShowSuggestions(data.length > 0);
+      if (Array.isArray(data)) {
+        setAddressSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } else {
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      }
     } catch (error) {
       console.error("Erreur recherche adresse:", error);
       setAddressSuggestions([]);
@@ -245,14 +245,17 @@ export default function EventsPage() {
   };
 
   const checkAuthAndLoadEvents = async () => {
-    if (!authService.isAuthenticated()) {
+    // Validate token and get user type - this also clears invalid auth
+    const validatedType = await authService.validateAndGetUserType();
+
+    if (!validatedType) {
       router.push("/auth");
       return;
     }
 
-    const type = authService.getUserType();
-    setUserType(type);
-    await loadEvents(type);
+    console.log("Validated user type:", validatedType);
+    setUserType(validatedType);
+    await loadEvents(validatedType);
   };
 
   const loadEvents = async (type: "user" | "orga" | null) => {
@@ -268,7 +271,8 @@ export default function EventsPage() {
           upcoming: true,
           limit: 50,
         });
-        setEvents(transformEventResponses(response.events));
+        console.log("Public events response:", response);
+        setEvents(transformEventResponses(response.events || []));
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
@@ -556,7 +560,7 @@ export default function EventsPage() {
           {/* Events Grid */}
           {filteredEvents.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-500 text-lg">
+              <p className="text-gray-600 text-lg">
                 {searchQuery
                   ? "Aucun événement ne correspond à votre recherche"
                   : activeFilter === "registered"
@@ -749,7 +753,7 @@ export default function EventsPage() {
                     <p className="font-semibold text-[#303030]">
                       Places disponibles uniquement
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-600">
                       Masquer les evenements complets
                     </p>
                   </div>
@@ -855,7 +859,7 @@ export default function EventsPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ex: Soirée Networking"
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
               </div>
 
@@ -894,7 +898,7 @@ export default function EventsPage() {
                   placeholder="Decrivez votre evenement..."
                   rows={3}
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
                 />
               </div>
 
@@ -909,7 +913,7 @@ export default function EventsPage() {
                     value={formData.start_at}
                     onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
                     disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 </div>
                 <div>
@@ -921,7 +925,7 @@ export default function EventsPage() {
                     value={formData.end_at}
                     onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
                     disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 </div>
               </div>
@@ -944,7 +948,7 @@ export default function EventsPage() {
                     }}
                     placeholder="Commencez a taper une adresse..."
                     disabled={creating}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                   {loadingSuggestions && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -985,7 +989,7 @@ export default function EventsPage() {
                   placeholder="Ex: 50"
                   min="1"
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
               </div>
 
@@ -1001,7 +1005,10 @@ export default function EventsPage() {
                 >
                   <div className="text-left">
                     <p className="font-medium text-[#303030]">Evenement public</p>
-                    <p className="text-sm text-gray-500">Visible par tous les utilisateurs</p>
+                    <p className="text-sm text-gray-600">Visible par tous les utilisateurs</p>
+                    <p className={`text-xs font-semibold mt-1 ${formData.is_public ? "text-green-600" : "text-red-500"}`}>
+                      {formData.is_public ? "✓ PUBLIC - Visible dans la liste" : "✗ PRIVE - Non visible"}
+                    </p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
@@ -1024,7 +1031,7 @@ export default function EventsPage() {
                 >
                   <div className="text-left">
                     <p className="font-medium text-[#303030]">Liste blanche</p>
-                    <p className="text-sm text-gray-500">Restreindre l'acces a certaines personnes</p>
+                    <p className="text-sm text-gray-600">Restreindre l'acces a certaines personnes</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
@@ -1047,7 +1054,7 @@ export default function EventsPage() {
                 >
                   <div className="text-left">
                     <p className="font-medium text-[#303030]">Acces par lien</p>
-                    <p className="text-sm text-gray-500">Autoriser l'inscription via un lien</p>
+                    <p className="text-sm text-gray-600">Autoriser l'inscription via un lien</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
@@ -1070,7 +1077,7 @@ export default function EventsPage() {
                 >
                   <div className="text-left">
                     <p className="font-medium text-[#303030]">Acces par mot de passe</p>
-                    <p className="text-sm text-gray-500">Proteger l'evenement par mot de passe</p>
+                    <p className="text-sm text-gray-600">Proteger l'evenement par mot de passe</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
@@ -1096,7 +1103,7 @@ export default function EventsPage() {
                       onChange={(e) => setFormData({ ...formData, access_password: e.target.value })}
                       placeholder="Entrez un mot de passe"
                       disabled={creating}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                     />
                   </div>
                 )}
@@ -1126,7 +1133,7 @@ export default function EventsPage() {
                       >
                         <div>
                           <p className="font-medium text-[#303030]">{field.label}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-600">
                             {fieldTypes.find((t) => t.value === field.type)?.label} {field.required && "- Requis"}
                           </p>
                         </div>
@@ -1134,14 +1141,14 @@ export default function EventsPage() {
                           <button
                             type="button"
                             onClick={() => handleEditCustomField(index)}
-                            className="p-1 text-gray-500 hover:text-[#1271FF]"
+                            className="p-1 text-gray-600 hover:text-[#1271FF]"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteCustomField(index)}
-                            className="p-1 text-gray-500 hover:text-red-500"
+                            className="p-1 text-gray-600 hover:text-red-500"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1173,9 +1180,9 @@ export default function EventsPage() {
                     placeholder="Ex: 24"
                     min="0"
                     disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     Delai avant de pouvoir s'inscrire a nouveau
                   </p>
                 </div>
@@ -1259,9 +1266,9 @@ export default function EventsPage() {
                   }
                   placeholder="Ex: linkedin_url"
                   disabled={editingFieldIndex !== null}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Identifiant unique (sans espaces)
                 </p>
               </div>
@@ -1278,7 +1285,7 @@ export default function EventsPage() {
                     setCurrentField({ ...currentField, label: e.target.value })
                   }
                   placeholder="Ex: Profil LinkedIn"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                 />
               </div>
 
@@ -1319,7 +1326,7 @@ export default function EventsPage() {
                     setCurrentField({ ...currentField, placeholder: e.target.value })
                   }
                   placeholder="Ex: https://linkedin.com/in/..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                 />
               </div>
 
@@ -1333,7 +1340,7 @@ export default function EventsPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Champ requis</p>
-                  <p className="text-sm text-gray-500">Obligatoire lors de l'inscription</p>
+                  <p className="text-sm text-gray-600">Obligatoire lors de l'inscription</p>
                 </div>
                 <div
                   className={`w-12 h-7 rounded-full p-1 transition-colors ${
@@ -1364,7 +1371,7 @@ export default function EventsPage() {
                         >
                           <div>
                             <p className="font-medium text-[#303030]">{option.label}</p>
-                            <p className="text-xs text-gray-500">{option.value}</p>
+                            <p className="text-xs text-gray-600">{option.value}</p>
                           </div>
                           <button
                             type="button"

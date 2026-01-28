@@ -25,18 +25,23 @@ export default function EventSettingsPage() {
     : "";
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
+    const initPage = async () => {
+      const validatedType = await authService.validateAndGetUserType();
 
-    const userType = authService.getUserType();
-    if (userType !== "orga") {
-      router.push("/events");
-      return;
-    }
+      if (!validatedType) {
+        router.push("/auth");
+        return;
+      }
 
-    loadEvent();
+      if (validatedType !== "orga") {
+        router.push("/events");
+        return;
+      }
+
+      loadEvent();
+    };
+
+    initPage();
   }, [eventId]);
 
   const loadEvent = async () => {
@@ -153,7 +158,7 @@ export default function EventSettingsPage() {
             <div className="space-y-4">
               {/* Event Link */}
               <div>
-                <label className="block text-sm text-gray-500 mb-2">
+                <label className="block text-sm text-gray-600 mb-2">
                   Lien de l'evenement
                 </label>
                 <div className="flex gap-2">
@@ -211,31 +216,31 @@ export default function EventSettingsPage() {
 
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Evenement public</span>
+                <span className="text-gray-600">Evenement public</span>
                 <span className="font-medium text-[#303030]">
                   {event?.is_public ? "Oui" : "Non"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Liste blanche</span>
+                <span className="text-gray-600">Liste blanche</span>
                 <span className="font-medium text-[#303030]">
                   {event?.has_whitelist ? "Active" : "Desactive"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Acces par lien</span>
+                <span className="text-gray-600">Acces par lien</span>
                 <span className="font-medium text-[#303030]">
                   {event?.has_link_access ? "Active" : "Desactive"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Acces par mot de passe</span>
+                <span className="text-gray-600">Acces par mot de passe</span>
                 <span className="font-medium text-[#303030]">
                   {event?.has_password_access ? "Active" : "Desactive"}
                 </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-500">Participants max</span>
+                <span className="text-gray-600">Participants max</span>
                 <span className="font-medium text-[#303030]">
                   {event?.max_participants || "-"}
                 </span>

@@ -36,19 +36,14 @@ export default function ProfilePage() {
     try {
       setLoading(true);
 
-      if (!authService.isAuthenticated()) {
+      const validatedType = await authService.validateAndGetUserType();
+
+      if (!validatedType) {
         router.push("/auth");
         return;
       }
 
-      const userType = authService.getUserType();
-      if (!userType) {
-        authService.clearAuth();
-        router.push("/auth");
-        return;
-      }
-
-      setProfileType(userType);
+      setProfileType(validatedType);
 
       const profileData = await authService.getCurrentProfile();
       if (!profileData) {
@@ -277,7 +272,7 @@ export default function ProfilePage() {
             <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Prenom</label>
+                  <label className="block text-xs text-gray-600 mb-1">Prenom</label>
                   {isEditing ? (
                     <input
                       type="text"
@@ -286,7 +281,7 @@ export default function ProfilePage() {
                         setEditedProfile({ ...editedProfile, firstname: e.target.value })
                       }
                       disabled={saving}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                     />
                   ) : (
                     <p className="font-semibold text-[#303030]">{profile.firstname}</p>
@@ -294,7 +289,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Nom</label>
+                  <label className="block text-xs text-gray-600 mb-1">Nom</label>
                   {isEditing ? (
                     <input
                       type="text"
@@ -303,7 +298,7 @@ export default function ProfilePage() {
                         setEditedProfile({ ...editedProfile, lastname: e.target.value })
                       }
                       disabled={saving}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                     />
                   ) : (
                     <p className="font-semibold text-[#303030]">{profile.lastname}</p>
@@ -312,7 +307,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="mt-6">
-                <label className="block text-xs text-gray-500 mb-1">Telephone</label>
+                <label className="block text-xs text-gray-600 mb-1">Telephone</label>
                 {isEditing ? (
                   <input
                     type="tel"
@@ -321,7 +316,7 @@ export default function ProfilePage() {
                       setEditedProfile({ ...editedProfile, tel: e.target.value })
                     }
                     disabled={saving}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.tel}</p>
@@ -329,7 +324,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="mt-6">
-                <label className="block text-xs text-gray-500 mb-1">Email</label>
+                <label className="block text-xs text-gray-600 mb-1">Email</label>
                 {isEditing ? (
                   <input
                     type="email"
@@ -339,7 +334,7 @@ export default function ProfilePage() {
                     }
                     disabled={saving}
                     placeholder="email@exemple.com"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.mail || "Non renseigne"}</p>
@@ -348,7 +343,7 @@ export default function ProfilePage() {
 
               {age !== null && (
                 <div className="mt-6">
-                  <label className="block text-xs text-gray-500 mb-1">Age</label>
+                  <label className="block text-xs text-gray-600 mb-1">Age</label>
                   <p className="font-semibold text-[#303030]">{age} ans</p>
                 </div>
               )}
@@ -371,7 +366,7 @@ export default function ProfilePage() {
           <>
             <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
               <div className="mb-6">
-                <label className="block text-xs text-gray-500 mb-1">Nom de l'organisation</label>
+                <label className="block text-xs text-gray-600 mb-1">Nom de l'organisation</label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -380,7 +375,7 @@ export default function ProfilePage() {
                       setEditedProfile({ ...editedProfile, nom: e.target.value })
                     }
                     disabled={saving}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.nom}</p>
@@ -388,7 +383,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-xs text-gray-500 mb-1">Email</label>
+                <label className="block text-xs text-gray-600 mb-1">Email</label>
                 {isEditing ? (
                   <input
                     type="email"
@@ -397,7 +392,7 @@ export default function ProfilePage() {
                       setEditedProfile({ ...editedProfile, mail: e.target.value })
                     }
                     disabled={saving}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.mail}</p>
@@ -405,7 +400,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-xs text-gray-500 mb-1">Telephone</label>
+                <label className="block text-xs text-gray-600 mb-1">Telephone</label>
                 {isEditing ? (
                   <input
                     type="tel"
@@ -415,7 +410,7 @@ export default function ProfilePage() {
                     }
                     disabled={saving}
                     placeholder="Telephone"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.tel || "Non renseigne"}</p>
@@ -423,7 +418,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Description</label>
+                <label className="block text-xs text-gray-600 mb-1">Description</label>
                 {isEditing ? (
                   <textarea
                     value={editedProfile.description || ""}
@@ -433,7 +428,7 @@ export default function ProfilePage() {
                     disabled={saving}
                     rows={4}
                     placeholder="Description de l'organisation..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none"
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.description || "Aucune description"}</p>

@@ -307,7 +307,41 @@ class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    const userType = this.getUserType();
+    return !!token && !!userType;
+  }
+
+  async validateAndGetUserType(): Promise<'user' | 'orga' | null> {
+    const token = this.getToken();
+    const userType = this.getUserType();
+
+    if (!token || !userType) {
+      console.log('No token or userType found');
+      this.clearAuth();
+      return null;
+    }
+
+    try {
+      // Validate token by calling the appropriate endpoint
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        console.log('Token invalid for userType:', userType);
+        this.clearAuth();
+        return null;
+      }
+
+      console.log('Token valid for userType:', userType);
+      return userType;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      this.clearAuth();
+      return null;
+    }
   }
 
   async getCurrentProfile(): Promise<User | Orga | null> {

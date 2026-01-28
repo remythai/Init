@@ -29,18 +29,23 @@ export default function ParticipantsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
+    const initPage = async () => {
+      const validatedType = await authService.validateAndGetUserType();
 
-    const userType = authService.getUserType();
-    if (userType !== "orga") {
-      router.push("/events");
-      return;
-    }
+      if (!validatedType) {
+        router.push("/auth");
+        return;
+      }
 
-    loadParticipants();
+      if (validatedType !== "orga") {
+        router.push("/events");
+        return;
+      }
+
+      loadParticipants();
+    };
+
+    initPage();
   }, [eventId]);
 
   const loadParticipants = async () => {
@@ -172,7 +177,7 @@ export default function ParticipantsPage() {
           {filteredParticipants.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
               <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
+              <p className="text-gray-600 text-lg">
                 {searchQuery
                   ? "Aucun participant ne correspond a votre recherche"
                   : "Aucun participant inscrit"}
@@ -197,19 +202,19 @@ export default function ParticipantsPage() {
                       </p>
                       <div className="flex flex-wrap gap-3 mt-1">
                         {participant.mail && (
-                          <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1 text-sm text-gray-600">
                             <Mail className="w-3 h-3" />
                             {participant.mail}
                           </span>
                         )}
                         {participant.tel && (
-                          <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1 text-sm text-gray-600">
                             <Phone className="w-3 h-3" />
                             {participant.tel}
                           </span>
                         )}
                         {participant.registered_at && (
-                          <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1 text-sm text-gray-600">
                             <Calendar className="w-3 h-3" />
                             Inscrit le {new Date(participant.registered_at).toLocaleDateString("fr-FR")}
                           </span>

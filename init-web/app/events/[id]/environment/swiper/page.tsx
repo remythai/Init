@@ -3,114 +3,147 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Heart, Sparkles } from "lucide-react";
+import { X, Heart, Sparkles, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
-
-interface Participant {
-  id: string;
-  firstname: string;
-  lastname: string;
-  age: number;
-  bio?: string;
-  image: string;
-}
-
-// Simulated participants data (will be replaced by API)
-const mockParticipants: Participant[] = [
-  {
-    id: "1",
-    firstname: "Marie",
-    lastname: "D.",
-    age: 25,
-    bio: "Passionnée de musique et de nouvelles rencontres",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
-  },
-  {
-    id: "2",
-    firstname: "Thomas",
-    lastname: "L.",
-    age: 28,
-    bio: "Entrepreneur dans la tech, toujours partant pour un café",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-  },
-  {
-    id: "3",
-    firstname: "Sophie",
-    lastname: "M.",
-    age: 24,
-    bio: "Designer freelance, j'adore les événements networking",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
-  },
-  {
-    id: "4",
-    firstname: "Lucas",
-    lastname: "B.",
-    age: 27,
-    bio: "Développeur web passionné par l'innovation",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
-  },
-  {
-    id: "5",
-    firstname: "Emma",
-    lastname: "R.",
-    age: 26,
-    bio: "Marketing digital et voyages sont mes passions",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
-  },
-];
+import { matchService, Profile, Match } from "../../../../services/match.service";
 
 export default function SwiperPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
 
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [showMatch, setShowMatch] = useState(false);
-  const [matchedUser, setMatchedUser] = useState<Participant | null>(null);
-  const [likedUsers, setLikedUsers] = useState<string[]>([]);
+  const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
+  const [matchId, setMatchId] = useState<number | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [swiping, setSwiping] = useState(false);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
+    const initPage = async () => {
+      const validatedType = await authService.validateAndGetUserType();
 
-    // Simulate loading participants
-    setTimeout(() => {
-      setParticipants(mockParticipants);
-      setLoading(false);
-    }, 500);
-  }, [eventId]);
-
-  const currentParticipant = participants[currentIndex];
-
-  const handleSwipe = (direction: "left" | "right") => {
-    if (!currentParticipant) return;
-
-    setSwipeDirection(direction);
-
-    setTimeout(() => {
-      if (direction === "right") {
-        setLikedUsers([...likedUsers, currentParticipant.id]);
-
-        // Simulate 30% chance of match
-        if (Math.random() < 0.3) {
-          setMatchedUser(currentParticipant);
-          setShowMatch(true);
-        }
+      if (!validatedType) {
+        router.push("/auth");
+        return;
       }
 
+      // Only users can access event environment
+      if (validatedType !== "user") {
+        router.push("/events");
+        return;
+      }
+
+      loadProfiles();
+    };
+
+    initPage();
+  }, [eventId]);
+
+  const loadProfiles = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await matchService.getProfilesToSwipe(eventId, 20);
+      setProfiles(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors du chargement";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentProfile = profiles[currentIndex];
+
+  // Get the age from profile (either pre-calculated or from birthday)
+  const getAge = (profile: Profile): number | null => {
+    if (profile.age) return profile.age;
+    if (profile.birthday) return calculateAge(profile.birthday);
+    return null;
+  };
+
+  const handleSwipe = async (direction: "left" | "right") => {
+    if (!currentProfile || swiping) return;
+
+    setSwiping(true);
+    setSwipeDirection(direction);
+
+    // Use user_id (API returns user_id for profiles)
+    const targetUserId = currentProfile.user_id;
+
+    try {
+      if (direction === "right") {
+        // Like
+        const result = await matchService.likeProfile(eventId, targetUserId);
+
+        if (result.matched && result.match) {
+          setMatchedUser(currentProfile);
+          setMatchId(result.match.id);
+          // Delay showing match modal until animation completes
+          setTimeout(() => {
+            setShowMatch(true);
+          }, 300);
+        }
+      } else {
+        // Pass
+        await matchService.passProfile(eventId, targetUserId);
+      }
+    } catch (err: unknown) {
+      console.error("Swipe error:", err);
+      // Continue anyway to not block the UX
+    }
+
+    // Animation timing
+    setTimeout(() => {
       setSwipeDirection(null);
       setCurrentIndex(currentIndex + 1);
+      setCurrentImageIndex(0);
+      setSwiping(false);
     }, 300);
+  };
+
+  const nextImage = () => {
+    if (currentProfile && currentProfile.photos && currentImageIndex < currentProfile.photos.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
   };
 
   const closeMatch = () => {
     setShowMatch(false);
     setMatchedUser(null);
+    setMatchId(null);
+  };
+
+  const getProfileImage = (profile: Profile, index: number = 0): string => {
+    if (profile.photos && profile.photos.length > index && profile.photos[index].file_path) {
+      return profile.photos[index].file_path;
+    }
+    // Default placeholder
+    return `https://ui-avatars.com/api/?name=${profile.firstname}+${profile.lastname}&size=400&background=1271FF&color=fff`;
+  };
+
+  const calculateAge = (birthday?: string): number | null => {
+    if (!birthday) return null;
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   if (loading) {
@@ -124,20 +157,36 @@ export default function SwiperPage() {
     );
   }
 
-  const isFinished = currentIndex >= participants.length;
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center p-8">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={loadProfiles}
+            className="bg-white text-[#303030] px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isFinished = currentIndex >= profiles.length;
 
   return (
     <div className="h-full flex flex-col p-4">
       <div className="flex-1 flex flex-col max-w-lg mx-auto w-full min-h-0">
         {/* Swiper Card */}
-        {!isFinished ? (
+        {!isFinished && currentProfile ? (
           <div className="flex-1 relative min-h-0">
             {/* Card Stack (show next card behind) */}
-            {currentIndex + 1 < participants.length && (
+            {currentIndex + 1 < profiles.length && (
               <div className="absolute inset-0 scale-95 opacity-50">
                 <div className="w-full h-full bg-white rounded-3xl shadow-lg overflow-hidden">
                   <img
-                    src={participants[currentIndex + 1].image}
+                    src={getProfileImage(profiles[currentIndex + 1])}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -156,12 +205,44 @@ export default function SwiperPage() {
               }`}
             >
               <div className="w-full h-full bg-white rounded-3xl shadow-xl overflow-hidden relative">
-                {/* Image */}
-                <img
-                  src={currentParticipant.image}
-                  alt={currentParticipant.firstname}
-                  className="w-full h-full object-cover"
-                />
+                {/* Image with navigation */}
+                <div className="absolute inset-0">
+                  <img
+                    src={getProfileImage(currentProfile, currentImageIndex)}
+                    alt={currentProfile.firstname}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Image navigation zones */}
+                  {currentProfile.photos && currentProfile.photos.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevImage}
+                        className="absolute left-0 top-0 bottom-0 w-1/3 z-10"
+                        aria-label="Image précédente"
+                      />
+                      <button
+                        onClick={nextImage}
+                        className="absolute right-0 top-0 bottom-0 w-1/3 z-10"
+                        aria-label="Image suivante"
+                      />
+                    </>
+                  )}
+
+                  {/* Image indicators */}
+                  {currentProfile.photos && currentProfile.photos.length > 1 && (
+                    <div className="absolute top-4 left-4 right-4 flex gap-1 z-20">
+                      {currentProfile.photos.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex-1 h-1 rounded-full transition-colors ${
+                            idx === currentImageIndex ? "bg-white" : "bg-white/40"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -182,16 +263,39 @@ export default function SwiperPage() {
                   <span className="text-red-500 font-bold text-2xl">NOPE</span>
                 </div>
 
+                {/* Info Button */}
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="absolute top-4 right-4 w-10 h-10 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors z-20"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+
                 {/* User Info */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                   <h2 className="font-poppins text-3xl font-bold">
-                    {currentParticipant.firstname} {currentParticipant.lastname},{" "}
-                    <span className="font-normal">{currentParticipant.age}</span>
+                    {currentProfile.firstname} {currentProfile.lastname?.charAt(0)}.
+                    {getAge(currentProfile) && (
+                      <span className="font-normal">, {getAge(currentProfile)}</span>
+                    )}
                   </h2>
-                  {currentParticipant.bio && (
-                    <p className="text-white/80 mt-2 text-sm leading-relaxed">
-                      {currentParticipant.bio}
+                  {(currentProfile.bio || currentProfile.profil_info?.bio) && (
+                    <p className="text-white/80 mt-2 text-sm leading-relaxed line-clamp-2">
+                      {currentProfile.bio || currentProfile.profil_info?.bio}
                     </p>
+                  )}
+                  {(currentProfile.interests || currentProfile.profil_info?.interests) &&
+                   (currentProfile.interests || currentProfile.profil_info?.interests)!.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {(currentProfile.interests || currentProfile.profil_info?.interests)!.slice(0, 3).map((interest, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs"
+                        >
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -206,7 +310,9 @@ export default function SwiperPage() {
               C'est tout pour le moment !
             </h2>
             <p className="text-white/60 mb-6">
-              Vous avez vu tous les participants de cet événement.
+              {profiles.length === 0
+                ? "Aucun profil disponible pour cet événement."
+                : "Vous avez vu tous les participants de cet événement."}
             </p>
             <Link
               href={`/events/${eventId}`}
@@ -218,12 +324,13 @@ export default function SwiperPage() {
         )}
 
         {/* Action Buttons */}
-        {!isFinished && (
+        {!isFinished && currentProfile && (
           <div className="flex-shrink-0 flex items-center justify-center gap-6 py-4">
             {/* Pass Button */}
             <button
               onClick={() => handleSwipe("left")}
-              className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-red-500 hover:scale-110 transition-transform"
+              disabled={swiping}
+              className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-red-500 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
             >
               <X className="w-8 h-8" />
             </button>
@@ -231,7 +338,8 @@ export default function SwiperPage() {
             {/* Like Button */}
             <button
               onClick={() => handleSwipe("right")}
-              className="w-16 h-16 bg-gradient-to-br from-pink-500 to-red-500 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform"
+              disabled={swiping}
+              className="w-16 h-16 bg-gradient-to-br from-pink-500 to-red-500 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
             >
               <Heart className="w-8 h-8" />
             </button>
@@ -254,7 +362,7 @@ export default function SwiperPage() {
             <div className="flex justify-center gap-4 mb-8">
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white">
                 <img
-                  src={matchedUser.image}
+                  src={getProfileImage(matchedUser)}
                   alt={matchedUser.firstname}
                   className="w-full h-full object-cover"
                 />
@@ -263,7 +371,7 @@ export default function SwiperPage() {
 
             <div className="space-y-3">
               <Link
-                href={`/events/${eventId}/environment/messages`}
+                href={`/events/${eventId}/environment/messages?match=${matchId}`}
                 className="block w-full bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors"
               >
                 Envoyer un message
@@ -274,6 +382,81 @@ export default function SwiperPage() {
               >
                 Continuer à swiper
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && currentProfile && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowProfileModal(false)}
+          />
+          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[85vh] overflow-hidden">
+            {/* Header Image */}
+            <div className="relative h-64">
+              <img
+                src={getProfileImage(currentProfile, currentImageIndex)}
+                alt={currentProfile.firstname}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-4 left-4 text-white">
+                <h2 className="font-poppins text-2xl font-bold">
+                  {currentProfile.firstname} {currentProfile.lastname?.charAt(0)}.
+                  {getAge(currentProfile) && <span className="font-normal">, {getAge(currentProfile)}</span>}
+                </h2>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[50vh]">
+              {(currentProfile.bio || currentProfile.profil_info?.bio) && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-[#303030] mb-2">À propos</h3>
+                  <p className="text-gray-600">{currentProfile.bio || currentProfile.profil_info?.bio}</p>
+                </div>
+              )}
+
+              {((currentProfile.interests && currentProfile.interests.length > 0) ||
+                (currentProfile.profil_info?.interests && currentProfile.profil_info.interests.length > 0)) && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-[#303030] mb-2">Centres d'intérêt</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {(currentProfile.interests || currentProfile.profil_info?.interests || []).map((interest, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 bg-[#F5F5F5] text-[#303030] rounded-full text-sm"
+                      >
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {((currentProfile.custom_fields && Object.keys(currentProfile.custom_fields).length > 0) ||
+                (currentProfile.profil_info?.custom_fields && Object.keys(currentProfile.profil_info.custom_fields).length > 0)) && (
+                <div>
+                  <h3 className="font-semibold text-[#303030] mb-2">Informations</h3>
+                  <div className="space-y-2">
+                    {Object.entries(currentProfile.custom_fields || currentProfile.profil_info?.custom_fields || {}).map(([key, value]) => (
+                      <div key={key} className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">{key}</span>
+                        <span className="text-[#303030] font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

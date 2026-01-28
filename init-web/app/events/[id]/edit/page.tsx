@@ -92,18 +92,23 @@ export default function EditEventPage() {
   const needsOptions = ["select", "radio", "multiselect"].includes(currentField.type);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/auth");
-      return;
-    }
+    const initPage = async () => {
+      const validatedType = await authService.validateAndGetUserType();
 
-    const userType = authService.getUserType();
-    if (userType !== "orga") {
-      router.push("/events");
-      return;
-    }
+      if (!validatedType) {
+        router.push("/auth");
+        return;
+      }
 
-    loadEvent();
+      if (validatedType !== "orga") {
+        router.push("/events");
+        return;
+      }
+
+      loadEvent();
+    };
+
+    initPage();
   }, [eventId]);
 
   useEffect(() => {
@@ -400,7 +405,7 @@ export default function EditEventPage() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: Soiree Networking"
                 disabled={saving}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
               />
             </div>
 
@@ -439,7 +444,7 @@ export default function EditEventPage() {
                 placeholder="Decrivez votre evenement..."
                 rows={4}
                 disabled={saving}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
               />
             </div>
 
@@ -454,7 +459,7 @@ export default function EditEventPage() {
                   value={formData.start_at}
                   onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
                   disabled={saving}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
               </div>
               <div>
@@ -466,7 +471,7 @@ export default function EditEventPage() {
                   value={formData.end_at}
                   onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
                   disabled={saving}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
               </div>
             </div>
@@ -487,7 +492,7 @@ export default function EditEventPage() {
                   }}
                   placeholder="Commencez a taper une adresse..."
                   disabled={saving}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
                 {loadingSuggestions && (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -527,7 +532,7 @@ export default function EditEventPage() {
                 placeholder="Ex: 50"
                 min="1"
                 disabled={saving}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
               />
             </div>
 
@@ -543,7 +548,7 @@ export default function EditEventPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Evenement public</p>
-                  <p className="text-sm text-gray-500">Visible par tous les utilisateurs</p>
+                  <p className="text-sm text-gray-600">Visible par tous les utilisateurs</p>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.is_public ? "bg-[#1271FF]" : "bg-gray-300"}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.is_public ? "translate-x-5" : "translate-x-0"}`} />
@@ -558,7 +563,7 @@ export default function EditEventPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Liste blanche</p>
-                  <p className="text-sm text-gray-500">Restreindre l'acces a certaines personnes</p>
+                  <p className="text-sm text-gray-600">Restreindre l'acces a certaines personnes</p>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.has_whitelist ? "bg-[#1271FF]" : "bg-gray-300"}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.has_whitelist ? "translate-x-5" : "translate-x-0"}`} />
@@ -573,7 +578,7 @@ export default function EditEventPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Acces par lien</p>
-                  <p className="text-sm text-gray-500">Autoriser l'inscription via un lien</p>
+                  <p className="text-sm text-gray-600">Autoriser l'inscription via un lien</p>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.has_link_access ? "bg-[#1271FF]" : "bg-gray-300"}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.has_link_access ? "translate-x-5" : "translate-x-0"}`} />
@@ -588,7 +593,7 @@ export default function EditEventPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Acces par mot de passe</p>
-                  <p className="text-sm text-gray-500">Proteger l'evenement par mot de passe</p>
+                  <p className="text-sm text-gray-600">Proteger l'evenement par mot de passe</p>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.has_password_access ? "bg-[#1271FF]" : "bg-gray-300"}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.has_password_access ? "translate-x-5" : "translate-x-0"}`} />
@@ -606,7 +611,7 @@ export default function EditEventPage() {
                     onChange={(e) => setFormData({ ...formData, access_password: e.target.value })}
                     placeholder="Laissez vide pour conserver l'ancien"
                     disabled={saving}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                   />
                 </div>
               )}
@@ -636,7 +641,7 @@ export default function EditEventPage() {
                     >
                       <div>
                         <p className="font-medium text-[#303030]">{field.label}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-600">
                           {fieldTypes.find((t) => t.value === field.type)?.label} {field.required && "- Requis"}
                         </p>
                       </div>
@@ -644,14 +649,14 @@ export default function EditEventPage() {
                         <button
                           type="button"
                           onClick={() => handleEditCustomField(index)}
-                          className="p-1 text-gray-500 hover:text-[#1271FF]"
+                          className="p-1 text-gray-600 hover:text-[#1271FF]"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteCustomField(index)}
-                          className="p-1 text-gray-500 hover:text-red-500"
+                          className="p-1 text-gray-600 hover:text-red-500"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -677,9 +682,9 @@ export default function EditEventPage() {
                   placeholder="Ex: 24"
                   min="0"
                   disabled={saving}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Delai avant de pouvoir s'inscrire a nouveau
                 </p>
               </div>
@@ -742,7 +747,7 @@ export default function EditEventPage() {
                   onChange={(e) => setCurrentField({ ...currentField, id: e.target.value })}
                   placeholder="Ex: linkedin_url"
                   disabled={editingFieldIndex !== null}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
               </div>
 
@@ -753,7 +758,7 @@ export default function EditEventPage() {
                   value={currentField.label}
                   onChange={(e) => setCurrentField({ ...currentField, label: e.target.value })}
                   placeholder="Ex: Profil LinkedIn"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                 />
               </div>
 
@@ -784,7 +789,7 @@ export default function EditEventPage() {
               >
                 <div className="text-left">
                   <p className="font-medium text-[#303030]">Champ requis</p>
-                  <p className="text-sm text-gray-500">Obligatoire lors de l'inscription</p>
+                  <p className="text-sm text-gray-600">Obligatoire lors de l'inscription</p>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${currentField.required ? "bg-[#1271FF]" : "bg-gray-300"}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${currentField.required ? "translate-x-5" : "translate-x-0"}`} />
@@ -801,7 +806,7 @@ export default function EditEventPage() {
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
                             <p className="font-medium text-[#303030]">{option.label}</p>
-                            <p className="text-xs text-gray-500">{option.value}</p>
+                            <p className="text-xs text-gray-600">{option.value}</p>
                           </div>
                           <button type="button" onClick={() => handleRemoveOption(index)} className="p-1 text-red-500 hover:text-red-600">
                             <X className="w-4 h-4" />

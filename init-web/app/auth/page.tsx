@@ -308,7 +308,7 @@ export default function AuthPage() {
                   disabled={loading}
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Format: 10-20 caractères (chiffres, +, -, (), espaces)
                 </p>
               </div>
@@ -343,7 +343,7 @@ export default function AuthPage() {
                   disabled={loading}
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-500 mt-1">Format: exemple@email.com</p>
+                <p className="text-xs text-gray-600 mt-1">Format: exemple@email.com</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#303030] mb-2">
@@ -404,7 +404,7 @@ export default function AuthPage() {
                   disabled={loading}
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Format: 10-20 caractères (chiffres, +, -, (), espaces)
                 </p>
               </div>
