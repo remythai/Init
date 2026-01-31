@@ -40,13 +40,13 @@ export interface SocketMatch {
     id: number;
     firstname: string;
     lastname: string;
-    photos?: { file_path: string }[];
+    photos?: { id: number; file_path: string }[];
   };
   user2: {
     id: number;
     firstname: string;
     lastname: string;
-    photos?: { file_path: string }[];
+    photos?: { id: number; file_path: string }[];
   };
 }
 
@@ -56,7 +56,7 @@ export interface SocketUserJoined {
     id: number;
     firstname: string;
     lastname: string;
-    photos?: { file_path: string }[];
+    photos?: { id: number; file_path: string }[];
   };
 }
 
@@ -227,14 +227,24 @@ class SocketService {
    * Join an event room
    */
   joinEvent(eventId: number | string): void {
-    this.socket?.emit('event:join', eventId);
+    if (!this.socket?.connected) {
+      console.warn('Socket: Cannot join event room - not connected');
+      return;
+    }
+    console.log('Socket: Joining event room', eventId);
+    this.socket.emit('event:join', eventId);
   }
 
   /**
    * Leave an event room
    */
   leaveEvent(eventId: number | string): void {
-    this.socket?.emit('event:leave', eventId);
+    if (!this.socket?.connected) {
+      console.warn('Socket: Cannot leave event room - not connected');
+      return;
+    }
+    console.log('Socket: Leaving event room', eventId);
+    this.socket.emit('event:leave', eventId);
   }
 
   /**

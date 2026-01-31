@@ -344,11 +344,10 @@ export const MatchModel = {
       )
       WHERE m.event_id = $2
         AND (m.user1_id = $1 OR m.user2_id = $1)
-      ORDER BY (
-        SELECT sent_at FROM messages msg
-        WHERE msg.match_id = m.id
-        ORDER BY sent_at DESC LIMIT 1
-      ) DESC NULLS LAST`,
+      ORDER BY COALESCE(
+        (SELECT sent_at FROM messages msg WHERE msg.match_id = m.id ORDER BY sent_at DESC LIMIT 1),
+        m.created_at
+      ) DESC`,
       [userId, eventId]
     );
     return result.rows;
@@ -400,11 +399,10 @@ export const MatchModel = {
         END = u.id
       )
       WHERE m.user1_id = $1 OR m.user2_id = $1
-      ORDER BY (
-        SELECT sent_at FROM messages msg
-        WHERE msg.match_id = m.id
-        ORDER BY sent_at DESC LIMIT 1
-      ) DESC NULLS LAST`,
+      ORDER BY COALESCE(
+        (SELECT sent_at FROM messages msg WHERE msg.match_id = m.id ORDER BY sent_at DESC LIMIT 1),
+        m.created_at
+      ) DESC`,
       [userId]
     );
     return result.rows;

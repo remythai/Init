@@ -4,6 +4,7 @@ import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Users, MessageCircle, User, ArrowLeft } from "lucide-react";
+import { useUnreadMessagesContext } from "../../../contexts/UnreadMessagesContext";
 
 export default function EnvironmentLayout({
   children,
@@ -13,6 +14,8 @@ export default function EnvironmentLayout({
   const params = useParams();
   const pathname = usePathname();
   const eventId = params.id as string;
+  const { hasUnreadForEvent } = useUnreadMessagesContext();
+  const hasUnreadMessages = hasUnreadForEvent(eventId);
 
   const tabs = [
     {
@@ -20,18 +23,21 @@ export default function EnvironmentLayout({
       href: `/events/${eventId}/environment/profile`,
       icon: User,
       isActive: pathname.includes("/profile"),
+      showBadge: false,
     },
     {
       name: "Découvrir",
       href: `/events/${eventId}/environment/swiper`,
       icon: Users,
       isActive: pathname.includes("/swiper"),
+      showBadge: false,
     },
     {
       name: "Messages",
       href: `/events/${eventId}/environment/messages`,
       icon: MessageCircle,
       isActive: pathname.includes("/messages"),
+      showBadge: hasUnreadMessages,
     },
   ];
 
@@ -78,7 +84,12 @@ export default function EnvironmentLayout({
                   : "text-white/50 hover:text-white/70"
               }`}
             >
-              <tab.icon className={`w-6 h-6 ${tab.isActive ? "text-[#1271FF]" : ""}`} />
+              <div className="relative">
+                <tab.icon className={`w-6 h-6 ${tab.isActive ? "text-[#1271FF]" : ""}`} />
+                {tab.showBadge && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#1271FF] rounded-full" />
+                )}
+              </div>
               <span className="text-xs mt-1">{tab.name}</span>
             </Link>
           ))}

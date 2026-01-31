@@ -7,6 +7,7 @@ import { authService } from "../../../../services/auth.service";
 import { matchService, Conversation, Message, Photo } from "../../../../services/match.service";
 import { useRealTimeMessages } from "../../../../hooks/useRealTimeMessages";
 import { SocketConversationUpdate } from "../../../../services/socket.service";
+import { useUnreadMessagesContext } from "../../../../contexts/UnreadMessagesContext";
 
 interface ConversationData {
   match: {
@@ -29,6 +30,7 @@ export default function MessagesPage() {
   const searchParams = useSearchParams();
   const eventId = params.id as string;
   const initialMatchId = searchParams.get("match");
+  const { markConversationAsRead } = useUnreadMessagesContext();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +63,9 @@ export default function MessagesPage() {
 
   // Handler for conversation updates (new messages in other conversations)
   const handleConversationUpdate = useCallback((data: SocketConversationUpdate) => {
-    setConversations((prev) =>
-      prev.map((conv) => {
+    setConversations((prev) => {
+      // Find and update the conversation
+      const updatedConversations = prev.map((conv) => {
         if (conv.match_id === data.match_id) {
           return {
             ...conv,
@@ -71,8 +74,17 @@ export default function MessagesPage() {
           };
         }
         return conv;
-      })
-    );
+      });
+
+      // Move the updated conversation to the top
+      const targetIndex = updatedConversations.findIndex((c) => c.match_id === data.match_id);
+      if (targetIndex > 0) {
+        const [conversation] = updatedConversations.splice(targetIndex, 1);
+        updatedConversations.unshift(conversation);
+      }
+
+      return updatedConversations;
+    });
   }, [selectedMatchId]);
 
   // Use real-time messages hook
@@ -112,8 +124,20 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedMatchId) {
       loadMessages(selectedMatchId);
+
+      // Mark as read in context (for navigation badge)
+      markConversationAsRead(selectedMatchId);
+
+      // Reset unread count for the selected conversation
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.match_id === selectedMatchId
+            ? { ...conv, unread_count: 0 }
+            : conv
+        )
+      );
     }
-  }, [selectedMatchId]);
+  }, [selectedMatchId, markConversationAsRead]);
 
   useEffect(() => {
     scrollToBottom();
@@ -168,6 +192,32 @@ export default function MessagesPage() {
           messages: [...conversationData.messages, message],
         });
       }
+
+      // Update conversation list: update last_message and move to top
+      setConversations((prev) => {
+        const updatedConversations = prev.map((conv) => {
+          if (conv.match_id === selectedMatchId) {
+            return {
+              ...conv,
+              last_message: {
+                content: message.content,
+                sent_at: message.sent_at,
+                is_mine: true,
+              },
+            };
+          }
+          return conv;
+        });
+
+        // Move to top
+        const targetIndex = updatedConversations.findIndex((c) => c.match_id === selectedMatchId);
+        if (targetIndex > 0) {
+          const [conversation] = updatedConversations.splice(targetIndex, 1);
+          updatedConversations.unshift(conversation);
+        }
+
+        return updatedConversations;
+      });
 
       setNewMessage("");
     } catch (err: unknown) {
@@ -409,10 +459,12 @@ export default function MessagesPage() {
 
             {/* Typing indicator */}
             {typingUsers.length > 0 && (
-              <div className="px-4 py-2 bg-white border-t">
-                <p className="text-sm text-gray-500 italic">
-                  {conversationData?.match.user.firstname} est en train d'écrire...
-                </p>
+              <div className="px-4 py-2">
+                <div className="inline-flex items-center gap-1.5 bg-gray-200 rounded-2xl px-4 py-3">
+                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
+                </div>
               </div>
             )}
 

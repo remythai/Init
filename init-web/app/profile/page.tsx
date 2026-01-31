@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Edit2, Save, X, Camera, ArrowLeft } from "lucide-react";
 import { authService, User, Orga } from "../services/auth.service";
+import BottomNavigation from "../components/BottomNavigation";
 
 type UserProfile = User;
 type OrgaProfile = Orga;
@@ -258,7 +259,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 md:px-8 -mt-8 pb-12">
+      <main className="max-w-4xl mx-auto px-4 md:px-8 -mt-8 pb-24">
         {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -448,6 +449,9 @@ export default function ProfilePage() {
           </>
         )}
       </main>
+
+      {/* Bottom Navigation for users */}
+      <BottomNavigation userType={profileType} />
     </div>
   );
 }

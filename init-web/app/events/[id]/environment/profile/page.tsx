@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Camera, Edit2, Check, X } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
 import { matchService } from "../../../../services/match.service";
+import { eventService, CustomField } from "../../../../services/event.service";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -19,10 +20,11 @@ export default function ProfilePage() {
     firstname: string;
     lastname: string;
     age: number;
-    bio: string;
     image: string;
   } | null>(null);
-  const [editedBio, setEditedBio] = useState("");
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
+  const [editedProfilInfo, setEditedProfilInfo] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     const initPage = async () => {
@@ -41,6 +43,7 @@ export default function ProfilePage() {
 
       loadProfile();
       loadMatchStats();
+      loadEventProfile();
     };
 
     initPage();
@@ -70,10 +73,8 @@ export default function ProfilePage() {
           firstname: userData.firstname || "Utilisateur",
           lastname: userData.lastname || "",
           age,
-          bio: "Passionné(e) par les nouvelles rencontres et les événements networking.",
           image: avatarUrl,
         });
-        setEditedBio("Passionné(e) par les nouvelles rencontres et les événements networking.");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -82,12 +83,21 @@ export default function ProfilePage() {
         firstname: "Utilisateur",
         lastname: "",
         age: 25,
-        bio: "Passionné(e) par les nouvelles rencontres et les événements networking.",
         image: "https://ui-avatars.com/api/?name=U&size=400&background=1271FF&color=fff",
       });
-      setEditedBio("Passionné(e) par les nouvelles rencontres et les événements networking.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEventProfile = async () => {
+    try {
+      const data = await eventService.getMyEventProfile(eventId);
+      setCustomFields(data.custom_fields || []);
+      setProfilInfo(data.profil_info || {});
+      setEditedProfilInfo(data.profil_info || {});
+    } catch (error) {
+      console.error("Error loading event profile:", error);
     }
   };
 
@@ -105,19 +115,44 @@ export default function ProfilePage() {
     if (!profile) return;
     setSaving(true);
 
-    // Simulate saving
-    setTimeout(() => {
-      setProfile({ ...profile, bio: editedBio });
+    try {
+      await eventService.updateMyEventProfile(eventId, editedProfilInfo);
+      setProfilInfo(editedProfilInfo);
       setEditing(false);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    } finally {
       setSaving(false);
-    }, 500);
+    }
   };
 
   const handleCancel = () => {
-    if (profile) {
-      setEditedBio(profile.bio);
-    }
+    setEditedProfilInfo(profilInfo);
     setEditing(false);
+  };
+
+  const getFieldValue = (fieldId: string): string => {
+    const value = profilInfo[fieldId];
+    if (value === undefined || value === null) return "";
+    if (Array.isArray(value)) return value.join(", ");
+    return String(value);
+  };
+
+  const getFieldLabel = (field: CustomField, value: unknown): string => {
+    if (field.type === "select" || field.type === "radio") {
+      const option = field.options?.find(o => o.value === value);
+      return option?.label || String(value || "");
+    }
+    if (field.type === "multiselect" && Array.isArray(value)) {
+      return value.map(v => {
+        const option = field.options?.find(o => o.value === v);
+        return option?.label || v;
+      }).join(", ");
+    }
+    if (field.type === "checkbox") {
+      return value ? "Oui" : "Non";
+    }
+    return String(value || "");
   };
 
   if (loading) {
@@ -160,47 +195,187 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile Info Card */}
-        <div className="bg-white/10 rounded-2xl p-5 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-white">À propos</h2>
-            {!editing ? (
-              <button
-                onClick={() => setEditing(true)}
-                className="text-[#1271FF] hover:text-[#0d5dd8] transition-colors"
-              >
-                <Edit2 className="w-5 h-5" />
-              </button>
+        {customFields.length > 0 && (
+          <div className="bg-white/10 rounded-2xl p-5 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-white">Mon profil evenement</h2>
+              {!editing ? (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-[#1271FF] hover:text-[#0d5dd8] transition-colors"
+                >
+                  <Edit2 className="w-5 h-5" />
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-green-400 hover:text-green-300 transition-colors disabled:opacity-50"
+                  >
+                    <Check className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {editing ? (
+              <div className="space-y-4">
+                {customFields.map((field) => (
+                  <div key={field.id}>
+                    <label className="block text-sm text-white/70 mb-2">
+                      {field.label}
+                      {field.required && <span className="text-red-400 ml-1">*</span>}
+                    </label>
+                    {(field.type === "text" || field.type === "email" || field.type === "phone" || field.type === "number") && (
+                      <input
+                        type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                        placeholder={field.placeholder}
+                        value={editedProfilInfo[field.id] !== undefined ? String(editedProfilInfo[field.id]) : ""}
+                        onChange={(e) =>
+                          setEditedProfilInfo((prev) => ({
+                            ...prev,
+                            [field.id]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                    {field.type === "textarea" && (
+                      <textarea
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px]"
+                        placeholder={field.placeholder}
+                        value={(editedProfilInfo[field.id] as string) || ""}
+                        onChange={(e) =>
+                          setEditedProfilInfo((prev) => ({
+                            ...prev,
+                            [field.id]: e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                    {field.type === "date" && (
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                        value={(editedProfilInfo[field.id] as string) || ""}
+                        onChange={(e) =>
+                          setEditedProfilInfo((prev) => ({
+                            ...prev,
+                            [field.id]: e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                    {field.type === "checkbox" && (
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                            editedProfilInfo[field.id] ? "bg-[#1271FF] border-[#1271FF]" : "border-white/40"
+                          }`}
+                          onClick={() =>
+                            setEditedProfilInfo((prev) => ({
+                              ...prev,
+                              [field.id]: !prev[field.id],
+                            }))
+                          }
+                        >
+                          {Boolean(editedProfilInfo[field.id]) && <Check className="w-4 h-4 text-white" />}
+                        </div>
+                      </label>
+                    )}
+                    {(field.type === "radio" || field.type === "select") && (
+                      <div className="space-y-2">
+                        {field.options?.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
+                              editedProfilInfo[field.id] === option.value
+                                ? "bg-[#1271FF] text-white border-[#1271FF]"
+                                : "border-white/20 text-white/80 hover:border-white/40"
+                            }`}
+                            onClick={() =>
+                              setEditedProfilInfo((prev) => ({
+                                ...prev,
+                                [field.id]: option.value,
+                              }))
+                            }
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {field.type === "multiselect" && (
+                      <div className="space-y-2">
+                        {field.options?.map((option) => {
+                          const selectedValues = (editedProfilInfo[field.id] as string[]) || [];
+                          const isSelected = selectedValues.includes(option.value);
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
+                                isSelected
+                                  ? "bg-[#1271FF] text-white border-[#1271FF]"
+                                  : "border-white/20 text-white/80 hover:border-white/40"
+                              }`}
+                              onClick={() => {
+                                setEditedProfilInfo((prev) => {
+                                  const current = (prev[field.id] as string[]) || [];
+                                  const newValues = isSelected
+                                    ? current.filter((v) => v !== option.value)
+                                    : [...current, option.value];
+                                  return {
+                                    ...prev,
+                                    [field.id]: newValues,
+                                  };
+                                });
+                              }}
+                            >
+                              <div
+                                className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                  isSelected ? "bg-white border-white" : "border-white/40"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 text-[#1271FF]" />}
+                              </div>
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="text-green-400 hover:text-green-300 transition-colors disabled:opacity-50"
-                >
-                  <Check className="w-5 h-5" />
-                </button>
+              <div className="space-y-3">
+                {customFields.map((field) => {
+                  const value = profilInfo[field.id];
+                  if (value === undefined || value === null || value === "") return null;
+                  return (
+                    <div key={field.id}>
+                      <p className="text-white/60 text-sm">{field.label}</p>
+                      <p className="text-white">{getFieldLabel(field, value)}</p>
+                    </div>
+                  );
+                })}
+                {customFields.every(f => !profilInfo[f.id]) && (
+                  <p className="text-white/60 italic">Aucune information renseignee</p>
+                )}
               </div>
             )}
           </div>
-          {editing ? (
-            <textarea
-              value={editedBio}
-              onChange={(e) => setEditedBio(e.target.value)}
-              placeholder="Décrivez-vous en quelques mots..."
-              rows={4}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none"
-            />
-          ) : (
-            <p className="text-white/80 leading-relaxed">{profile.bio}</p>
-          )}
-        </div>
+        )}
 
         {/* Stats */}
         <div className="flex justify-center mb-6">

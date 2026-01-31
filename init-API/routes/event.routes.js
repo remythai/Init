@@ -72,6 +72,13 @@ router.delete(
 );
 
 router.get(
+  '/:id/my-profile',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.getMyEventProfile)
+);
+
+router.get(
   '/users/my-events',
   authMiddleware,
   requireRole('user'),

@@ -6,16 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, MapPin, Plus, Edit2, Trash2, X } from "lucide-react";
 import { authService } from "../../../services/auth.service";
-import { eventService, EventResponse } from "../../../services/event.service";
-
-interface CustomField {
-  id: string;
-  type: string;
-  label: string;
-  required?: boolean;
-  placeholder?: string;
-  options?: { label: string; value: string }[];
-}
+import { eventService, EventResponse, CustomField } from "../../../services/event.service";
 
 interface AddressSuggestion {
   place_id: number;
@@ -76,7 +67,7 @@ export default function EditEventPage() {
 
   const themeOptions = ["Professionnel", "Musique", "Sport", "Cafe", "Etudiant", "Fete"];
 
-  const fieldTypes = [
+  const fieldTypes: { value: CustomField['type']; label: string }[] = [
     { value: "text", label: "Texte court" },
     { value: "textarea", label: "Texte long" },
     { value: "number", label: "Nombre" },
@@ -822,14 +813,14 @@ export default function EditEventPage() {
                       value={newOption.value}
                       onChange={(e) => setNewOption({ ...newOption, value: e.target.value })}
                       placeholder="Valeur"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <input
                       type="text"
                       value={newOption.label}
                       onChange={(e) => setNewOption({ ...newOption, label: e.target.value })}
                       placeholder="Label"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <button type="button" onClick={handleAddOption} className="px-3 py-2 bg-[#1271FF] text-white rounded-lg hover:bg-[#0d5dd8]">
                       <Plus className="w-5 h-5" />

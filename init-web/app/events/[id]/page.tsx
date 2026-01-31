@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Calendar, MapPin, Users, Clock, Trash2, Flag, LogIn, X, Edit2, UserCheck } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Clock, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check } from "lucide-react";
 import { authService } from "../../services/auth.service";
 import {
   eventService,
   transformEventResponse,
   Event,
   EventResponse,
+  CustomField,
 } from "../../services/event.service";
 
 export default function EventDetailPage() {
@@ -27,6 +28,9 @@ export default function EventDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const initPage = async () => {
@@ -108,12 +112,80 @@ export default function EventDetailPage() {
     }
   };
 
-  const handleRegister = async () => {
+  const hasRequiredFields = event?.customFields?.some((field) => field.required) ?? false;
+
+  const validateProfilInfo = (): boolean => {
+    if (!event?.customFields || event.customFields.length === 0) return true;
+
+    const errors: Record<string, string> = {};
+
+    event.customFields.forEach((field) => {
+      const value = profilInfo[field.id];
+
+      if (field.required && (value === undefined || value === null || value === "")) {
+        errors[field.id] = `Le champ "${field.label}" est requis`;
+        return;
+      }
+
+      if (!field.required && (value === undefined || value === null || value === "")) {
+        return;
+      }
+
+      if (field.type === "email" && typeof value === "string") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          errors[field.id] = "Email invalide";
+        }
+      }
+
+      if (field.type === "phone" && typeof value === "string") {
+        const phoneRegex = /^[0-9\s\-\+\(\)]+$/;
+        if (!phoneRegex.test(value) || value.replace(/\D/g, "").length < 10) {
+          errors[field.id] = "Numero de telephone invalide";
+        }
+      }
+
+      if (field.type === "number") {
+        const num = Number(value);
+        if (Number.isNaN(num)) {
+          errors[field.id] = "Doit etre un nombre";
+        } else {
+          if (field.min !== undefined && num < field.min) {
+            errors[field.id] = `Minimum ${field.min}`;
+          }
+          if (field.max !== undefined && num > field.max) {
+            errors[field.id] = `Maximum ${field.max}`;
+          }
+        }
+      }
+
+      if (field.pattern && typeof value === "string") {
+        const regex = new RegExp(field.pattern);
+        if (!regex.test(value)) {
+          errors[field.id] = `Format invalide`;
+        }
+      }
+
+      if (field.type === "multiselect" && field.required) {
+        if (!Array.isArray(value) || value.length === 0) {
+          errors[field.id] = "Veuillez selectionner au moins une option";
+        }
+      }
+    });
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const submitRegistration = async (profile: Record<string, unknown>) => {
     if (!event) return;
     setRegistering(true);
 
     try {
-      await eventService.registerToEvent(event.id);
+      await eventService.registerToEvent(event.id, { profil_info: profile });
+      setShowRegistrationModal(false);
+      setProfilInfo({});
+      setFieldErrors({});
       setSuccessMessage("Vous etes maintenant inscrit a cet evenement !");
       await loadEvent(userType);
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -122,6 +194,220 @@ export default function EventDetailPage() {
       setError(message);
     } finally {
       setRegistering(false);
+    }
+  };
+
+  const handleRegisterClick = () => {
+    if (!event) return;
+
+    if (event.customFields && event.customFields.length > 0) {
+      setShowRegistrationModal(true);
+    } else {
+      submitRegistration({});
+    }
+  };
+
+  const handleConfirmProfile = () => {
+    if (!validateProfilInfo()) return;
+    submitRegistration(profilInfo);
+  };
+
+  const renderCustomField = (field: CustomField) => {
+    const errorText = fieldErrors[field.id];
+
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "phone":
+      case "number":
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            <input
+              type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
+              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
+                errorText ? "border-red-500" : "border-gray-200"
+              }`}
+              placeholder={field.placeholder}
+              value={profilInfo[field.id] !== undefined ? String(profilInfo[field.id]) : ""}
+              onChange={(e) =>
+                setProfilInfo((prev) => ({
+                  ...prev,
+                  [field.id]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                }))
+              }
+            />
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      case "textarea":
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            <textarea
+              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] ${
+                errorText ? "border-red-500" : "border-gray-200"
+              }`}
+              placeholder={field.placeholder}
+              value={(profilInfo[field.id] as string) || ""}
+              onChange={(e) =>
+                setProfilInfo((prev) => ({
+                  ...prev,
+                  [field.id]: e.target.value,
+                }))
+              }
+            />
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      case "date":
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            <input
+              type="date"
+              className={`w-full px-4 py-3 border rounded-xl text-[#303030] focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
+                errorText ? "border-red-500" : "border-gray-200"
+              }`}
+              value={(profilInfo[field.id] as string) || ""}
+              onChange={(e) =>
+                setProfilInfo((prev) => ({
+                  ...prev,
+                  [field.id]: e.target.value,
+                }))
+              }
+            />
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      case "checkbox":
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                  profilInfo[field.id] ? "bg-[#303030] border-[#303030]" : "border-gray-300"
+                }`}
+                onClick={() =>
+                  setProfilInfo((prev) => ({
+                    ...prev,
+                    [field.id]: !prev[field.id],
+                  }))
+                }
+              >
+                {Boolean(profilInfo[field.id]) && <Check className="w-4 h-4 text-white" />}
+              </div>
+              <span className="text-sm text-gray-700">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </span>
+            </label>
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      case "radio":
+      case "select":
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {field.placeholder && (
+              <p className="text-xs text-gray-500 mb-2 italic">{field.placeholder}</p>
+            )}
+            <div className="space-y-2">
+              {field.options?.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
+                    profilInfo[field.id] === option.value
+                      ? "bg-[#303030] text-white border-[#303030]"
+                      : "border-gray-200 text-[#303030] hover:border-gray-300"
+                  }`}
+                  onClick={() =>
+                    setProfilInfo((prev) => ({
+                      ...prev,
+                      [field.id]: option.value,
+                    }))
+                  }
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      case "multiselect":
+        const selectedValues = (profilInfo[field.id] as string[]) || [];
+        return (
+          <div key={field.id} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {field.placeholder && (
+              <p className="text-xs text-gray-500 mb-2 italic">{field.placeholder}</p>
+            )}
+            <div className="space-y-2">
+              {field.options?.map((option) => {
+                const isSelected = selectedValues.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
+                      isSelected
+                        ? "bg-[#303030] text-white border-[#303030]"
+                        : "border-gray-200 text-[#303030] hover:border-gray-300"
+                    }`}
+                    onClick={() => {
+                      setProfilInfo((prev) => {
+                        const current = (prev[field.id] as string[]) || [];
+                        const newValues = isSelected
+                          ? current.filter((v) => v !== option.value)
+                          : [...current, option.value];
+                        return {
+                          ...prev,
+                          [field.id]: newValues,
+                        };
+                      });
+                    }}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded border flex items-center justify-center ${
+                        isSelected ? "bg-white border-white" : "border-gray-300"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 text-[#303030]" />}
+                    </div>
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -382,7 +668,7 @@ export default function EventDetailPage() {
           ) : (
             /* User not registered */
             <button
-              onClick={handleRegister}
+              onClick={handleRegisterClick}
               disabled={registering || event.participants >= event.maxParticipants}
               className="w-full py-4 rounded-xl bg-[#303030] text-white font-semibold hover:bg-[#404040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -468,6 +754,48 @@ export default function EventDetailPage() {
                 className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
               >
                 Spam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registration Modal with Custom Fields */}
+      {showRegistrationModal && event?.customFields && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !registering && setShowRegistrationModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl p-6 max-w-md mx-4 w-full max-h-[80vh] flex flex-col">
+            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+              Informations requises pour l'inscription
+            </h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Veuillez remplir les informations demandees par l'organisateur.
+            </p>
+
+            <div className="overflow-y-auto flex-1 pr-2">
+              {event.customFields.map((field) => renderCustomField(field))}
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setShowRegistrationModal(false);
+                  setFieldErrors({});
+                }}
+                disabled={registering}
+                className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmProfile}
+                disabled={registering}
+                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
+              >
+                {registering ? "Validation..." : "Valider et s'inscrire"}
               </button>
             </div>
           </div>

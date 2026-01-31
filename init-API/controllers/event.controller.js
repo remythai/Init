@@ -2,6 +2,7 @@ import { EventModel } from '../models/event.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
 import { UserModel } from '../models/user.model.js';
 import { WhitelistModel } from '../models/whitelist.model.js';
+import { MatchModel } from '../models/match.model.js';
 
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
@@ -251,16 +252,42 @@ export const EventController = {
   
     const registration = await RegistrationModel.create(userId, eventId, profil_info || {});
 
-    // Emit user joined event via Socket.io
-    const user = await UserModel.findById(userId);
+    // Emit user joined event via Socket.io (use getUserBasicInfo to include photos)
+    const userWithPhotos = await MatchModel.getUserBasicInfo(userId);
     emitUserJoinedEvent(eventId, {
-      id: user.id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      photos: user.photos || []
+      id: userWithPhotos.id,
+      firstname: userWithPhotos.firstname,
+      lastname: userWithPhotos.lastname,
+      photos: userWithPhotos.photos || []
     });
 
     return created(res, registration, 'Inscription réussie');
+  },
+
+  async updateRegistration(req, res) {
+    const eventId = req.params.id;
+    const userId = req.user.id;
+    const { profil_info } = req.body;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new NotFoundError('Inscription non trouvée');
+    }
+
+    // Validate custom data if event has custom fields
+    if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
+      if (profil_info && Object.keys(profil_info).length > 0) {
+        validateCustomData(event.custom_fields, profil_info);
+      }
+    }
+
+    const updated = await RegistrationModel.update(userId, eventId, profil_info || {});
+    return success(res, updated, 'Profil mis à jour');
   },
 
   async unregister(req, res) {
@@ -316,6 +343,26 @@ export const EventController = {
       total: events.length,
       limit: filters.limit,
       offset: filters.offset
+    });
+  },
+
+  async getMyEventProfile(req, res) {
+    const eventId = req.params.id;
+    const userId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new NotFoundError('Vous n\'êtes pas inscrit à cet événement');
+    }
+
+    return success(res, {
+      profil_info: registration.profil_info || {},
+      custom_fields: event.custom_fields || []
     });
   }
 };

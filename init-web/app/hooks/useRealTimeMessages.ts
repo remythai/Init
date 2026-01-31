@@ -20,15 +20,16 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
   const { matchId, onNewMessage, onTyping, onConversationUpdate } = options;
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<number[]>([]);
+  const [isReady, setIsReady] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentUserId = useRef<number | null>(null);
-  const isConnected = useRef(false);
   const joinedRooms = useRef<Set<number>>(new Set());
   const mountedRef = useRef(true);
 
   // Initialize connection and get current user
   useEffect(() => {
     mountedRef.current = true;
+    let cleanupFn: (() => void) | undefined;
 
     const init = async () => {
       const token = authService.getToken();
@@ -37,21 +38,7 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
         return;
       }
 
-      // Connect socket if not connected
-      if (!socketService.isConnected()) {
-        console.log('useRealTimeMessages: Connecting socket...');
-        socketService.connect(token);
-      }
-
-      // Wait a bit for connection to establish
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (!mountedRef.current) return;
-
-      isConnected.current = socketService.isConnected();
-      console.log('useRealTimeMessages: Socket connected:', isConnected.current);
-
-      // Get current user ID
+      // Get current user ID first
       try {
         const profile = await authService.getCurrentProfile();
         if (profile && 'id' in profile && mountedRef.current) {
@@ -60,18 +47,56 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
       } catch (error) {
         console.error('useRealTimeMessages: Error getting profile:', error);
       }
+
+      // Connect socket if not connected
+      let socket = socketService.getSocket();
+      if (!socketService.isConnected()) {
+        console.log('useRealTimeMessages: Connecting socket...');
+        socket = socketService.connect(token);
+      }
+
+      // If already connected, set ready immediately
+      if (socketService.isConnected()) {
+        console.log('useRealTimeMessages: Already connected');
+        if (mountedRef.current) setIsReady(true);
+        return;
+      }
+
+      // Wait for connection event
+      const handleConnect = () => {
+        if (mountedRef.current) {
+          console.log('useRealTimeMessages: Socket connected via event');
+          setIsReady(true);
+        }
+      };
+
+      socket?.on('connect', handleConnect);
+
+      // Also check after a delay as fallback
+      const timeout = setTimeout(() => {
+        if (mountedRef.current && socketService.isConnected()) {
+          console.log('useRealTimeMessages: Socket ready (fallback check)');
+          setIsReady(true);
+        }
+      }, 1000);
+
+      cleanupFn = () => {
+        socket?.off('connect', handleConnect);
+        clearTimeout(timeout);
+      };
     };
 
     init();
 
     return () => {
       mountedRef.current = false;
+      cleanupFn?.();
     };
   }, []);
 
   // Join/leave chat room when matchId changes
   useEffect(() => {
-    if (!matchId || !isConnected.current) return;
+    if (!matchId || !isReady) return;
 
     // Leave previous rooms
     joinedRooms.current.forEach((roomId) => {
@@ -93,11 +118,11 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
         joinedRooms.current.delete(matchId);
       }
     };
-  }, [matchId]);
+  }, [matchId, isReady]);
 
   // Listen for new messages
   useEffect(() => {
-    if (!isConnected.current) return;
+    if (!isReady) return;
 
     const unsubscribe = socketService.onNewMessage((data: SocketMessage) => {
       // Don't process messages sent by current user (already added locally)
@@ -115,11 +140,11 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
     });
 
     return unsubscribe;
-  }, [matchId, onNewMessage]);
+  }, [matchId, onNewMessage, isReady]);
 
   // Listen for typing indicators
   useEffect(() => {
-    if (!isConnected.current) return;
+    if (!isReady) return;
 
     const unsubscribe = socketService.onTyping((data: SocketTyping) => {
       if (data.matchId !== matchId) return;
@@ -139,20 +164,22 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
     });
 
     return unsubscribe;
-  }, [matchId, onTyping]);
+  }, [matchId, onTyping, isReady]);
 
   // Listen for conversation updates (for conversation list)
   useEffect(() => {
-    if (!isConnected.current) return;
+    if (!isReady) return;
 
+    console.log('useRealTimeMessages: Setting up conversationUpdate listener');
     const unsubscribe = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      console.log('useRealTimeMessages: Received conversationUpdate', data);
       if (onConversationUpdate) {
         onConversationUpdate(data);
       }
     });
 
     return unsubscribe;
-  }, [onConversationUpdate]);
+  }, [onConversationUpdate, isReady]);
 
   // Send typing indicator with debounce
   const sendTyping = useCallback((typing: boolean) => {

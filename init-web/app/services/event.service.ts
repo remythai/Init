@@ -23,12 +23,21 @@ export interface EventResponse {
   orga_name?: string;
 }
 
+export interface CustomFieldOption {
+  value: string;
+  label: string;
+}
+
 export interface CustomField {
   id: string;
-  type: string;
+  type: 'text' | 'textarea' | 'number' | 'email' | 'phone' | 'date' | 'checkbox' | 'radio' | 'select' | 'multiselect';
   label: string;
   required?: boolean;
-  options?: { label: string; value: string }[];
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  options?: CustomFieldOption[];
 }
 
 export interface EventListResponse {
@@ -49,6 +58,7 @@ export interface Event {
   image: string;
   description?: string;
   isRegistered?: boolean;
+  customFields?: CustomField[];
 }
 
 class EventService {
@@ -267,6 +277,38 @@ class EventService {
       throw new Error(error.error || error.message || 'Erreur lors de la suppression');
     }
   }
+
+  async getMyEventProfile(eventId: string): Promise<{
+    profil_info: Record<string, unknown>;
+    custom_fields: CustomField[];
+  }> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/my-profile`
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la recuperation du profil');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async updateMyEventProfile(eventId: string, profilInfo: Record<string, unknown>): Promise<void> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/register`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ profil_info: profilInfo }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la mise a jour du profil');
+    }
+  }
 }
 
 // Utility functions
@@ -336,6 +378,7 @@ export function transformEventResponse(event: EventResponse): Event {
     image: getDefaultImage(theme),
     description: event.description,
     isRegistered: event.is_registered,
+    customFields: event.custom_fields,
   };
 }
 

@@ -10,7 +10,9 @@ import {
   eventService,
   transformEventResponses,
   Event,
+  CustomField,
 } from "../services/event.service";
+import BottomNavigation from "../components/BottomNavigation";
 
 export default function EventsPage() {
   const router = useRouter();
@@ -70,15 +72,6 @@ export default function EventsPage() {
   // Success message
   const [successMessage, setSuccessMessage] = useState("");
 
-  interface CustomField {
-    id: string;
-    type: string;
-    label: string;
-    required?: boolean;
-    placeholder?: string;
-    options?: { label: string; value: string }[];
-  }
-
   interface AddressSuggestion {
     place_id: number;
     display_name: string;
@@ -95,7 +88,7 @@ export default function EventsPage() {
     };
   }
 
-  const fieldTypes = [
+  const fieldTypes: { value: CustomField['type']; label: string }[] = [
     { value: "text", label: "Texte court" },
     { value: "textarea", label: "Texte long" },
     { value: "number", label: "Nombre" },
@@ -662,7 +655,7 @@ export default function EventsPage() {
 
       {/* Filter Tabs (for users) */}
       {userType === "user" && (
-        <div className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
+        <div className="fixed bottom-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
           <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg flex max-w-md mx-auto">
             <button
               onClick={() => setActiveFilter("all")}
@@ -1393,7 +1386,7 @@ export default function EventsPage() {
                         setNewOption({ ...newOption, value: e.target.value })
                       }
                       placeholder="Valeur"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <input
                       type="text"
@@ -1402,7 +1395,7 @@ export default function EventsPage() {
                         setNewOption({ ...newOption, label: e.target.value })
                       }
                       placeholder="Label"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <button
                       type="button"
@@ -1444,6 +1437,9 @@ export default function EventsPage() {
           </div>
         </div>
       )}
+
+      {/* Bottom Navigation for users */}
+      <BottomNavigation userType={userType} />
     </div>
   );
 }
