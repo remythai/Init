@@ -4,6 +4,7 @@ export const MatchModel = {
   /**
    * Get profiles to swipe for a given event
    * Excludes: self, already swiped profiles
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getProfilesToSwipe(userId, eventId, limit = 10) {
     const result = await pool.query(
@@ -14,8 +15,17 @@ export const MatchModel = {
         u.birthday,
         uer.profil_info,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $1
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $1
+                ))
+              )
+          ),
           '[]'::json
         ) as photos
       FROM user_event_rel uer
@@ -106,6 +116,7 @@ export const MatchModel = {
 
   /**
    * Get all matches for a user on a specific event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getMatchesByEvent(userId, eventId) {
     const result = await pool.query(
@@ -118,8 +129,17 @@ export const MatchModel = {
         u.birthday,
         uer.profil_info,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $2
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                ))
+              )
+          ),
           '[]'::json
         ) as photos
       FROM matches m
@@ -302,6 +322,7 @@ export const MatchModel = {
 
   /**
    * Get conversations for a specific event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getConversationsByEvent(userId, eventId) {
     const result = await pool.query(
@@ -312,8 +333,17 @@ export const MatchModel = {
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $2
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                ))
+              )
+          ),
           '[]'::json
         ) as photos,
         (
@@ -355,6 +385,7 @@ export const MatchModel = {
 
   /**
    * Get all conversations grouped by event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getAllConversations(userId) {
     const result = await pool.query(
@@ -367,8 +398,17 @@ export const MatchModel = {
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = m.event_id
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = m.event_id
+                ))
+              )
+          ),
           '[]'::json
         ) as photos,
         (

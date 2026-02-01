@@ -6,6 +6,8 @@ import { Camera, Edit2, Check, X } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
 import { matchService } from "../../../../services/match.service";
 import { eventService, CustomField } from "../../../../services/event.service";
+import { Photo, photoService } from "../../../../services/photo.service";
+import PhotoManager from "../../../../components/PhotoManager";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -25,6 +27,7 @@ export default function ProfilePage() {
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
   const [editedProfilInfo, setEditedProfilInfo] = useState<Record<string, unknown>>({});
+  const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
 
   useEffect(() => {
     const initPage = async () => {
@@ -44,6 +47,7 @@ export default function ProfilePage() {
       loadProfile();
       loadMatchStats();
       loadEventProfile();
+      loadEventPhotos();
     };
 
     initPage();
@@ -99,6 +103,21 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Error loading event profile:", error);
     }
+  };
+
+  const loadEventPhotos = async () => {
+    try {
+      const photos = await photoService.getPhotos(eventId);
+      const primary = photoService.getPrimaryPhoto(photos);
+      setPrimaryPhoto(primary);
+    } catch (error) {
+      console.error("Error loading event photos:", error);
+    }
+  };
+
+  const handlePhotosChange = (photos: Photo[]) => {
+    const primary = photoService.getPrimaryPhoto(photos);
+    setPrimaryPhoto(primary);
   };
 
   const loadMatchStats = async () => {
@@ -180,14 +199,19 @@ export default function ProfilePage() {
         {/* Profile Header */}
         <div className="text-center mb-6">
           <div className="relative inline-block">
-            <img
-              src={profile.image}
-              alt={profile.firstname}
-              className="w-32 h-32 rounded-full object-cover border-4 border-white/20"
-            />
-            <button className="absolute bottom-0 right-0 w-10 h-10 bg-[#1271FF] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-[#0d5dd8] transition-colors">
-              <Camera className="w-5 h-5" />
-            </button>
+            {primaryPhoto ? (
+              <img
+                src={photoService.getPhotoUrl(primaryPhoto.file_path)}
+                alt={profile.firstname}
+                className="w-32 h-32 rounded-full object-cover border-4 border-white/20"
+              />
+            ) : (
+              <img
+                src={profile.image}
+                alt={profile.firstname}
+                className="w-32 h-32 rounded-full object-cover border-4 border-white/20"
+              />
+            )}
           </div>
           <h1 className="font-poppins text-2xl font-bold text-white mt-4">
             {profile.firstname} {profile.lastname}, {profile.age}
@@ -376,6 +400,17 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* Photos */}
+        <div className="bg-white/10 rounded-2xl p-5 mb-4">
+          <h2 className="font-semibold text-white mb-4">Mes photos</h2>
+          <PhotoManager
+            eventId={eventId}
+            showCopyFromGeneral={true}
+            onPhotosChange={handlePhotosChange}
+            darkMode={true}
+          />
+        </div>
 
         {/* Stats */}
         <div className="flex justify-center mb-6">

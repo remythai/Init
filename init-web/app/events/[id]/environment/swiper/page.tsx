@@ -9,6 +9,8 @@ import { matchService, Profile } from "../../../../services/match.service";
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
 const ROTATION_FACTOR = 0.15; // Rotation based on drag distance
 
@@ -303,7 +305,12 @@ export default function SwiperPage() {
 
   const getProfileImage = (profile: Profile, index: number = 0): string => {
     if (profile.photos && profile.photos.length > index && profile.photos[index].file_path) {
-      return profile.photos[index].file_path;
+      const filePath = profile.photos[index].file_path;
+      // If the file_path is a relative path, prepend API_URL
+      if (filePath.startsWith('/')) {
+        return `${API_URL}${filePath}`;
+      }
+      return filePath;
     }
     return `https://ui-avatars.com/api/?name=${profile.firstname}+${profile.lastname}&size=400&background=1271FF&color=fff`;
   };
@@ -470,16 +477,26 @@ export default function SwiperPage() {
                       </div>
 
                       {/* Touch zones for image navigation */}
-                      {currentProfile.photos && currentProfile.photos.length > 1 && !dragState?.isDragging && (
+                      {currentProfile.photos && currentProfile.photos.length > 1 && (
                         <>
                           <button
-                            onClick={handlePreviousImage}
-                            className="absolute left-0 top-0 bottom-0 w-1/2 z-10 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!dragState?.isDragging) handlePreviousImage();
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"
                             aria-label="Image precedente"
                           />
                           <button
-                            onClick={handleNextImage}
-                            className="absolute right-0 top-0 bottom-0 w-1/2 z-10 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!dragState?.isDragging) handleNextImage();
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className="absolute right-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"
                             aria-label="Image suivante"
                           />
                         </>
