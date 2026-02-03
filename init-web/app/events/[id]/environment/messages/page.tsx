@@ -32,7 +32,7 @@ export default function MessagesPage() {
   const searchParams = useSearchParams();
   const eventId = params.id as string;
   const initialMatchId = searchParams.get("match");
-  const { markConversationAsRead } = useUnreadMessagesContext();
+  const { markConversationAsRead, setActiveConversation } = useUnreadMessagesContext();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +45,8 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isArchived, setIsArchived] = useState(false);
+  const [isEventExpired, setIsEventExpired] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<number | null>(null);
@@ -61,10 +63,20 @@ export default function MessagesPage() {
         messages: [...prev.messages, message],
       };
     });
-  }, []);
+
+    // Mark messages as read in the database (since we're viewing this conversation)
+    if (selectedMatchId) {
+      matchService.markConversationMessagesAsRead(selectedMatchId).catch(console.error);
+    }
+  }, [selectedMatchId]);
 
   // Handler for conversation updates (new messages in other conversations)
   const handleConversationUpdate = useCallback((data: SocketConversationUpdate) => {
+    // If this is the currently selected conversation, mark as read in context
+    if (selectedMatchId === data.match_id) {
+      markConversationAsRead(data.match_id);
+    }
+
     setConversations((prev) => {
       // Find and update the conversation
       const updatedConversations = prev.map((conv) => {
@@ -87,7 +99,7 @@ export default function MessagesPage() {
 
       return updatedConversations;
     });
-  }, [selectedMatchId]);
+  }, [selectedMatchId, markConversationAsRead]);
 
   // Use real-time messages hook
   const { typingUsers, sendTyping } = useRealTimeMessages({
@@ -124,6 +136,9 @@ export default function MessagesPage() {
   }, [eventId]);
 
   useEffect(() => {
+    // Set active conversation in context (to prevent marking new messages as unread)
+    setActiveConversation(selectedMatchId);
+
     if (selectedMatchId) {
       loadMessages(selectedMatchId);
 
@@ -139,7 +154,14 @@ export default function MessagesPage() {
         )
       );
     }
-  }, [selectedMatchId, markConversationAsRead]);
+
+    // Cleanup: clear active conversation when unmounting or changing
+    return () => {
+      if (selectedMatchId) {
+        setActiveConversation(null);
+      }
+    };
+  }, [selectedMatchId, markConversationAsRead, setActiveConversation]);
 
   useEffect(() => {
     scrollToBottom();
@@ -158,7 +180,11 @@ export default function MessagesPage() {
 
       // If we have an initial match ID, select it
       if (initialMatchId && !selectedMatchId) {
-        setSelectedMatchId(parseInt(initialMatchId));
+        const matchIdNum = parseInt(initialMatchId);
+        setSelectedMatchId(matchIdNum);
+        const selectedConv = (data.conversations || []).find((c: Conversation) => c.match_id === matchIdNum);
+        setIsArchived(selectedConv?.is_archived || false);
+        setIsEventExpired(selectedConv?.is_event_expired || false);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
@@ -181,7 +207,7 @@ export default function MessagesPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedMatchId || sending) return;
+    if (!newMessage.trim() || !selectedMatchId || sending || isArchived || isEventExpired) return;
 
     setSending(true);
     try {
@@ -318,10 +344,14 @@ export default function MessagesPage() {
               {conversations.map((conv) => (
                 <button
                   key={conv.match_id}
-                  onClick={() => setSelectedMatchId(conv.match_id)}
+                  onClick={() => {
+                    setSelectedMatchId(conv.match_id);
+                    setIsArchived(conv.is_archived || false);
+                    setIsEventExpired(conv.is_event_expired || false);
+                  }}
                   className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left ${
                     selectedMatchId === conv.match_id ? "bg-white/10" : ""
-                  }`}
+                  } ${conv.is_archived ? "opacity-60" : ""}`}
                 >
                   <div className="relative">
                     <img
@@ -477,28 +507,42 @@ export default function MessagesPage() {
 
             {/* Input */}
             <div className="flex-shrink-0 bg-white border-t p-4">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value);
-                    sendTyping(e.target.value.length > 0);
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                  onBlur={() => sendTyping(false)}
-                  placeholder="Écrivez un message..."
-                  maxLength={500}
-                  className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030]"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || sending}
-                  className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#0d5dd8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
+              {isArchived ? (
+                <div className="bg-red-50 rounded-xl px-4 py-3 text-center">
+                  <p className="text-red-600 text-sm">
+                    Vous avez ete retire de cet evenement par l'organisateur
+                  </p>
+                </div>
+              ) : isEventExpired ? (
+                <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
+                  <p className="text-orange-600 text-sm">
+                    La periode de disponibilite de cet evenement est terminee
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      sendTyping(e.target.value.length > 0);
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                    onBlur={() => sendTyping(false)}
+                    placeholder="Écrivez un message..."
+                    maxLength={500}
+                    className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030]"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim() || sending}
+                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#0d5dd8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (

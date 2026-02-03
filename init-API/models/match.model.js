@@ -329,6 +329,7 @@ export const MatchModel = {
       `SELECT
         m.id as match_id,
         m.created_at as match_created_at,
+        m.is_archived,
         u.id as user_id,
         u.firstname,
         u.lastname,
@@ -393,7 +394,9 @@ export const MatchModel = {
         m.id as match_id,
         m.event_id,
         e.name as event_name,
+        e.app_end_at,
         m.created_at as match_created_at,
+        m.is_archived,
         u.id as user_id,
         u.firstname,
         u.lastname,
@@ -444,6 +447,78 @@ export const MatchModel = {
         m.created_at
       ) DESC`,
       [userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Archive all matches for a user in a specific event
+   */
+  async archiveUserMatchesInEvent(userId, eventId) {
+    const result = await pool.query(
+      `UPDATE matches
+       SET is_archived = true
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Unarchive all matches for a user in a specific event
+   */
+  async unarchiveUserMatchesInEvent(userId, eventId) {
+    const result = await pool.query(
+      `UPDATE matches
+       SET is_archived = false
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Delete all matches for a user in a specific event (and their messages)
+   */
+  async deleteUserMatchesInEvent(userId, eventId) {
+    // First get match IDs to delete messages
+    const matchesResult = await pool.query(
+      `SELECT id FROM matches
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)`,
+      [eventId, userId]
+    );
+    const matchIds = matchesResult.rows.map(m => m.id);
+
+    // Delete messages for these matches
+    if (matchIds.length > 0) {
+      await pool.query(
+        `DELETE FROM messages WHERE match_id = ANY($1)`,
+        [matchIds]
+      );
+    }
+
+    // Delete matches
+    const result = await pool.query(
+      `DELETE FROM matches
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Delete all likes (swipes) for a user in a specific event
+   */
+  async deleteUserLikesInEvent(userId, eventId) {
+    // Delete likes where user is liker or liked
+    const result = await pool.query(
+      `DELETE FROM likes
+       WHERE event_id = $1 AND (liker_id = $2 OR liked_id = $2)
+       RETURNING id`,
+      [eventId, userId]
     );
     return result.rows;
   }

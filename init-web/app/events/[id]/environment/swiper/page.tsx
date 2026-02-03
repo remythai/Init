@@ -3,15 +3,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Heart, Sparkles, User, UserPlus } from "lucide-react";
+import { X, Heart, Sparkles, User, UserPlus, Clock } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
-import { matchService, Profile } from "../../../../services/match.service";
+import { matchService, Profile, ApiError } from "../../../../services/match.service";
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
+
+// Convert field ID (slug) to readable label
+const formatFieldLabel = (fieldId: string): string => {
+  return fieldId
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 const ROTATION_FACTOR = 0.15; // Rotation based on drag distance
 
 export default function SwiperPage() {
@@ -24,6 +31,8 @@ export default function SwiperPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isEventExpired, setIsEventExpired] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [showMatch, setShowMatch] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [matchId, setMatchId] = useState<number | null>(null);
@@ -120,11 +129,19 @@ export default function SwiperPage() {
     try {
       setLoading(true);
       setError("");
+      setIsEventExpired(false);
+      setIsBlocked(false);
       const data = await matchService.getProfilesToSwipe(eventId, 20);
       setProfiles(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur lors du chargement";
-      setError(message);
+      if (err instanceof ApiError && err.code === 'EVENT_EXPIRED') {
+        setIsEventExpired(true);
+      } else if (err instanceof ApiError && err.code === 'USER_BLOCKED') {
+        setIsBlocked(true);
+      } else {
+        const message = err instanceof Error ? err.message : "Erreur lors du chargement";
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -167,6 +184,13 @@ export default function SwiperPage() {
       }
     } catch (err: unknown) {
       console.error("Swipe error:", err);
+      // Handle event expiry during swipe
+      if (err instanceof ApiError && err.code === 'EVENT_EXPIRED') {
+        setIsEventExpired(true);
+        setSwiping(false);
+        setExitingCard(null);
+        return;
+      }
     }
 
     // Wait for animation to complete
@@ -337,6 +361,54 @@ export default function SwiperPage() {
           >
             Réessayer
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+        <div className="text-center p-8 max-w-md">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-[#303030] mb-3">
+            Accès bloqué
+          </h2>
+          <p className="text-[#6B7280] mb-6">
+            Vous avez été retiré de cet événement par l'organisateur.
+          </p>
+          <Link
+            href={`/events/${eventId}/environment/messages`}
+            className="inline-block bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+          >
+            Voir mes conversations
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEventExpired) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+        <div className="text-center p-8 max-w-md">
+          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Clock className="w-10 h-10 text-orange-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-[#303030] mb-3">
+            Événement terminé
+          </h2>
+          <p className="text-[#6B7280] mb-6">
+            La période de disponibilité de cet événement est terminée. Vous ne pouvez plus découvrir de nouveaux profils.
+          </p>
+          <Link
+            href={`/events/${eventId}/environment/messages`}
+            className="inline-block bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+          >
+            Voir mes conversations
+          </Link>
         </div>
       </div>
     );
@@ -727,7 +799,7 @@ export default function SwiperPage() {
                       if (Array.isArray(value)) {
                         return (
                           <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200">
-                            <p className="text-sm font-semibold text-[#303030] mb-2">{key}</p>
+                            <p className="text-sm font-semibold text-[#303030] mb-2">{formatFieldLabel(key)}</p>
                             <div className="flex flex-wrap gap-2">
                               {value.map((item, idx) => (
                                 <span
@@ -745,7 +817,7 @@ export default function SwiperPage() {
                       // Handle regular values
                       return (
                         <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200">
-                          <p className="text-sm font-semibold text-[#303030] mb-1">{key}</p>
+                          <p className="text-sm font-semibold text-[#303030] mb-1">{formatFieldLabel(key)}</p>
                           <p className="text-[#4B5563]">{String(value)}</p>
                         </div>
                       );

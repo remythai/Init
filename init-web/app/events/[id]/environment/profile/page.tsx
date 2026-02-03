@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Camera, Edit2, Check, X } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
 import { matchService } from "../../../../services/match.service";
-import { eventService, CustomField } from "../../../../services/event.service";
+import { eventService, CustomField, getFieldId, getFieldPlaceholder } from "../../../../services/event.service";
 import { Photo, photoService } from "../../../../services/photo.service";
 import PhotoManager from "../../../../components/PhotoManager";
 
@@ -123,7 +123,11 @@ export default function ProfilePage() {
   const loadMatchStats = async () => {
     try {
       const data = await matchService.getAllMatches();
-      setMatchCount(data.total || 0);
+      // Filtrer les matchs pour cet événement uniquement
+      const eventMatches = data.by_event?.find(
+        (e) => String(e.event.id) === eventId
+      );
+      setMatchCount(eventMatches?.matches?.length || 0);
     } catch (error) {
       console.error("Error loading match stats:", error);
       setMatchCount(0);
@@ -157,16 +161,13 @@ export default function ProfilePage() {
     return String(value);
   };
 
-  const getFieldLabel = (field: CustomField, value: unknown): string => {
+  const getFieldDisplayValue = (field: CustomField, value: unknown): string => {
     if (field.type === "select" || field.type === "radio") {
-      const option = field.options?.find(o => o.value === value);
-      return option?.label || String(value || "");
+      // Options sont maintenant des strings simples
+      return String(value || "");
     }
     if (field.type === "multiselect" && Array.isArray(value)) {
-      return value.map(v => {
-        const option = field.options?.find(o => o.value === v);
-        return option?.label || v;
-      }).join(", ");
+      return value.join(", ");
     }
     if (field.type === "checkbox") {
       return value ? "Oui" : "Non";
@@ -218,6 +219,25 @@ export default function ProfilePage() {
           </h1>
         </div>
 
+        {/* Photos */}
+        <div className="bg-white/10 rounded-2xl p-5 mb-4">
+          <h2 className="font-semibold text-white mb-4">Mes photos</h2>
+          <PhotoManager
+            eventId={eventId}
+            showCopyFromGeneral={true}
+            onPhotosChange={handlePhotosChange}
+            darkMode={true}
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="flex justify-center mb-4">
+          <div className="bg-white/10 rounded-2xl p-4 text-center min-w-[140px]">
+            <p className="text-3xl font-bold text-white">{matchCount}</p>
+            <p className="text-white/60 text-sm">Matchs sur cet evenement</p>
+          </div>
+        </div>
+
         {/* Profile Info Card */}
         {customFields.length > 0 && (
           <div className="bg-white/10 rounded-2xl p-5 mb-4">
@@ -252,9 +272,11 @@ export default function ProfilePage() {
 
             {editing ? (
               <div className="space-y-4">
-                {customFields.map((field) => (
-                  <div key={field.id}>
-                    <label className="block text-sm text-white/70 mb-2">
+                {customFields.map((field) => {
+                  const fieldId = getFieldId(field.label);
+                  return (
+                  <div key={fieldId}>
+                    <label className="block text-base font-semibold text-white mb-2">
                       {field.label}
                       {field.required && <span className="text-red-400 ml-1">*</span>}
                     </label>
@@ -262,12 +284,12 @@ export default function ProfilePage() {
                       <input
                         type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
                         className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                        placeholder={field.placeholder}
-                        value={editedProfilInfo[field.id] !== undefined ? String(editedProfilInfo[field.id]) : ""}
+                        placeholder={getFieldPlaceholder(field)}
+                        value={editedProfilInfo[fieldId] !== undefined ? String(editedProfilInfo[fieldId]) : ""}
                         onChange={(e) =>
                           setEditedProfilInfo((prev) => ({
                             ...prev,
-                            [field.id]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                            [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
                           }))
                         }
                       />
@@ -275,12 +297,12 @@ export default function ProfilePage() {
                     {field.type === "textarea" && (
                       <textarea
                         className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px]"
-                        placeholder={field.placeholder}
-                        value={(editedProfilInfo[field.id] as string) || ""}
+                        placeholder={getFieldPlaceholder(field)}
+                        value={(editedProfilInfo[fieldId] as string) || ""}
                         onChange={(e) =>
                           setEditedProfilInfo((prev) => ({
                             ...prev,
-                            [field.id]: e.target.value,
+                            [fieldId]: e.target.value,
                           }))
                         }
                       />
@@ -289,11 +311,11 @@ export default function ProfilePage() {
                       <input
                         type="date"
                         className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                        value={(editedProfilInfo[field.id] as string) || ""}
+                        value={(editedProfilInfo[fieldId] as string) || ""}
                         onChange={(e) =>
                           setEditedProfilInfo((prev) => ({
                             ...prev,
-                            [field.id]: e.target.value,
+                            [fieldId]: e.target.value,
                           }))
                         }
                       />
@@ -302,16 +324,16 @@ export default function ProfilePage() {
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div
                           className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                            editedProfilInfo[field.id] ? "bg-[#1271FF] border-[#1271FF]" : "border-white/40"
+                            editedProfilInfo[fieldId] ? "bg-[#1271FF] border-[#1271FF]" : "border-white/40"
                           }`}
                           onClick={() =>
                             setEditedProfilInfo((prev) => ({
                               ...prev,
-                              [field.id]: !prev[field.id],
+                              [fieldId]: !prev[fieldId],
                             }))
                           }
                         >
-                          {Boolean(editedProfilInfo[field.id]) && <Check className="w-4 h-4 text-white" />}
+                          {Boolean(editedProfilInfo[fieldId]) && <Check className="w-4 h-4 text-white" />}
                         </div>
                       </label>
                     )}
@@ -319,21 +341,21 @@ export default function ProfilePage() {
                       <div className="space-y-2">
                         {field.options?.map((option) => (
                           <button
-                            key={option.value}
+                            key={option}
                             type="button"
                             className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
-                              editedProfilInfo[field.id] === option.value
+                              editedProfilInfo[fieldId] === option
                                 ? "bg-[#1271FF] text-white border-[#1271FF]"
                                 : "border-white/20 text-white/80 hover:border-white/40"
                             }`}
                             onClick={() =>
                               setEditedProfilInfo((prev) => ({
                                 ...prev,
-                                [field.id]: option.value,
+                                [fieldId]: option,
                               }))
                             }
                           >
-                            {option.label}
+                            {option}
                           </button>
                         ))}
                       </div>
@@ -341,11 +363,11 @@ export default function ProfilePage() {
                     {field.type === "multiselect" && (
                       <div className="space-y-2">
                         {field.options?.map((option) => {
-                          const selectedValues = (editedProfilInfo[field.id] as string[]) || [];
-                          const isSelected = selectedValues.includes(option.value);
+                          const selectedValues = (editedProfilInfo[fieldId] as string[]) || [];
+                          const isSelected = selectedValues.includes(option);
                           return (
                             <button
-                              key={option.value}
+                              key={option}
                               type="button"
                               className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
                                 isSelected
@@ -354,13 +376,13 @@ export default function ProfilePage() {
                               }`}
                               onClick={() => {
                                 setEditedProfilInfo((prev) => {
-                                  const current = (prev[field.id] as string[]) || [];
+                                  const current = (prev[fieldId] as string[]) || [];
                                   const newValues = isSelected
-                                    ? current.filter((v) => v !== option.value)
-                                    : [...current, option.value];
+                                    ? current.filter((v) => v !== option)
+                                    : [...current, option];
                                   return {
                                     ...prev,
-                                    [field.id]: newValues,
+                                    [fieldId]: newValues,
                                   };
                                 });
                               }}
@@ -372,53 +394,36 @@ export default function ProfilePage() {
                               >
                                 {isSelected && <Check className="w-3 h-3 text-[#1271FF]" />}
                               </div>
-                              {option.label}
+                              {option}
                             </button>
                           );
                         })}
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="space-y-3">
                 {customFields.map((field) => {
-                  const value = profilInfo[field.id];
+                  const fieldId = getFieldId(field.label);
+                  const value = profilInfo[fieldId];
                   if (value === undefined || value === null || value === "") return null;
                   return (
-                    <div key={field.id}>
+                    <div key={fieldId}>
                       <p className="text-white/60 text-sm">{field.label}</p>
-                      <p className="text-white">{getFieldLabel(field, value)}</p>
+                      <p className="text-white">{getFieldDisplayValue(field, value)}</p>
                     </div>
                   );
                 })}
-                {customFields.every(f => !profilInfo[f.id]) && (
+                {customFields.every(f => !profilInfo[getFieldId(f.label)]) && (
                   <p className="text-white/60 italic">Aucune information renseignee</p>
                 )}
               </div>
             )}
           </div>
         )}
-
-        {/* Photos */}
-        <div className="bg-white/10 rounded-2xl p-5 mb-4">
-          <h2 className="font-semibold text-white mb-4">Mes photos</h2>
-          <PhotoManager
-            eventId={eventId}
-            showCopyFromGeneral={true}
-            onPhotosChange={handlePhotosChange}
-            darkMode={true}
-          />
-        </div>
-
-        {/* Stats */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white/10 rounded-2xl p-4 text-center min-w-[140px]">
-            <p className="text-3xl font-bold text-white">{matchCount}</p>
-            <p className="text-white/60 text-sm">Matchs</p>
-          </div>
-        </div>
 
         {/* Tips */}
         <div className="bg-[#1271FF]/20 rounded-2xl p-5">

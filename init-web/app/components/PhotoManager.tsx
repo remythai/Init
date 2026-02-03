@@ -6,12 +6,11 @@ import {
   Plus,
   Trash2,
   Star,
-  ChevronUp,
-  ChevronDown,
   X,
   Copy,
   Loader2,
   AlertCircle,
+  GripVertical,
 } from "lucide-react";
 
 interface PhotoManagerProps {
@@ -40,6 +39,10 @@ export default function PhotoManager({
   const [copying, setCopying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   useEffect(() => {
     loadPhotos();
   }, [eventId]);
@@ -52,7 +55,6 @@ export default function PhotoManager({
       setPhotos(data);
       onPhotosChange?.(data);
 
-      // Load general photos if we need copy functionality
       if (showCopyFromGeneral && eventId) {
         const general = await photoService.getPhotos();
         setGeneralPhotos(general);
@@ -69,20 +71,17 @@ export default function PhotoManager({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
-      setError("Veuillez sélectionner une image");
+      setError("Veuillez selectionner une image");
       return;
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setError("L'image ne doit pas dépasser 5 Mo");
+      setError("L'image ne doit pas depasser 5 Mo");
       return;
     }
 
@@ -119,26 +118,143 @@ export default function PhotoManager({
     try {
       setError("");
       await photoService.setPrimaryPhoto(photo.id);
-      // Reload to get updated primary status
       await loadPhotos();
     } catch (err) {
       console.error("Error setting primary:", err);
-      setError(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
+      setError(err instanceof Error ? err.message : "Erreur lors de la mise a jour");
     }
   };
 
-  const handleMove = async (photo: Photo, direction: "up" | "down") => {
-    const index = photos.findIndex((p) => p.id === photo.id);
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === photos.length - 1)
-    ) {
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+    // Add a slight delay to show the dragging state
+    setTimeout(() => {
+      (e.target as HTMLElement).style.opacity = "0.5";
+    }, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = "1";
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedIndex !== null && index !== draggedIndex) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
       return;
     }
 
-    const newIndex = direction === "up" ? index - 1 : index + 1;
+    // Reorder locally first for immediate feedback
     const newPhotos = [...photos];
-    [newPhotos[index], newPhotos[newIndex]] = [newPhotos[newIndex], newPhotos[index]];
+    const [draggedPhoto] = newPhotos.splice(draggedIndex, 1);
+    newPhotos.splice(dropIndex, 0, draggedPhoto);
+    setPhotos(newPhotos);
+    setDraggedIndex(null);
+
+    // Then sync with server
+    try {
+      setError("");
+      const photoIds = newPhotos.map((p) => p.id);
+      const reordered = await photoService.reorderPhotos(photoIds, eventId);
+      setPhotos(reordered);
+      onPhotosChange?.(reordered);
+    } catch (err) {
+      console.error("Error reordering:", err);
+      setError(err instanceof Error ? err.message : "Erreur lors de la reorganisation");
+      // Revert on error
+      await loadPhotos();
+    }
+  };
+
+  // Touch drag support
+  const touchState = useRef<{
+    startY: number;
+    startX: number;
+    index: number;
+    element: HTMLElement | null;
+    clone: HTMLElement | null;
+  } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    const touch = e.touches[0];
+    const target = e.currentTarget as HTMLElement;
+
+    touchState.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      index,
+      element: target,
+      clone: null,
+    };
+
+    setDraggedIndex(index);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchState.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchState.current.startX;
+    const deltaY = touch.clientY - touchState.current.startY;
+
+    // Only start drag if moved enough
+    if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
+
+    e.preventDefault();
+
+    // Find which photo we're over
+    const elements = document.querySelectorAll('[data-photo-index]');
+    elements.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const idx = parseInt(el.getAttribute('data-photo-index') || '-1');
+      if (
+        touch.clientX >= rect.left &&
+        touch.clientX <= rect.right &&
+        touch.clientY >= rect.top &&
+        touch.clientY <= rect.bottom &&
+        idx !== touchState.current?.index
+      ) {
+        setDragOverIndex(idx);
+      }
+    });
+  };
+
+  const handleTouchEnd = async () => {
+    if (!touchState.current) return;
+
+    const fromIndex = touchState.current.index;
+    const toIndex = dragOverIndex;
+
+    touchState.current = null;
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    if (toIndex === null || fromIndex === toIndex) return;
+
+    // Reorder
+    const newPhotos = [...photos];
+    const [draggedPhoto] = newPhotos.splice(fromIndex, 1);
+    newPhotos.splice(toIndex, 0, draggedPhoto);
+    setPhotos(newPhotos);
 
     try {
       setError("");
@@ -148,7 +264,8 @@ export default function PhotoManager({
       onPhotosChange?.(reordered);
     } catch (err) {
       console.error("Error reordering:", err);
-      setError(err instanceof Error ? err.message : "Erreur lors de la réorganisation");
+      setError(err instanceof Error ? err.message : "Erreur lors de la reorganisation");
+      await loadPhotos();
     }
   };
 
@@ -207,6 +324,13 @@ export default function PhotoManager({
         </div>
       )}
 
+      {/* Instructions */}
+      {photos.length > 1 && (
+        <p className={`text-xs ${textMuted}`}>
+          Glissez-deposez pour reorganiser. La premiere photo est votre photo principale.
+        </p>
+      )}
+
       {/* Copy from general button */}
       {showCopyFromGeneral && eventId && generalPhotos.length > 0 && (
         <button
@@ -223,28 +347,58 @@ export default function PhotoManager({
         {photos.map((photo, index) => (
           <div
             key={photo.id}
-            className={`relative aspect-square rounded-xl overflow-hidden ${cardBg} group`}
+            data-photo-index={index}
+            draggable
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, index)}
+            onTouchStart={(e) => handleTouchStart(e, index)}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className={`relative aspect-square rounded-xl overflow-hidden ${cardBg} group cursor-grab active:cursor-grabbing transition-all duration-200 ${
+              draggedIndex === index ? "opacity-50 scale-95" : ""
+            } ${
+              dragOverIndex === index
+                ? "ring-2 ring-[#1271FF] ring-offset-2 scale-105"
+                : ""
+            }`}
           >
             <img
               src={photoService.getPhotoUrl(photo.file_path)}
               alt={`Photo ${index + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover pointer-events-none"
+              draggable={false}
             />
 
+            {/* Position number */}
+            <div className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{index + 1}</span>
+            </div>
+
             {/* Primary badge */}
-            {photo.is_primary && (
+            {index === 0 && (
               <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-yellow-500 text-white text-xs rounded-full">
                 <Star className="w-3 h-3 fill-current" />
                 <span>Principale</span>
               </div>
             )}
 
+            {/* Drag handle indicator */}
+            <div className="absolute bottom-2 left-2 p-1.5 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="w-4 h-4 text-white" />
+            </div>
+
             {/* Actions overlay */}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-              {/* Set primary */}
-              {!photo.is_primary && (
+              {/* Set as primary (move to first position) */}
+              {index > 0 && (
                 <button
-                  onClick={() => handleSetPrimary(photo)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSetPrimary(photo);
+                  }}
                   className="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600 transition-colors"
                   title="Definir comme principale"
                 >
@@ -252,31 +406,12 @@ export default function PhotoManager({
                 </button>
               )}
 
-              {/* Move up */}
-              {index > 0 && (
-                <button
-                  onClick={() => handleMove(photo, "up")}
-                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-                  title="Monter"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Move down */}
-              {index < photos.length - 1 && (
-                <button
-                  onClick={() => handleMove(photo, "down")}
-                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-                  title="Descendre"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              )}
-
               {/* Delete */}
               <button
-                onClick={() => setDeleteModalPhoto(photo)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteModalPhoto(photo);
+                }}
                 className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                 title="Supprimer"
               >

@@ -84,7 +84,14 @@ class SocketService {
    * Connect to the WebSocket server
    */
   connect(token: string): Socket {
-    if (this.socket?.connected) {
+    // If socket exists and is connected or connecting, return it
+    if (this.socket) {
+      // Update auth token in case it changed
+      this.socket.auth = { token };
+
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
       return this.socket;
     }
 

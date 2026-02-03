@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Calendar, MapPin, Users, Clock, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check, Camera, Shield, Ban } from "lucide-react";
 import { authService } from "../../services/auth.service";
 import {
   eventService,
@@ -12,7 +12,10 @@ import {
   Event,
   EventResponse,
   CustomField,
+  getFieldId,
+  getFieldPlaceholder,
 } from "../../services/event.service";
+import PhotoManager from "../../components/PhotoManager";
 
 export default function EventDetailPage() {
   const router = useRouter();
@@ -29,8 +32,31 @@ export default function EventDetailPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState<"profile" | "photos">("profile");
   const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Refs for dynamic height calculation
+  const headerRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(56);
+  const [footerHeight, setFooterHeight] = useState(100);
+
+  // Measure header and footer heights dynamically
+  useEffect(() => {
+    const updateHeights = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+      if (footerRef.current) {
+        setFooterHeight(footerRef.current.offsetHeight);
+      }
+    };
+
+    updateHeights();
+    window.addEventListener('resize', updateHeights);
+    return () => window.removeEventListener('resize', updateHeights);
+  }, [event, userType]);
 
   useEffect(() => {
     const initPage = async () => {
@@ -120,10 +146,11 @@ export default function EventDetailPage() {
     const errors: Record<string, string> = {};
 
     event.customFields.forEach((field) => {
-      const value = profilInfo[field.id];
+      const fieldId = getFieldId(field.label);
+      const value = profilInfo[fieldId];
 
       if (field.required && (value === undefined || value === null || value === "")) {
-        errors[field.id] = `Le champ "${field.label}" est requis`;
+        errors[fieldId] = `Le champ "${field.label}" est requis`;
         return;
       }
 
@@ -134,27 +161,27 @@ export default function EventDetailPage() {
       if (field.type === "email" && typeof value === "string") {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
-          errors[field.id] = "Email invalide";
+          errors[fieldId] = "Email invalide";
         }
       }
 
       if (field.type === "phone" && typeof value === "string") {
         const phoneRegex = /^[0-9\s\-\+\(\)]+$/;
         if (!phoneRegex.test(value) || value.replace(/\D/g, "").length < 10) {
-          errors[field.id] = "Numero de telephone invalide";
+          errors[fieldId] = "Numero de telephone invalide";
         }
       }
 
       if (field.type === "number") {
         const num = Number(value);
         if (Number.isNaN(num)) {
-          errors[field.id] = "Doit etre un nombre";
+          errors[fieldId] = "Doit etre un nombre";
         } else {
           if (field.min !== undefined && num < field.min) {
-            errors[field.id] = `Minimum ${field.min}`;
+            errors[fieldId] = `Minimum ${field.min}`;
           }
           if (field.max !== undefined && num > field.max) {
-            errors[field.id] = `Maximum ${field.max}`;
+            errors[fieldId] = `Maximum ${field.max}`;
           }
         }
       }
@@ -162,13 +189,13 @@ export default function EventDetailPage() {
       if (field.pattern && typeof value === "string") {
         const regex = new RegExp(field.pattern);
         if (!regex.test(value)) {
-          errors[field.id] = `Format invalide`;
+          errors[fieldId] = `Format invalide`;
         }
       }
 
       if (field.type === "multiselect" && field.required) {
         if (!Array.isArray(value) || value.length === 0) {
-          errors[field.id] = "Veuillez selectionner au moins une option";
+          errors[fieldId] = "Veuillez selectionner au moins une option";
         }
       }
     });
@@ -183,12 +210,11 @@ export default function EventDetailPage() {
 
     try {
       await eventService.registerToEvent(event.id, { profil_info: profile });
-      setShowRegistrationModal(false);
       setProfilInfo({});
       setFieldErrors({});
-      setSuccessMessage("Vous etes maintenant inscrit a cet evenement !");
+      // Passer à l'étape photos au lieu de fermer
+      setRegistrationStep("photos");
       await loadEvent(userType);
-      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors de l'inscription";
       setError(message);
@@ -197,23 +223,29 @@ export default function EventDetailPage() {
     }
   };
 
+  const finishRegistration = () => {
+    setShowRegistrationModal(false);
+    setRegistrationStep("profile");
+    setSuccessMessage("Vous etes maintenant inscrit a cet evenement !");
+    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
   const handleRegisterClick = () => {
     if (!event) return;
-
-    if (event.customFields && event.customFields.length > 0) {
-      setShowRegistrationModal(true);
-    } else {
-      submitRegistration({});
-    }
+    setRegistrationStep("profile");
+    setShowRegistrationModal(true);
   };
 
   const handleConfirmProfile = () => {
-    if (!validateProfilInfo()) return;
-    submitRegistration(profilInfo);
+    // Si pas de champs personnalisés ou validation OK, soumettre
+    if (!event?.customFields || event.customFields.length === 0 || validateProfilInfo()) {
+      submitRegistration(profilInfo);
+    }
   };
 
   const renderCustomField = (field: CustomField) => {
-    const errorText = fieldErrors[field.id];
+    const fieldId = getFieldId(field.label);
+    const errorText = fieldErrors[fieldId];
 
     switch (field.type) {
       case "text":
@@ -221,8 +253,8 @@ export default function EventDetailPage() {
       case "phone":
       case "number":
         return (
-          <div key={field.id} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div key={fieldId} className="mb-4">
+            <label className="block text-base font-semibold text-[#303030] mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -231,12 +263,12 @@ export default function EventDetailPage() {
               className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
-              placeholder={field.placeholder}
-              value={profilInfo[field.id] !== undefined ? String(profilInfo[field.id]) : ""}
+              placeholder={getFieldPlaceholder(field)}
+              value={profilInfo[fieldId] !== undefined ? String(profilInfo[fieldId]) : ""}
               onChange={(e) =>
                 setProfilInfo((prev) => ({
                   ...prev,
-                  [field.id]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                  [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
                 }))
               }
             />
@@ -246,8 +278,8 @@ export default function EventDetailPage() {
 
       case "textarea":
         return (
-          <div key={field.id} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div key={fieldId} className="mb-4">
+            <label className="block text-base font-semibold text-[#303030] mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -255,12 +287,12 @@ export default function EventDetailPage() {
               className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] ${
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
-              placeholder={field.placeholder}
-              value={(profilInfo[field.id] as string) || ""}
+              placeholder={getFieldPlaceholder(field)}
+              value={(profilInfo[fieldId] as string) || ""}
               onChange={(e) =>
                 setProfilInfo((prev) => ({
                   ...prev,
-                  [field.id]: e.target.value,
+                  [fieldId]: e.target.value,
                 }))
               }
             />
@@ -270,8 +302,8 @@ export default function EventDetailPage() {
 
       case "date":
         return (
-          <div key={field.id} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div key={fieldId} className="mb-4">
+            <label className="block text-base font-semibold text-[#303030] mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -280,11 +312,11 @@ export default function EventDetailPage() {
               className={`w-full px-4 py-3 border rounded-xl text-[#303030] focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
-              value={(profilInfo[field.id] as string) || ""}
+              value={(profilInfo[fieldId] as string) || ""}
               onChange={(e) =>
                 setProfilInfo((prev) => ({
                   ...prev,
-                  [field.id]: e.target.value,
+                  [fieldId]: e.target.value,
                 }))
               }
             />
@@ -294,22 +326,22 @@ export default function EventDetailPage() {
 
       case "checkbox":
         return (
-          <div key={field.id} className="mb-4">
+          <div key={fieldId} className="mb-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <div
                 className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                  profilInfo[field.id] ? "bg-[#303030] border-[#303030]" : "border-gray-300"
+                  profilInfo[fieldId] ? "bg-[#303030] border-[#303030]" : "border-gray-300"
                 }`}
                 onClick={() =>
                   setProfilInfo((prev) => ({
                     ...prev,
-                    [field.id]: !prev[field.id],
+                    [fieldId]: !prev[fieldId],
                   }))
                 }
               >
-                {Boolean(profilInfo[field.id]) && <Check className="w-4 h-4 text-white" />}
+                {Boolean(profilInfo[fieldId]) && <Check className="w-4 h-4 text-white" />}
               </div>
-              <span className="text-sm text-gray-700">
+              <span className="text-base font-semibold text-[#303030]">
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </span>
@@ -321,32 +353,29 @@ export default function EventDetailPage() {
       case "radio":
       case "select":
         return (
-          <div key={field.id} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div key={fieldId} className="mb-4">
+            <label className="block text-base font-semibold text-[#303030] mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            {field.placeholder && (
-              <p className="text-xs text-gray-500 mb-2 italic">{field.placeholder}</p>
-            )}
             <div className="space-y-2">
               {field.options?.map((option) => (
                 <button
-                  key={option.value}
+                  key={option}
                   type="button"
                   className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
-                    profilInfo[field.id] === option.value
+                    profilInfo[fieldId] === option
                       ? "bg-[#303030] text-white border-[#303030]"
                       : "border-gray-200 text-[#303030] hover:border-gray-300"
                   }`}
                   onClick={() =>
                     setProfilInfo((prev) => ({
                       ...prev,
-                      [field.id]: option.value,
+                      [fieldId]: option,
                     }))
                   }
                 >
-                  {option.label}
+                  {option}
                 </button>
               ))}
             </div>
@@ -355,22 +384,19 @@ export default function EventDetailPage() {
         );
 
       case "multiselect":
-        const selectedValues = (profilInfo[field.id] as string[]) || [];
+        const selectedValues = (profilInfo[fieldId] as string[]) || [];
         return (
-          <div key={field.id} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div key={fieldId} className="mb-4">
+            <label className="block text-base font-semibold text-[#303030] mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            {field.placeholder && (
-              <p className="text-xs text-gray-500 mb-2 italic">{field.placeholder}</p>
-            )}
             <div className="space-y-2">
               {field.options?.map((option) => {
-                const isSelected = selectedValues.includes(option.value);
+                const isSelected = selectedValues.includes(option);
                 return (
                   <button
-                    key={option.value}
+                    key={option}
                     type="button"
                     className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
                       isSelected
@@ -379,13 +405,13 @@ export default function EventDetailPage() {
                     }`}
                     onClick={() => {
                       setProfilInfo((prev) => {
-                        const current = (prev[field.id] as string[]) || [];
+                        const current = (prev[fieldId] as string[]) || [];
                         const newValues = isSelected
-                          ? current.filter((v) => v !== option.value)
-                          : [...current, option.value];
+                          ? current.filter((v) => v !== option)
+                          : [...current, option];
                         return {
                           ...prev,
-                          [field.id]: newValues,
+                          [fieldId]: newValues,
                         };
                       });
                     }}
@@ -397,7 +423,7 @@ export default function EventDetailPage() {
                     >
                       {isSelected && <Check className="w-3 h-3 text-[#303030]" />}
                     </div>
-                    {option.label}
+                    {option}
                   </button>
                 );
               })}
@@ -483,7 +509,7 @@ export default function EventDetailPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header - Like mobile _layout.tsx */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => router.push("/events")}
@@ -518,7 +544,7 @@ export default function EventDetailPage() {
       )}
 
       {/* Main Content - Same for both users and organizers like mobile */}
-      <main className="pt-14 pb-24">
+      <main style={{ paddingTop: headerHeight, paddingBottom: footerHeight }}>
         <div className="max-w-4xl mx-auto">
           {/* Event Image */}
           <div className="relative h-64">
@@ -544,27 +570,34 @@ export default function EventDetailPage() {
 
             {/* Info Cards - Like mobile EventDetails.tsx */}
             <div className="space-y-4 mb-6">
-              <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                <Calendar className="w-5 h-5 text-[#303030] mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm text-[#303030]">Date</p>
-                  <p className="text-sm text-gray-600">{event.date}</p>
-                </div>
-              </div>
+              {/* Physical event date and location (if exists) */}
+              {event.hasPhysicalEvent && (
+                <>
+                  <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
+                    <Calendar className="w-5 h-5 text-[#303030] mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-[#303030]">Date de l'evenement</p>
+                      <p className="text-sm text-gray-600">{event.physicalDate}</p>
+                    </div>
+                  </div>
 
-              <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                <Clock className="w-5 h-5 text-[#303030] mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm text-[#303030]">Heure</p>
-                  <p className="text-sm text-gray-600">18:00 - 22:00</p>
-                </div>
-              </div>
+                  <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
+                    <MapPin className="w-5 h-5 text-[#303030] mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-[#303030]">Lieu</p>
+                      <p className="text-sm text-gray-600">{event.location || 'Lieu a confirmer'}</p>
+                    </div>
+                  </div>
+                </>
+              )}
 
-              <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                <MapPin className="w-5 h-5 text-[#303030] mt-0.5" />
+              {/* App availability dates (always shown) */}
+              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl">
+                <Calendar className="w-5 h-5 text-[#1271FF] mt-0.5" />
                 <div>
-                  <p className="font-semibold text-sm text-[#303030]">Lieu</p>
-                  <p className="text-sm text-gray-600">{event.location}</p>
+                  <p className="font-semibold text-sm text-[#303030]">Disponibilite de l'app</p>
+                  <p className="text-sm text-gray-600">{event.appDate}</p>
+                  <p className="text-xs text-[#1271FF] mt-1">Periode pour swiper, matcher et discuter</p>
                 </div>
               </div>
 
@@ -594,31 +627,35 @@ export default function EventDetailPage() {
                 A propos de l'evenement
               </h2>
               <p className="text-gray-600 leading-relaxed">
-                {event.description || "Rejoignez-nous pour un moment unique de partage et de rencontre. Cet evenement est l'occasion parfaite pour elargir votre reseau et faire de nouvelles connexions dans une ambiance conviviale et decontractee."}
+                {event.description}
               </p>
             </div>
 
             {/* Organizer Section */}
-            <div className="mb-6">
-              <h2 className="font-semibold text-lg text-[#303030] mb-3">
-                Organisateur
-              </h2>
-              <div className="flex items-center gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                <div className="w-12 h-12 rounded-full bg-[#F5F5F5] border-2 border-[#303030] flex items-center justify-center">
-                  <span className="font-semibold text-xl text-[#303030]">O</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-[#303030]">Organisation Init</p>
-                  <p className="text-xs text-gray-600">Organisateur verifie</p>
+            {event.orgaName && (
+              <div className="mb-6">
+                <h2 className="font-semibold text-lg text-[#303030] mb-3">
+                  Organisateur
+                </h2>
+                <div className="flex items-center gap-3 p-4 bg-[#F5F5F5] rounded-xl">
+                  <div className="w-12 h-12 rounded-full bg-[#1271FF] flex items-center justify-center">
+                    <span className="font-semibold text-xl text-white">
+                      {event.orgaName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#303030]">{event.orgaName}</p>
+                    <p className="text-xs text-gray-600">Organisateur</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>
 
       {/* Fixed Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-6">
+      <div ref={footerRef} className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-6">
         <div className="max-w-4xl mx-auto">
           {userType === "orga" ? (
             /* Organizer actions - Modify, Delete, View Participants */
@@ -638,12 +675,42 @@ export default function EventDetailPage() {
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
+              <div className="flex gap-3">
+                <Link
+                  href={`/events/${eventId}/participants`}
+                  className={`${event.hasWhitelist ? "flex-1" : "w-full"} flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors`}
+                >
+                  <UserCheck className="w-5 h-5" />
+                  Participants ({event.participants})
+                </Link>
+                {event.hasWhitelist && (
+                  <Link
+                    href={`/events/${eventId}/whitelist`}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    <Shield className="w-5 h-5" />
+                    Whitelist
+                  </Link>
+                )}
+              </div>
+            </div>
+          ) : event.isBlocked ? (
+            /* User is blocked from this event */
+            <div className="space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-red-600 font-semibold mb-2">
+                  <Ban className="w-5 h-5" />
+                  Accès bloqué
+                </div>
+                <p className="text-red-600 text-sm">
+                  Vous avez été retiré de cet événement par l'organisateur
+                </p>
+              </div>
               <Link
-                href={`/events/${eventId}/participants`}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                href={`/events/${eventId}/environment/messages`}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors"
               >
-                <UserCheck className="w-5 h-5" />
-                Voir les participants ({event.participants})
+                Voir mes conversations (lecture seule)
               </Link>
             </div>
           ) : event.isRegistered ? (
@@ -760,44 +827,91 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* Registration Modal with Custom Fields */}
-      {showRegistrationModal && event?.customFields && (
+      {/* Registration Modal */}
+      {showRegistrationModal && event && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => !registering && setShowRegistrationModal(false)}
+            onClick={() => !registering && registrationStep === "profile" && setShowRegistrationModal(false)}
           />
           <div className="relative bg-white rounded-2xl p-6 max-w-md mx-4 w-full max-h-[80vh] flex flex-col">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
-              Informations requises pour l'inscription
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Veuillez remplir les informations demandees par l'organisateur.
-            </p>
+            {registrationStep === "profile" ? (
+              <>
+                <h3 className="font-semibold text-lg text-[#303030] mb-2">
+                  {event.customFields && event.customFields.length > 0
+                    ? "Informations pour l'inscription"
+                    : "Confirmer l'inscription"}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {event.customFields && event.customFields.length > 0
+                    ? "Veuillez remplir les informations demandees par l'organisateur."
+                    : "Vous allez vous inscrire a cet evenement."}
+                </p>
 
-            <div className="overflow-y-auto flex-1 pr-2">
-              {event.customFields.map((field) => renderCustomField(field))}
-            </div>
+                {event.customFields && event.customFields.length > 0 && (
+                  <div className="overflow-y-auto flex-1 pr-2">
+                    {event.customFields.map((field) => renderCustomField(field))}
+                  </div>
+                )}
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => {
-                  setShowRegistrationModal(false);
-                  setFieldErrors({});
-                }}
-                disabled={registering}
-                className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirmProfile}
-                disabled={registering}
-                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
-              >
-                {registering ? "Validation..." : "Valider et s'inscrire"}
-              </button>
-            </div>
+                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      setShowRegistrationModal(false);
+                      setFieldErrors({});
+                    }}
+                    disabled={registering}
+                    className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleConfirmProfile}
+                    disabled={registering}
+                    className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
+                  >
+                    {registering ? "Inscription..." : "Continuer"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <Check className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg text-[#303030]">
+                    Inscription reussie !
+                  </h3>
+                </div>
+                <p className="text-gray-600 text-sm mb-4">
+                  Ajoutez des photos pour que les autres participants puissent vous decouvrir.
+                </p>
+
+                <div className="overflow-y-auto flex-1 pr-2">
+                  <PhotoManager
+                    eventId={eventId}
+                    showCopyFromGeneral={true}
+                    maxPhotos={6}
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={finishRegistration}
+                    className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Plus tard
+                  </button>
+                  <button
+                    onClick={finishRegistration}
+                    className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors"
+                  >
+                    Terminer
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

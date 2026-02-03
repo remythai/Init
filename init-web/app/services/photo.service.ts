@@ -62,16 +62,28 @@ class PhotoService {
       formData.append('isPrimary', String(isPrimary));
     }
 
-    const response = await fetch(`${API_URL}/api/users/photos`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Do NOT set Content-Type - browser sets it with boundary for FormData
-      },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/api/users/photos`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Do NOT set Content-Type - browser sets it with boundary for FormData
+        },
+        body: formData,
+      });
+    } catch (networkError) {
+      console.error('Network error during upload:', networkError);
+      throw new Error('Impossible de contacter le serveur. Vérifiez votre connexion.');
+    }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError);
+      throw new Error('Réponse invalide du serveur');
+    }
 
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Erreur lors de l\'upload');

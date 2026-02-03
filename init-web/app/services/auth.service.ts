@@ -313,7 +313,7 @@ class AuthService {
   }
 
   async validateAndGetUserType(): Promise<'user' | 'orga' | null> {
-    const token = this.getToken();
+    let token = this.getToken();
     const userType = this.getUserType();
 
     if (!token || !userType) {
@@ -325,9 +325,26 @@ class AuthService {
     try {
       // Validate token by calling the appropriate endpoint
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      let response = await fetch(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // If token expired, try to refresh
+      if (response.status === 401) {
+        console.log('Token expired, attempting refresh...');
+        token = await this.refreshAccessToken();
+
+        if (token) {
+          // Retry with new token
+          response = await fetch(`${API_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } else {
+          console.log('Failed to refresh token');
+          this.clearAuth();
+          return null;
+        }
+      }
 
       if (!response.ok) {
         console.log('Token invalid for userType:', userType);
@@ -407,7 +424,7 @@ class AuthService {
   }
 
   async validateToken(): Promise<boolean> {
-    const token = this.getToken();
+    let token = this.getToken();
 
     if (!token) {
       console.log('No token found');
@@ -423,9 +440,25 @@ class AuthService {
       }
 
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      let response = await fetch(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // If token expired, try to refresh
+      if (response.status === 401) {
+        console.log('Token expired, attempting refresh...');
+        token = await this.refreshAccessToken();
+
+        if (token) {
+          response = await fetch(`${API_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } else {
+          console.log('Failed to refresh token');
+          this.clearAuth();
+          return false;
+        }
+      }
 
       if (!response.ok) {
         console.log('Token invalid, clearing auth');

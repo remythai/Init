@@ -10,6 +10,7 @@ interface UnreadMessagesContextType {
   hasUnreadGeneral: boolean;
   hasUnreadForEvent: (eventId: string) => boolean;
   markConversationAsRead: (matchId: number) => void;
+  setActiveConversation: (matchId: number | null) => void;
   refresh: () => void;
 }
 
@@ -22,6 +23,9 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
 
   // Mapping match_id -> event_id for real-time updates
   const matchToEventMap = useRef<Map<number, string>>(new Map());
+
+  // Track the currently active/viewed conversation
+  const activeConversationRef = useRef<number | null>(null);
 
   // Load unread status from API
   const loadUnreadStatus = useCallback(async () => {
@@ -77,12 +81,17 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     const token = authService.getToken();
     if (!token) return;
 
-    if (!socketService.isConnected()) {
-      socketService.connect(token);
-    }
+    // Connect to socket
+    const socket = socketService.connect(token);
 
-    const unsubscribe = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+    // Handler for conversation updates
+    const handleConversationUpdate = (data: SocketConversationUpdate) => {
       const matchId = data.match_id;
+
+      // Don't mark as unread if this is the currently active conversation
+      if (activeConversationRef.current === matchId) {
+        return;
+      }
 
       // Add this match to unread set
       setUnreadMatchIds((prev) => new Set([...prev, matchId]));
@@ -98,9 +107,14 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
           return newMap;
         });
       }
-    });
+    };
 
-    return unsubscribe;
+    // Subscribe to conversation updates
+    socket.on('chat:conversationUpdate', handleConversationUpdate);
+
+    return () => {
+      socket.off('chat:conversationUpdate', handleConversationUpdate);
+    };
   }, []);
 
   // Mark a conversation as read
@@ -128,6 +142,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Set the active conversation (to prevent marking new messages as unread)
+  const setActiveConversation = useCallback((matchId: number | null) => {
+    activeConversationRef.current = matchId;
+  }, []);
+
   // Check if there are unread messages for a specific event
   const hasUnreadForEvent = useCallback((eventId: string) => {
     return eventUnreadMap.has(eventId);
@@ -137,6 +156,7 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     hasUnreadGeneral: unreadMatchIds.size > 0,
     hasUnreadForEvent,
     markConversationAsRead,
+    setActiveConversation,
     refresh: loadUnreadStatus,
   };
 

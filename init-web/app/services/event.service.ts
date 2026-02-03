@@ -6,14 +6,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 export interface EventResponse {
   id: number;
   name: string;
-  location: string;
+  location?: string;
   max_participants: number;
   event_date: string | null;
-  start_at?: string;
-  end_at?: string;
+  start_at?: string;  // Physical event start
+  end_at?: string;    // Physical event end
+  app_start_at?: string;  // App availability start
+  app_end_at?: string;    // App availability end
+  theme?: string;  // Event theme
   description?: string;
   participant_count?: number | string;
   is_registered?: boolean;
+  is_blocked?: boolean;
   is_public?: boolean;
   has_whitelist?: boolean;
   has_link_access?: boolean;
@@ -23,21 +27,42 @@ export interface EventResponse {
   orga_name?: string;
 }
 
-export interface CustomFieldOption {
-  value: string;
-  label: string;
-}
-
 export interface CustomField {
-  id: string;
+  label: string;  // Question/label affiché et utilisé comme identifiant
   type: 'text' | 'textarea' | 'number' | 'email' | 'phone' | 'date' | 'checkbox' | 'radio' | 'select' | 'multiselect';
-  label: string;
   required?: boolean;
-  placeholder?: string;
   min?: number;
   max?: number;
   pattern?: string;
-  options?: CustomFieldOption[];
+  options?: string[];  // Liste simple de choix pour radio/select/multiselect
+}
+
+// Génère un placeholder par défaut basé sur le type de champ
+export function getFieldPlaceholder(field: CustomField): string {
+  switch (field.type) {
+    case 'email':
+      return 'exemple@email.com';
+    case 'phone':
+      return '06 12 34 56 78';
+    case 'number':
+      return '0';
+    case 'textarea':
+      return 'Votre réponse...';
+    case 'text':
+    default:
+      return 'Votre réponse';
+  }
+}
+
+// Génère un identifiant stable à partir du label
+export function getFieldId(label: string): string {
+  return label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // Supprime les accents
+    .replace(/[^a-z0-9\s]/g, '')       // Supprime les caractères spéciaux
+    .trim()
+    .replace(/\s+/g, '_');             // Remplace espaces par underscore
 }
 
 export interface EventListResponse {
@@ -51,14 +76,26 @@ export interface Event {
   id: string;
   name: string;
   theme: string;
-  date: string;
-  location: string;
+  // Physical event (optional)
+  physicalDate: string;  // Formatted date string for display
+  startAt?: string;  // ISO date string
+  endAt?: string;  // ISO date string
+  location?: string;
+  hasPhysicalEvent: boolean;
+  // App availability (required)
+  appDate: string;  // Formatted date string for display
+  appStartAt: string;  // ISO date string
+  appEndAt: string;  // ISO date string
+  // Other
   participants: number;
   maxParticipants: number;
   image: string;
   description?: string;
   isRegistered?: boolean;
+  isBlocked?: boolean;
   customFields?: CustomField[];
+  orgaName?: string;
+  hasWhitelist?: boolean;
 }
 
 class EventService {
@@ -180,9 +217,15 @@ class EventService {
   async createEvent(eventData: {
     name: string;
     description?: string;
-    start_at: string;
-    end_at: string;
-    location: string;
+    // Physical event (optional)
+    start_at?: string;
+    end_at?: string;
+    location?: string;
+    // App availability (required)
+    app_start_at: string;
+    app_end_at: string;
+    // Theme
+    theme?: string;
     max_participants?: number;
     is_public?: boolean;
     has_whitelist?: boolean;
@@ -235,9 +278,13 @@ class EventService {
   async updateEvent(eventId: string, updates: Partial<{
     name: string;
     description: string;
+    // Physical event (optional)
     start_at: string;
     end_at: string;
     location: string;
+    // App availability (required)
+    app_start_at: string;
+    app_end_at: string;
     max_participants: number;
     is_public: boolean;
     has_whitelist: boolean;
@@ -309,6 +356,57 @@ class EventService {
       throw new Error(error.error || error.message || 'Erreur lors de la mise a jour du profil');
     }
   }
+
+  async getBlockedUsers(eventId: string): Promise<BlockedUser[]> {
+    const response = await authService.authenticatedFetch(`/api/events/${eventId}/blocked`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la récupération des utilisateurs bloqués');
+    }
+
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  async unblockUser(eventId: string, userId: number): Promise<void> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/blocked/${userId}`,
+      { method: 'DELETE' }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors du déblocage');
+    }
+  }
+
+  async removeParticipant(eventId: string, userId: number, action: 'block' | 'delete' = 'block'): Promise<void> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/participants/${userId}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ action })
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la suppression du participant');
+    }
+  }
+}
+
+export interface BlockedUser {
+  id: number;
+  event_id: number;
+  user_id: number;
+  blocked_at: string;
+  reason: string | null;
+  firstname: string;
+  lastname: string;
+  mail: string;
+  tel: string;
 }
 
 // Utility functions
@@ -323,6 +421,29 @@ export function formatEventDate(isoDate: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+export function formatEventDateRange(startAt: string | null | undefined, endAt: string | null | undefined): string {
+  if (!startAt) return 'Date à confirmer';
+
+  const start = new Date(startAt);
+  const end = endAt ? new Date(endAt) : null;
+
+  const formatTime = (date: Date) => date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (date: Date) => date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Same day
+  if (end && start.toDateString() === end.toDateString()) {
+    return `${formatDate(start)}, ${formatTime(start)} - ${formatTime(end)}`;
+  }
+
+  // Multiple days
+  if (end) {
+    return `Du ${formatDate(start)} à ${formatTime(start)} au ${formatDate(end)} à ${formatTime(end)}`;
+  }
+
+  // Only start date
+  return `${formatDate(start)} à ${formatTime(start)}`;
 }
 
 export function inferTheme(name: string, description?: string): string {
@@ -364,13 +485,25 @@ export function getDefaultImage(theme: string): string {
 }
 
 export function transformEventResponse(event: EventResponse): Event {
-  const theme = inferTheme(event.name, event.description);
+  // Use theme from backend if available, otherwise infer from name/description
+  const theme = event.theme || inferTheme(event.name, event.description);
+  const hasPhysicalEvent = !!(event.start_at || event.location);
+
   return {
     id: String(event.id),
     name: event.name,
     theme,
-    date: formatEventDate(event.event_date || event.start_at || null),
-    location: event.location || 'Lieu à confirmer',
+    // Physical event (optional)
+    physicalDate: formatEventDateRange(event.start_at, event.end_at),
+    startAt: event.start_at || undefined,
+    endAt: event.end_at || undefined,
+    location: event.location || undefined,
+    hasPhysicalEvent,
+    // App availability (required)
+    appDate: formatEventDateRange(event.app_start_at, event.app_end_at),
+    appStartAt: event.app_start_at || '',
+    appEndAt: event.app_end_at || '',
+    // Other
     participants: typeof event.participant_count === 'string'
       ? parseInt(event.participant_count, 10)
       : event.participant_count || 0,
@@ -378,7 +511,10 @@ export function transformEventResponse(event: EventResponse): Event {
     image: getDefaultImage(theme),
     description: event.description,
     isRegistered: event.is_registered,
+    isBlocked: event.is_blocked,
     customFields: event.custom_fields,
+    orgaName: event.orga_name,
+    hasWhitelist: event.has_whitelist,
   };
 }
 
