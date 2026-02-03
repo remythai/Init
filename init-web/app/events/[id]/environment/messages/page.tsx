@@ -800,49 +800,48 @@ export default function MessagesPage() {
 
                 {/* Profile info */}
                 <div className="p-4 overflow-y-auto max-h-[40vh]">
-                  {/* Bio */}
-                  {profileData.profil_info && (profileData.profil_info as { bio?: string }).bio && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">À propos</h3>
-                      <p className="text-[#303030]">{(profileData.profil_info as { bio?: string }).bio}</p>
-                    </div>
-                  )}
+                  {profileData.profil_info && Object.keys(profileData.profil_info).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(profileData.profil_info).map(([key, value]) => {
+                        // Skip if value is empty, null, or an empty array
+                        if (!value || (Array.isArray(value) && value.length === 0)) return null;
 
-                  {/* Interests */}
-                  {profileData.profil_info && (profileData.profil_info as { interests?: string[] }).interests && (profileData.profil_info as { interests?: string[] }).interests!.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Centres d'intérêt</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {(profileData.profil_info as { interests?: string[] }).interests!.map((interest, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1.5 bg-[#1271FF]/10 text-[#1271FF] rounded-full text-sm font-medium"
-                          >
-                            {interest}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        // Format field label (convert snake_case to readable)
+                        const formatLabel = (fieldId: string): string => {
+                          return fieldId
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, (c) => c.toUpperCase());
+                        };
 
-                  {/* Custom fields */}
-                  {profileData.profil_info && (profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields &&
-                   Object.entries((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).length > 0 && (
-                    <div>
-                      {Object.entries((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).map(([key, value]) => (
-                        <div key={key} className="mb-3">
-                          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">{key}</h3>
-                          <p className="text-[#303030]">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        // Handle arrays (like interests)
+                        if (Array.isArray(value)) {
+                          return (
+                            <div key={key} className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                              <p className="text-sm font-semibold text-[#303030] mb-2">{formatLabel(key)}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {value.map((item, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-3 py-1.5 bg-[#1271FF]/10 text-[#1271FF] rounded-full text-sm font-medium"
+                                  >
+                                    {String(item)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
 
-                  {/* No profile info message */}
-                  {(!profileData.profil_info ||
-                    (!(profileData.profil_info as { bio?: string }).bio &&
-                     (!(profileData.profil_info as { interests?: string[] }).interests || (profileData.profil_info as { interests?: string[] }).interests!.length === 0) &&
-                     (!(profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields || Object.keys((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).length === 0))) && (
+                        // Handle regular values
+                        return (
+                          <div key={key} className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                            <p className="text-sm font-semibold text-[#303030] mb-1">{formatLabel(key)}</p>
+                            <p className="text-gray-600">{String(value)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
                     <p className="text-gray-500 text-center py-4">
                       Aucune information de profil disponible
                     </p>

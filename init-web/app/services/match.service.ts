@@ -24,15 +24,8 @@ export interface Profile {
   lastname: string;
   birthday?: string;
   age?: number;
-  bio?: string;
-  interests?: string[];
   photos?: Photo[];
-  profil_info?: {
-    bio?: string;
-    interests?: string[];
-    custom_fields?: Record<string, string>;
-  } | null;
-  custom_fields?: Record<string, string>;
+  profil_info?: Record<string, unknown> | null;
 }
 
 export interface Match {
