@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { MessageCircle, Send, ArrowLeft, MoreVertical, Flag } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, MoreVertical, X, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
-import { matchService, Conversation, Message, Photo } from "../../../../services/match.service";
+import { matchService, Conversation, Message, Photo, MatchUserProfile } from "../../../../services/match.service";
+import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 import { useRealTimeMessages } from "../../../../hooks/useRealTimeMessages";
@@ -45,8 +46,16 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState<ReportType | null>(null);
+  const [reportDescription, setReportDescription] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
   const [isEventExpired, setIsEventExpired] = useState(false);
+  const [isOtherUserBlocked, setIsOtherUserBlocked] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState<MatchUserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profilePhotoIndex, setProfilePhotoIndex] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<number | null>(null);
@@ -183,8 +192,9 @@ export default function MessagesPage() {
         const matchIdNum = parseInt(initialMatchId);
         setSelectedMatchId(matchIdNum);
         const selectedConv = (data.conversations || []).find((c: Conversation) => c.match_id === matchIdNum);
-        setIsArchived(selectedConv?.is_archived || false);
+        setIsArchived(selectedConv?.is_blocked || false);
         setIsEventExpired(selectedConv?.is_event_expired || false);
+        setIsOtherUserBlocked(selectedConv?.is_other_user_blocked || false);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
@@ -207,7 +217,7 @@ export default function MessagesPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedMatchId || sending || isArchived || isEventExpired) return;
+    if (!newMessage.trim() || !selectedMatchId || sending || isArchived || isEventExpired || isOtherUserBlocked) return;
 
     setSending(true);
     try {
@@ -255,10 +265,62 @@ export default function MessagesPage() {
     }
   };
 
-  const handleReport = (reason: string) => {
-    // TODO: Implement report API
-    setShowReportModal(false);
-    alert("Signalement envoyé. Notre équipe va l'examiner.");
+  const openReportModal = () => {
+    setReportType(null);
+    setReportDescription("");
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportType || !conversationData) return;
+
+    setSubmittingReport(true);
+    try {
+      await reportService.createReport(eventId, {
+        reportedUserId: conversationData.match.user.id,
+        matchId: reportType === 'message' ? conversationData.match.id : undefined,
+        reportType,
+        reason: reportType === 'message' ? 'harassment' : 'inappropriate',
+        description: reportDescription || undefined,
+      });
+      setShowReportModal(false);
+      alert("Signalement envoye. L'organisateur va l'examiner.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors du signalement";
+      alert(message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const handleOpenProfile = async () => {
+    if (!selectedMatchId || isArchived || isOtherUserBlocked) return;
+
+    setLoadingProfile(true);
+    setShowProfileModal(true);
+    setProfilePhotoIndex(0);
+
+    try {
+      const profile = await matchService.getMatchProfile(selectedMatchId);
+      setProfileData(profile);
+    } catch (err: unknown) {
+      console.error("Error loading profile:", err);
+      setShowProfileModal(false);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const calculateAge = (birthday?: string): number | null => {
+    if (!birthday) return null;
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   const getProfileImage = (photos?: Photo[], firstname?: string, lastname?: string): string => {
@@ -346,12 +408,13 @@ export default function MessagesPage() {
                   key={conv.match_id}
                   onClick={() => {
                     setSelectedMatchId(conv.match_id);
-                    setIsArchived(conv.is_archived || false);
+                    setIsArchived(conv.is_blocked || false);
                     setIsEventExpired(conv.is_event_expired || false);
+                    setIsOtherUserBlocked(conv.is_other_user_blocked || false);
                   }}
                   className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left ${
                     selectedMatchId === conv.match_id ? "bg-white/10" : ""
-                  } ${conv.is_archived ? "opacity-60" : ""}`}
+                  } ${conv.is_blocked || conv.is_other_user_blocked ? "opacity-60" : ""}`}
                 >
                   <div className="relative">
                     <img
@@ -404,27 +467,34 @@ export default function MessagesPage() {
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <img
-                  src={getProfileImage(
-                    conversationData.match.user.photos,
-                    conversationData.match.user.firstname,
-                    conversationData.match.user.lastname
-                  )}
-                  alt={conversationData.match.user.firstname}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <h2 className="font-semibold text-[#303030]">
-                    {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
-                  </h2>
-                  <p className="text-xs text-gray-600">
-                    {conversationData.match.event_name}
-                  </p>
-                </div>
+                <button
+                  onClick={handleOpenProfile}
+                  disabled={isArchived || isOtherUserBlocked}
+                  className={`flex items-center gap-3 ${!isArchived && !isOtherUserBlocked ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'} transition-opacity`}
+                >
+                  <img
+                    src={getProfileImage(
+                      conversationData.match.user.photos,
+                      conversationData.match.user.firstname,
+                      conversationData.match.user.lastname
+                    )}
+                    alt={conversationData.match.user.firstname}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div className="text-left">
+                    <h2 className="font-semibold text-[#303030]">
+                      {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
+                    </h2>
+                    <p className="text-xs text-gray-600">
+                      {conversationData.match.event_name}
+                    </p>
+                  </div>
+                </button>
               </div>
               <button
-                onClick={() => setShowReportModal(true)}
+                onClick={openReportModal}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                title="Signaler"
               >
                 <MoreVertical className="w-5 h-5" />
               </button>
@@ -510,13 +580,19 @@ export default function MessagesPage() {
               {isArchived ? (
                 <div className="bg-red-50 rounded-xl px-4 py-3 text-center">
                   <p className="text-red-600 text-sm">
-                    Vous avez ete retire de cet evenement par l'organisateur
+                    Vous avez été retiré de cet événement par l'organisateur
+                  </p>
+                </div>
+              ) : isOtherUserBlocked ? (
+                <div className="bg-gray-100 rounded-xl px-4 py-3 text-center">
+                  <p className="text-gray-600 text-sm">
+                    Cet utilisateur a été retiré de l'événement
                   </p>
                 </div>
               ) : isEventExpired ? (
                 <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
                   <p className="text-orange-600 text-sm">
-                    La periode de disponibilite de cet evenement est terminee
+                    La période de disponibilité de cet événement est terminée
                   </p>
                 </div>
               ) : (
@@ -566,41 +642,214 @@ export default function MessagesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setShowReportModal(false)}
+            onClick={() => !submittingReport && setShowReportModal(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
-              Signaler l'utilisateur
+          <div className="relative bg-[#303030] rounded-2xl p-6 max-w-md mx-4 w-full">
+            <h3 className="font-poppins font-semibold text-xl text-white mb-2">
+              Signaler {conversationData?.match.user.firstname}
             </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Pour quelle raison souhaitez-vous signaler cet utilisateur ?
+            <p className="text-white/60 text-sm mb-6">
+              {!reportType ? "Que souhaitez-vous signaler ?" : "Ajoutez des details si necessaire"}
             </p>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setShowReportModal(false)}
-                className="w-full py-3 rounded-xl text-[#303030] font-medium hover:bg-gray-50 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleReport("inappropriate")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
-              >
-                Comportement inapproprié
-              </button>
-              <button
-                onClick={() => handleReport("harassment")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
-              >
-                Harcèlement
-              </button>
-              <button
-                onClick={() => handleReport("spam")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
-              >
-                Spam
-              </button>
-            </div>
+
+            {/* Step 1: Type selection */}
+            {!reportType ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => setReportType('photo')}
+                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <div className="font-medium text-white">Photo inappropriee</div>
+                  <div className="text-sm text-white/60">Image choquante ou offensante</div>
+                </button>
+                <button
+                  onClick={() => setReportType('profile')}
+                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <div className="font-medium text-white">Profil offensant</div>
+                  <div className="text-sm text-white/60">Informations inappropriees</div>
+                </button>
+                <button
+                  onClick={() => setReportType('message')}
+                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <div className="font-medium text-white">Message offensant</div>
+                  <div className="text-sm text-white/60">Contenu des messages problematique</div>
+                </button>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="w-full py-3 text-white/60 hover:text-white transition-colors mt-2"
+                >
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              /* Step 2: Description */
+              <div className="space-y-4">
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="Decrivez la situation pour aider l'organisateur..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setReportType(null)}
+                    disabled={submittingReport}
+                    className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors disabled:opacity-50"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    onClick={handleReportSubmit}
+                    disabled={submittingReport}
+                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#0d5dd8] transition-colors disabled:opacity-50"
+                  >
+                    {submittingReport ? "Envoi..." : "Signaler"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowProfileModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl max-w-md mx-4 w-full max-h-[90vh] overflow-hidden">
+            {/* Close button */}
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {loadingProfile ? (
+              <div className="h-96 flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : profileData ? (
+              <div className="flex flex-col">
+                {/* Photo carousel */}
+                <div className="relative aspect-[3/4] bg-gray-200">
+                  {profileData.photos && profileData.photos.length > 0 ? (
+                    <>
+                      <img
+                        src={getProfileImage([profileData.photos[profilePhotoIndex]], profileData.firstname, profileData.lastname)}
+                        alt={profileData.firstname}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Photo indicators */}
+                      {profileData.photos.length > 1 && (
+                        <div className="absolute top-3 left-0 right-0 flex justify-center gap-1.5 px-4">
+                          {profileData.photos.map((_, idx) => (
+                            <div
+                              key={idx}
+                              className={`h-1 flex-1 rounded-full ${idx === profilePhotoIndex ? 'bg-white' : 'bg-white/40'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {/* Navigation buttons */}
+                      {profileData.photos.length > 1 && (
+                        <>
+                          {profilePhotoIndex > 0 && (
+                            <button
+                              onClick={() => setProfilePhotoIndex(prev => prev - 1)}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                            >
+                              <ChevronLeft className="w-6 h-6" />
+                            </button>
+                          )}
+                          {profilePhotoIndex < profileData.photos.length - 1 && (
+                            <button
+                              onClick={() => setProfilePhotoIndex(prev => prev + 1)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                            >
+                              <ChevronRight className="w-6 h-6" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={getProfileImage(undefined, profileData.firstname, profileData.lastname)}
+                        alt={profileData.firstname}
+                        className="w-32 h-32 rounded-full"
+                      />
+                    </div>
+                  )}
+                  {/* Name overlay at bottom of photo */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                    <h2 className="text-white text-2xl font-bold">
+                      {profileData.firstname} {profileData.lastname?.charAt(0)}.
+                      {calculateAge(profileData.birthday) && (
+                        <span className="font-normal">, {calculateAge(profileData.birthday)}</span>
+                      )}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Profile info */}
+                <div className="p-4 overflow-y-auto max-h-[40vh]">
+                  {/* Bio */}
+                  {profileData.profil_info && (profileData.profil_info as { bio?: string }).bio && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">À propos</h3>
+                      <p className="text-[#303030]">{(profileData.profil_info as { bio?: string }).bio}</p>
+                    </div>
+                  )}
+
+                  {/* Interests */}
+                  {profileData.profil_info && (profileData.profil_info as { interests?: string[] }).interests && (profileData.profil_info as { interests?: string[] }).interests!.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Centres d'intérêt</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(profileData.profil_info as { interests?: string[] }).interests!.map((interest, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1.5 bg-[#1271FF]/10 text-[#1271FF] rounded-full text-sm font-medium"
+                          >
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom fields */}
+                  {profileData.profil_info && (profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields &&
+                   Object.entries((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).length > 0 && (
+                    <div>
+                      {Object.entries((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).map(([key, value]) => (
+                        <div key={key} className="mb-3">
+                          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">{key}</h3>
+                          <p className="text-[#303030]">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* No profile info message */}
+                  {(!profileData.profil_info ||
+                    (!(profileData.profil_info as { bio?: string }).bio &&
+                     (!(profileData.profil_info as { interests?: string[] }).interests || (profileData.profil_info as { interests?: string[] }).interests!.length === 0) &&
+                     (!(profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields || Object.keys((profileData.profil_info as { custom_fields?: Record<string, string> }).custom_fields!).length === 0))) && (
+                    <p className="text-gray-500 text-center py-4">
+                      Aucune information de profil disponible
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

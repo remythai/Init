@@ -4,16 +4,101 @@ import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '.
 import { success, created } from '../utils/responses.js';
 
 /**
- * Parse CSV content
- * Expects one phone per line or comma-separated
+ * Detect the delimiter used in CSV content
+ * Prefers semicolon (European convention) if consistent
  */
-function parseCSV(content) {
+function detectDelimiter(content) {
+  const lines = content.split(/[\r\n]+/).filter(line => line.trim());
+  if (lines.length === 0) return ';';
+
+  // Check first few lines (max 5)
+  const sampleLines = lines.slice(0, Math.min(5, lines.length));
+
+  const delimiters = [';', '\t', ','];
+
+  for (const delimiter of delimiters) {
+    // Count occurrences in each line (outside quotes)
+    const counts = sampleLines.map(line => {
+      let count = 0;
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          count++;
+        }
+      }
+      return count;
+    });
+
+    // Check if this delimiter is consistent (same count on all lines, at least 1)
+    const firstCount = counts[0];
+    if (firstCount > 0 && counts.every(c => c === firstCount)) {
+      return delimiter;
+    }
+  }
+
+  // Fallback: use the delimiter that appears most consistently
+  // Prefer semicolon for European CSV (decimal comma)
+  for (const delimiter of delimiters) {
+    const counts = sampleLines.map(line => {
+      let count = 0;
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          count++;
+        }
+      }
+      return count;
+    });
+
+    // If at least some lines have this delimiter
+    if (counts.some(c => c > 0)) {
+      return delimiter;
+    }
+  }
+
+  return ';'; // Default to semicolon
+}
+
+/**
+ * Parse CSV line with specific delimiter, handling quoted fields
+ */
+function parseCSVLineWithDelimiter(line, delimiter) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim().replace(/^["']|["']$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim().replace(/^["']|["']$/g, ''));
+  return result;
+}
+
+/**
+ * Parse CSV content - simple mode (one phone per line or delimiter-separated)
+ */
+function parseCSVSimple(content) {
   const phones = [];
   const lines = content.split(/[\r\n]+/);
+  const delimiter = detectDelimiter(content);
 
   for (const line of lines) {
-    // Split by comma, semicolon, or tab
-    const parts = line.split(/[,;\t]+/);
+    const parts = parseCSVLineWithDelimiter(line, delimiter);
     for (const part of parts) {
       const phone = part.trim();
       if (phone && phone.length > 0) {
@@ -23,6 +108,63 @@ function parseCSV(content) {
   }
 
   return phones;
+}
+
+/**
+ * Parse CSV with headers and extract specific column
+ * Supports quoted fields
+ */
+function parseCSVWithColumn(content, columnIndex) {
+  const phones = [];
+  const lines = content.split(/[\r\n]+/).filter(line => line.trim());
+  const delimiter = detectDelimiter(content);
+
+  // Skip header row (index 0)
+  for (let i = 1; i < lines.length; i++) {
+    const parts = parseCSVLineWithDelimiter(lines[i], delimiter);
+    if (parts[columnIndex] !== undefined) {
+      const phone = parts[columnIndex];
+      if (phone && phone.length > 0) {
+        phones.push(phone);
+      }
+    }
+  }
+
+  return phones;
+}
+
+/**
+ * Extract CSV headers for column selection
+ * Auto-detects delimiter
+ */
+function getCSVHeaders(content) {
+  const lines = content.split(/[\r\n]+/).filter(line => line.trim());
+  if (lines.length === 0) return { headers: [], preview: [], totalRows: 0, delimiter: ';' };
+
+  const delimiter = detectDelimiter(content);
+
+  const headerLine = lines[0];
+  const headerParts = parseCSVLineWithDelimiter(headerLine, delimiter);
+  const headers = headerParts.map((h, index) => ({
+    index,
+    name: h
+  }));
+
+  // Get preview of first few rows
+  const preview = [];
+  for (let i = 1; i < Math.min(4, lines.length); i++) {
+    const parts = parseCSVLineWithDelimiter(lines[i], delimiter);
+    preview.push(parts);
+  }
+
+  return { headers, preview, totalRows: lines.length - 1, delimiter };
+}
+
+/**
+ * Parse CSV line handling quoted fields (legacy, uses auto-detection)
+ */
+function parseCSVLine(line) {
+  return parseCSVLineWithDelimiter(line, detectDelimiter(line));
 }
 
 /**
@@ -252,12 +394,39 @@ export const WhitelistController = {
   },
 
   /**
+   * POST /api/events/:id/whitelist/import/preview
+   * Preview CSV headers for column selection
+   */
+  async previewImport(req, res) {
+    const eventId = parseInt(req.params.id);
+    const { content } = req.body;
+
+    if (!content) {
+      throw new ValidationError('Le contenu du fichier est requis');
+    }
+
+    // Check event exists and belongs to orga
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    const csvData = getCSVHeaders(content);
+
+    return success(res, csvData);
+  },
+
+  /**
    * POST /api/events/:id/whitelist/import
    * Import phones from CSV or XML
    */
   async importFile(req, res) {
     const eventId = parseInt(req.params.id);
-    const { content, format } = req.body;
+    const { content, format, columnIndex } = req.body;
 
     if (!content) {
       throw new ValidationError('Le contenu du fichier est requis');
@@ -282,7 +451,12 @@ export const WhitelistController = {
     const source = format.toLowerCase();
 
     if (source === 'csv') {
-      phones = parseCSV(content);
+      // If columnIndex is provided, use column-based parsing
+      if (columnIndex !== undefined && columnIndex !== null) {
+        phones = parseCSVWithColumn(content, parseInt(columnIndex));
+      } else {
+        phones = parseCSVSimple(content);
+      }
     } else {
       phones = parseXML(content);
     }
@@ -305,5 +479,62 @@ export const WhitelistController = {
       errors: stats.errors.length > 0 ? stats.errors.slice(0, 10) : undefined, // Limit errors shown
       message: `Import terminé: ${stats.added} ajoutés, ${stats.skipped_duplicate} doublons, ${stats.skipped_removed} précédemment supprimés, ${stats.invalid} invalides`
     });
+  },
+
+  /**
+   * DELETE /api/events/:id/whitelist/bulk
+   * Remove multiple phones from whitelist
+   */
+  async bulkRemove(req, res) {
+    const eventId = parseInt(req.params.id);
+    const { phones, permanent = false } = req.body;
+
+    if (!phones || !Array.isArray(phones) || phones.length === 0) {
+      throw new ValidationError('La liste des numéros est requise');
+    }
+
+    // Check event exists and belongs to orga
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    const stats = {
+      total: phones.length,
+      removed: 0,
+      not_found: 0,
+      errors: []
+    };
+
+    for (const phone of phones) {
+      try {
+        const normalizedPhone = normalizePhone(phone);
+        let result;
+
+        if (permanent) {
+          result = await WhitelistModel.permanentDelete(eventId, normalizedPhone);
+        } else {
+          result = await WhitelistModel.softRemove(eventId, normalizedPhone);
+        }
+
+        if (result) {
+          stats.removed++;
+        } else {
+          stats.not_found++;
+        }
+      } catch (err) {
+        stats.errors.push({ phone, error: err.message });
+      }
+    }
+
+    const message = permanent
+      ? `Suppression définitive: ${stats.removed} supprimés, ${stats.not_found} non trouvés`
+      : `Retrait: ${stats.removed} retirés, ${stats.not_found} non trouvés`;
+
+    return success(res, { stats }, message);
   }
 };

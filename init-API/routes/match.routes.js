@@ -154,4 +154,15 @@ router.put(
   asyncHandler(MatchController.toggleLike)
 );
 
+/**
+ * GET /api/matching/matches/:matchId/profile
+ * Get the other user's profile in a match
+ */
+router.get(
+  '/matches/:matchId/profile',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(MatchController.getMatchProfile)
+);
+
 export default router;

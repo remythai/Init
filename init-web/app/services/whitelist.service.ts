@@ -25,6 +25,19 @@ export interface ImportStats {
   errors: Array<{ phone: string; reason: string }>;
 }
 
+export interface CSVPreview {
+  headers: Array<{ index: number; name: string }>;
+  preview: string[][];
+  totalRows: number;
+}
+
+export interface BulkRemoveStats {
+  total: number;
+  removed: number;
+  not_found: number;
+  errors: Array<{ phone: string; error: string }>;
+}
+
 class WhitelistService {
   /**
    * Get whitelist entries for an event
@@ -93,9 +106,30 @@ class WhitelistService {
   }
 
   /**
+   * Preview CSV content to get headers and sample data
+   */
+  async previewCSV(eventId: string, content: string): Promise<CSVPreview> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/whitelist/import/preview`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la prévisualisation');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  /**
    * Import phones from a file (CSV or XML)
    */
-  async importFile(eventId: string, file: File): Promise<ImportStats> {
+  async importFile(eventId: string, file: File, columnIndex?: number): Promise<ImportStats> {
     // Read file content
     const content = await this.readFileContent(file);
 
@@ -110,11 +144,16 @@ class WhitelistService {
       format = 'csv';
     }
 
+    const body: { content: string; format: string; columnIndex?: number } = { content, format };
+    if (columnIndex !== undefined) {
+      body.columnIndex = columnIndex;
+    }
+
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/whitelist/import`,
       {
         method: 'POST',
-        body: JSON.stringify({ content, format }),
+        body: JSON.stringify(body),
       }
     );
 
@@ -125,6 +164,40 @@ class WhitelistService {
 
     const data = await response.json();
     // API returns { stats: {...}, errors: [...] } inside data.data
+    const result = data.data;
+    return {
+      total: result.stats.total,
+      added: result.stats.added,
+      skipped_duplicate: result.stats.skipped_duplicate,
+      skipped_removed: result.stats.skipped_removed,
+      invalid: result.stats.invalid,
+      errors: result.errors || [],
+    };
+  }
+
+  /**
+   * Import from raw content with column selection
+   */
+  async importContent(eventId: string, content: string, format: 'csv' | 'xml', columnIndex?: number): Promise<ImportStats> {
+    const body: { content: string; format: string; columnIndex?: number } = { content, format };
+    if (columnIndex !== undefined) {
+      body.columnIndex = columnIndex;
+    }
+
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/whitelist/import`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de l\'import');
+    }
+
+    const data = await response.json();
     const result = data.data;
     return {
       total: result.stats.total,
@@ -205,6 +278,27 @@ class WhitelistService {
 
     const data = await response.json();
     return data.data;
+  }
+
+  /**
+   * Bulk remove phones from whitelist
+   */
+  async bulkRemove(eventId: string, phones: string[], permanent = false): Promise<BulkRemoveStats> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/whitelist/bulk`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ phones, permanent }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la suppression en masse');
+    }
+
+    const data = await response.json();
+    return data.data.stats;
   }
 
   /**
