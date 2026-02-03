@@ -63,6 +63,7 @@ services:
     container_name: ${FRONTEND_CONTAINER_NAME}
     environment:
       NODE_ENV: production
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     depends_on:
       backend:
         condition: service_healthy
