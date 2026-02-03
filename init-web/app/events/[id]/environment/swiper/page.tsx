@@ -10,7 +10,6 @@ import { reportService, ReportType, ReportReason } from "../../../../services/re
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
 
@@ -364,12 +363,7 @@ export default function SwiperPage() {
 
   const getProfileImage = (profile: Profile, index: number = 0): string => {
     if (profile.photos && profile.photos.length > index && profile.photos[index].file_path) {
-      const filePath = profile.photos[index].file_path;
-      // If the file_path is a relative path, prepend API_URL
-      if (filePath.startsWith('/')) {
-        return `${API_URL}${filePath}`;
-      }
-      return filePath;
+      return profile.photos[index].file_path;
     }
     return `https://ui-avatars.com/api/?name=${profile.firstname}+${profile.lastname}&size=400&background=1271FF&color=fff`;
   };
