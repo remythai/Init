@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Roboto } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./components/Providers";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -29,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${roboto.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

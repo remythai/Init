@@ -4,12 +4,11 @@ import { useState } from "react";
 import {
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 
 export const FIELD_TYPES = {
@@ -83,14 +82,14 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
   const updateField = (index: number, updates: Partial<CustomField>) => {
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], ...updates };
-    
+
     if (updates.type && !needsOptions(updates.type)) {
       delete newFields[index].options;
     }
     else if (updates.type && needsOptions(updates.type) && !newFields[index].options) {
       newFields[index].options = [];
     }
-    
+
     onChange(newFields);
   };
 
@@ -152,19 +151,14 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerText}>
           <Text style={styles.title}>Champs personnalisés</Text>
           <Text style={styles.subtitle}>
             Ajoutez des questions supplémentaires pour l'inscription
           </Text>
         </View>
-        <Pressable
-          style={styles.addButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            addField();
-          }}
-        >
+
+        <Pressable style={styles.addButton} onPress={addField}>
           <MaterialIcons name="add" size={20} color="#1271FF" />
           <Text style={styles.addButtonText}>Ajouter</Text>
         </Pressable>
@@ -213,10 +207,10 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                 >
                   <MaterialIcons name="delete" size={20} color="#EF4444" />
                 </Pressable>
-                <MaterialIcons 
-                  name={expandedFieldIndex === fieldIndex ? "expand-less" : "expand-more"} 
-                  size={24} 
-                  color="#6B7280" 
+                <MaterialIcons
+                  name={expandedFieldIndex === fieldIndex ? "expand-less" : "expand-more"}
+                  size={24}
+                  color="#6B7280"
                 />
               </View>
             </Pressable>
@@ -325,7 +319,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                           <TextInput
                             style={[styles.input, styles.optionInput]}
                             value={option.label}
-                            onChangeText={(text) => 
+                            onChangeText={(text) =>
                               updateOption(fieldIndex, optionIndex, 'label', text)
                             }
                             placeholder="Label"
@@ -334,7 +328,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                           <TextInput
                             style={[styles.input, styles.optionInput]}
                             value={option.value}
-                            onChangeText={(text) => 
+                            onChangeText={(text) =>
                               updateOption(fieldIndex, optionIndex, 'value', text)
                             }
                             placeholder="Valeur"
@@ -366,10 +360,16 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  
+  headerText: {
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 12,
+  },
+  
   title: {
     fontSize: 15,
     fontWeight: '600',
@@ -570,9 +570,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     alignItems: 'center',
+    overflow: 'hidden',
   },
+
   optionInput: {
     flex: 1,
+    minWidth: 0,
   },
   removeOptionButton: {
     padding: 6,

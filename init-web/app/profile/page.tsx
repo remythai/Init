@@ -6,6 +6,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Edit2, Save, X, Camera, ArrowLeft } from "lucide-react";
 import { authService, User, Orga } from "../services/auth.service";
+import { Photo, photoService } from "../services/photo.service";
+import BottomNavigation from "../components/BottomNavigation";
+import PhotoManager from "../components/PhotoManager";
 
 type UserProfile = User;
 type OrgaProfile = Orga;
@@ -27,10 +30,27 @@ export default function ProfilePage() {
   const [editedProfile, setEditedProfile] = useState<UserProfile | OrgaProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
 
   useEffect(() => {
     loadProfile();
+    loadPrimaryPhoto();
   }, []);
+
+  const loadPrimaryPhoto = async () => {
+    try {
+      const photos = await photoService.getPhotos();
+      const primary = photoService.getPrimaryPhoto(photos);
+      setPrimaryPhoto(primary);
+    } catch (err) {
+      console.error("Error loading primary photo:", err);
+    }
+  };
+
+  const handlePhotosChange = (photos: Photo[]) => {
+    const primary = photoService.getPrimaryPhoto(photos);
+    setPrimaryPhoto(primary);
+  };
 
   const loadProfile = async () => {
     try {
@@ -242,15 +262,18 @@ export default function ProfilePage() {
           {/* Avatar */}
           <div className="flex justify-center py-8">
             <div className="relative">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center">
-                <span className="text-4xl font-bold text-[#303030]">
-                  {getAvatarInitial()}
-                </span>
-              </div>
-              {isEditing && (
-                <button className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <Camera className="w-4 h-4 text-[#303030]" />
-                </button>
+              {primaryPhoto ? (
+                <img
+                  src={photoService.getPhotoUrl(primaryPhoto.file_path)}
+                  alt={getDisplayName()}
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white/20"
+                />
+              ) : (
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center">
+                  <span className="text-4xl font-bold text-[#303030]">
+                    {getAvatarInitial()}
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -258,7 +281,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 md:px-8 -mt-8 pb-12">
+      <main className="max-w-4xl mx-auto px-4 md:px-8 -mt-8 pb-24">
         {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -347,6 +370,11 @@ export default function ProfilePage() {
                   <p className="font-semibold text-[#303030]">{age} ans</p>
                 </div>
               )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
+              <h3 className="font-semibold text-lg text-[#303030] mb-4">Mes photos</h3>
+              <PhotoManager onPhotosChange={handlePhotosChange} />
             </div>
 
             <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
@@ -448,6 +476,9 @@ export default function ProfilePage() {
           </>
         )}
       </main>
+
+      {/* Bottom Navigation for users */}
+      <BottomNavigation userType={profileType} />
     </div>
   );
 }

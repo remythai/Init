@@ -2,24 +2,27 @@ import pool from '../config/database.js';
 
 export const EventModel = {
   async create(eventData) {
-    const { 
-      orga_id, name, description, start_at, end_at, location, 
-      max_participants, is_public, has_whitelist, has_link_access, 
-      has_password_access, access_password_hash, cooldown, custom_fields 
+    const {
+      orga_id, name, description, start_at, end_at, location,
+      app_start_at, app_end_at, theme,
+      max_participants, is_public, has_whitelist, has_link_access,
+      has_password_access, access_password_hash, cooldown, custom_fields
     } = eventData;
-    
+
     const result = await pool.query(
       `INSERT INTO events (
-        orga_id, name, description, start_at, end_at, location, 
-        max_participants, is_public, has_whitelist, has_link_access, 
+        orga_id, name, description, start_at, end_at, location,
+        app_start_at, app_end_at, theme,
+        max_participants, is_public, has_whitelist, has_link_access,
         has_password_access, access_password_hash, cooldown, custom_fields
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
-        orga_id, name, description, start_at, end_at, location, 
-        max_participants, is_public, has_whitelist, has_link_access, 
-        has_password_access, access_password_hash, cooldown, 
+        orga_id, name, description, start_at, end_at, location,
+        app_start_at, app_end_at, theme,
+        max_participants, is_public, has_whitelist, has_link_access,
+        has_password_access, access_password_hash, cooldown,
         JSON.stringify(custom_fields)
       ]
     );
@@ -89,10 +92,17 @@ export const EventModel = {
         e.location,
         e.max_participants,
         e.event_date,
+        e.start_at,
+        e.end_at,
+        e.app_start_at,
+        e.app_end_at,
+        e.theme,
+        e.description,
         e.custom_fields,
         o.nom as orga_name,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
-        ${userId ? `EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $1) as is_registered` : 'false as is_registered'}
+        ${userId ? `EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $1) as is_registered` : 'false as is_registered'},
+        ${userId ? `EXISTS(SELECT 1 FROM event_blocked_users WHERE event_id = e.id AND user_id = $1) as is_blocked` : 'false as is_blocked'}
       FROM events e
       JOIN orga o ON e.orga_id = o.id
       WHERE e.is_public = true
@@ -102,8 +112,8 @@ export const EventModel = {
     let paramCount = userId ? 2 : 1;
 
     if (filters.upcoming) {
-      // Show events that haven't ended yet (including ongoing events)
-      query += ` AND e.end_at >= NOW()`;
+      // Show events where app is still available
+      query += ` AND e.app_end_at >= NOW()`;
     }
 
     if (filters.location) {
@@ -118,7 +128,7 @@ export const EventModel = {
       paramCount++;
     }
 
-    query += ` ORDER BY e.start_at ASC`;
+    query += ` ORDER BY e.app_start_at ASC`;
 
     if (filters.limit) {
       query += ` LIMIT $${paramCount}`;
@@ -136,12 +146,18 @@ export const EventModel = {
 
   async findUserRegisteredEvents(userId, filters = {}) {
     let query = `
-      SELECT 
+      SELECT
         e.id,
         e.name,
         e.location,
         e.max_participants,
         e.event_date,
+        e.start_at,
+        e.end_at,
+        e.app_start_at,
+        e.app_end_at,
+        e.theme,
+        e.description,
         o.nom as orga_name,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         true as is_registered,
@@ -157,15 +173,15 @@ export const EventModel = {
     let paramCount = 2;
 
     if (filters.upcoming) {
-      // Show events that haven't ended yet (including ongoing events)
-      query += ` AND e.end_at >= NOW()`;
+      // Show events where app is still available
+      query += ` AND e.app_end_at >= NOW()`;
     }
 
     if (filters.past) {
-      query += ` AND e.end_at < NOW()`;
+      query += ` AND e.app_end_at < NOW()`;
     }
 
-    query += ` ORDER BY e.start_at DESC`;
+    query += ` ORDER BY e.app_start_at DESC`;
 
     if (filters.limit) {
       query += ` LIMIT $${paramCount}`;

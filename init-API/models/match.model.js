@@ -4,6 +4,7 @@ export const MatchModel = {
   /**
    * Get profiles to swipe for a given event
    * Excludes: self, already swiped profiles
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getProfilesToSwipe(userId, eventId, limit = 10) {
     const result = await pool.query(
@@ -14,8 +15,17 @@ export const MatchModel = {
         u.birthday,
         uer.profil_info,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $1
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $1
+                ))
+              )
+          ),
           '[]'::json
         ) as photos
       FROM user_event_rel uer
@@ -106,6 +116,7 @@ export const MatchModel = {
 
   /**
    * Get all matches for a user on a specific event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getMatchesByEvent(userId, eventId) {
     const result = await pool.query(
@@ -118,8 +129,17 @@ export const MatchModel = {
         u.birthday,
         uer.profil_info,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $2
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                ))
+              )
+          ),
           '[]'::json
         ) as photos
       FROM matches m
@@ -302,18 +322,29 @@ export const MatchModel = {
 
   /**
    * Get conversations for a specific event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getConversationsByEvent(userId, eventId) {
     const result = await pool.query(
       `SELECT
         m.id as match_id,
         m.created_at as match_created_at,
+        m.is_archived,
         u.id as user_id,
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $2
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                ))
+              )
+          ),
           '[]'::json
         ) as photos,
         (
@@ -344,11 +375,10 @@ export const MatchModel = {
       )
       WHERE m.event_id = $2
         AND (m.user1_id = $1 OR m.user2_id = $1)
-      ORDER BY (
-        SELECT sent_at FROM messages msg
-        WHERE msg.match_id = m.id
-        ORDER BY sent_at DESC LIMIT 1
-      ) DESC NULLS LAST`,
+      ORDER BY COALESCE(
+        (SELECT sent_at FROM messages msg WHERE msg.match_id = m.id ORDER BY sent_at DESC LIMIT 1),
+        m.created_at
+      ) DESC`,
       [userId, eventId]
     );
     return result.rows;
@@ -356,6 +386,7 @@ export const MatchModel = {
 
   /**
    * Get all conversations grouped by event
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getAllConversations(userId) {
     const result = await pool.query(
@@ -363,13 +394,24 @@ export const MatchModel = {
         m.id as match_id,
         m.event_id,
         e.name as event_name,
+        e.app_end_at,
         m.created_at as match_created_at,
+        m.is_archived,
         u.id as user_id,
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = m.event_id
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = m.event_id
+                ))
+              )
+          ),
           '[]'::json
         ) as photos,
         (
@@ -400,12 +442,83 @@ export const MatchModel = {
         END = u.id
       )
       WHERE m.user1_id = $1 OR m.user2_id = $1
-      ORDER BY (
-        SELECT sent_at FROM messages msg
-        WHERE msg.match_id = m.id
-        ORDER BY sent_at DESC LIMIT 1
-      ) DESC NULLS LAST`,
+      ORDER BY COALESCE(
+        (SELECT sent_at FROM messages msg WHERE msg.match_id = m.id ORDER BY sent_at DESC LIMIT 1),
+        m.created_at
+      ) DESC`,
       [userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Archive all matches for a user in a specific event
+   */
+  async archiveUserMatchesInEvent(userId, eventId) {
+    const result = await pool.query(
+      `UPDATE matches
+       SET is_archived = true
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Unarchive all matches for a user in a specific event
+   */
+  async unarchiveUserMatchesInEvent(userId, eventId) {
+    const result = await pool.query(
+      `UPDATE matches
+       SET is_archived = false
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Delete all matches for a user in a specific event (and their messages)
+   */
+  async deleteUserMatchesInEvent(userId, eventId) {
+    // First get match IDs to delete messages
+    const matchesResult = await pool.query(
+      `SELECT id FROM matches
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)`,
+      [eventId, userId]
+    );
+    const matchIds = matchesResult.rows.map(m => m.id);
+
+    // Delete messages for these matches
+    if (matchIds.length > 0) {
+      await pool.query(
+        `DELETE FROM messages WHERE match_id = ANY($1)`,
+        [matchIds]
+      );
+    }
+
+    // Delete matches
+    const result = await pool.query(
+      `DELETE FROM matches
+       WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
+       RETURNING id`,
+      [eventId, userId]
+    );
+    return result.rows;
+  },
+
+  /**
+   * Delete all likes (swipes) for a user in a specific event
+   */
+  async deleteUserLikesInEvent(userId, eventId) {
+    // Delete likes where user is liker or liked
+    const result = await pool.query(
+      `DELETE FROM likes
+       WHERE event_id = $1 AND (liker_id = $2 OR liked_id = $2)
+       RETURNING id`,
+      [eventId, userId]
     );
     return result.rows;
   }

@@ -1,9 +1,18 @@
 import { MatchModel } from '../models/match.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
 import { EventModel } from '../models/event.model.js';
-import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
+import { BlockedUserModel } from '../models/blockedUser.model.js';
+import { ValidationError, NotFoundError, ForbiddenError, ConflictError, EventExpiredError, UserBlockedError } from '../utils/errors.js';
 import { success } from '../utils/responses.js';
 import { emitNewMessage, emitNewMatch, emitConversationUpdate } from '../socket/emitters.js';
+
+/**
+ * Check if event app period is still active
+ */
+function isEventAppActive(event) {
+  if (!event.app_end_at) return true;
+  return new Date() < new Date(event.app_end_at);
+}
 
 export const MatchController = {
   /**
@@ -21,10 +30,21 @@ export const MatchController = {
       throw new NotFoundError('Événement non trouvé');
     }
 
+    // Check if event app period is still active
+    if (!isEventAppActive(event)) {
+      throw new EventExpiredError();
+    }
+
     // Check user is registered to this event
     const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!registration) {
       throw new ForbiddenError('Vous devez être inscrit à cet événement pour voir les profils');
+    }
+
+    // Check if user is blocked
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isBlocked) {
+      throw new UserBlockedError();
     }
 
     const profiles = await MatchModel.getProfilesToSwipe(userId, eventId, limit);
@@ -55,10 +75,21 @@ export const MatchController = {
       throw new NotFoundError('Événement non trouvé');
     }
 
+    // Check if event app period is still active
+    if (!isEventAppActive(event)) {
+      throw new EventExpiredError();
+    }
+
     // Check user is registered
     const userRegistration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!userRegistration) {
       throw new ForbiddenError('Vous devez être inscrit à cet événement');
+    }
+
+    // Check if user is blocked
+    const isUserBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isUserBlocked) {
+      throw new UserBlockedError();
     }
 
     // Check target is registered
@@ -137,6 +168,12 @@ export const MatchController = {
     const userRegistration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!userRegistration) {
       throw new ForbiddenError('Vous devez être inscrit à cet événement');
+    }
+
+    // Check if user is blocked
+    const isUserBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isUserBlocked) {
+      throw new UserBlockedError();
     }
 
     // Check target is registered
@@ -238,17 +275,22 @@ export const MatchController = {
     // Group by event
     const grouped = conversations.reduce((acc, conv) => {
       const eventKey = conv.event_id;
+      const isEventExpired = conv.app_end_at ? new Date() > new Date(conv.app_end_at) : false;
+
       if (!acc[eventKey]) {
         acc[eventKey] = {
           event: {
             id: conv.event_id,
-            name: conv.event_name
+            name: conv.event_name,
+            is_expired: isEventExpired
           },
           conversations: []
         };
       }
       acc[eventKey].conversations.push({
         match_id: conv.match_id,
+        is_archived: conv.is_archived || false,
+        is_event_expired: isEventExpired,
         user: {
           id: conv.user_id,
           firstname: conv.firstname,
@@ -289,9 +331,12 @@ export const MatchController = {
     }
 
     const conversations = await MatchModel.getConversationsByEvent(userId, eventId);
+    const isEventExpired = !isEventAppActive(event);
 
     const formatted = conversations.map(conv => ({
       match_id: conv.match_id,
+      is_archived: conv.is_archived || false,
+      is_event_expired: isEventExpired,
       user: {
         id: conv.user_id,
         firstname: conv.firstname,
@@ -307,7 +352,7 @@ export const MatchController = {
     }));
 
     return success(res, {
-      event: { id: eventId, name: event.name },
+      event: { id: eventId, name: event.name, is_expired: isEventExpired },
       conversations: formatted
     });
   },
@@ -381,6 +426,12 @@ export const MatchController = {
     // Check if match is archived (read-only)
     if (match.is_archived) {
       throw new ForbiddenError('Cette conversation est archivée et en lecture seule');
+    }
+
+    // Check if event app period is still active
+    const event = await EventModel.findById(match.event_id);
+    if (event && !isEventAppActive(event)) {
+      throw new EventExpiredError();
     }
 
     // If eventId is in params, verify it matches

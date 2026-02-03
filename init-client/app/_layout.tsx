@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { EventProvider } from '@/context/EventContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -72,6 +73,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
+      <EventProvider >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
         <Stack.Screen name="(main)" options={{ animation: 'none' }} />
@@ -86,6 +88,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
+      </EventProvider>
     </ThemeProvider>
   );
 }

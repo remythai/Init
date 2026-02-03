@@ -88,13 +88,13 @@ export default function EventMyProfileScreen() {
       {/* Vue en lecture seule */}
       <ScrollView style={styles.container}>
         {/* Header avec bouton retour */}
-        <View style={styles.headerBar}>
+        {/* <View style={styles.headerBar}>
           <Pressable onPress={handleBackToEvents} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="#303030" />
           </Pressable>
           <Text style={styles.headerTitle}>Mon profil événement</Text>
           <View style={styles.backButton} />
-        </View>
+        </View> */}
 
         <View style={styles.header}>
           <View style={styles.avatarContainer}>

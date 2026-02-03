@@ -43,6 +43,8 @@ services:
         condition: service_healthy
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./init-API/uploads:/app/uploads
     restart: unless-stopped
     networks:
       - init_net

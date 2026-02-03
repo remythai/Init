@@ -79,7 +79,7 @@ export const OrgaController = {
       refreshToken,
       orga: {
         id: orga.id,
-        name: orga.name,
+        nom: orga.nom,
         mail: orga.mail,
         description: orga.description
       }
@@ -97,10 +97,10 @@ export const OrgaController = {
   },
 
   async updateProfile(req, res) {
-    const { name, mail, description, tel } = req.body;
+    const { nom, mail, description, tel } = req.body;
     const updates = {};
 
-    if (name) updates.name = name;
+    if (nom) updates.nom = nom;
     if (description !== undefined) updates.description = description;
     if (mail) updates.mail = mail;
     if (tel) updates.tel = tel;

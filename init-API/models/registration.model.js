@@ -34,10 +34,28 @@ export const RegistrationModel = {
 
   async findByEventId(eventId) {
     const result = await pool.query(
-      `SELECT uer.*, u.firstname, u.lastname, u.mail, u.tel
+      `SELECT uer.user_id as id, uer.profil_info, uer.created_at as registered_at,
+              u.firstname, u.lastname, u.mail, u.tel,
+              COALESCE(
+                (SELECT json_agg(json_build_object(
+                  'id', p.id,
+                  'file_path', p.file_path,
+                  'is_primary', p.is_primary
+                ) ORDER BY p.is_primary DESC, p.display_order ASC)
+                FROM photos p
+                WHERE p.user_id = u.id
+                  AND (p.event_id = $1 OR (p.event_id IS NULL AND NOT EXISTS (
+                    SELECT 1 FROM photos WHERE user_id = u.id AND event_id = $1
+                  )))
+                ), '[]'::json
+              ) as photos
        FROM user_event_rel uer
        JOIN users u ON uer.user_id = u.id
        WHERE uer.event_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM event_blocked_users ebu
+           WHERE ebu.event_id = $1 AND ebu.user_id = uer.user_id
+         )
        ORDER BY uer.created_at DESC`,
       [eventId]
     );

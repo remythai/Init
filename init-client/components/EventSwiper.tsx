@@ -14,6 +14,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from 'expo-router';
+import { matchService, Profile } from '@/services/match.service';
+
+const { width, height } = Dimensions.get("window");
+const SWIPE_THRESHOLD = width * 0.25;
 
 export interface EventProfile {
   id: string;
@@ -26,101 +31,60 @@ export interface EventProfile {
 }
 
 interface EventSwiperProps {
-  onMatch?: (profileId: string) => void;
+  eventId: number;
+  onMatch?: () => void;
 }
 
-const { width, height } = Dimensions.get("window");
-const SWIPE_THRESHOLD = width * 0.25;
+function profileToEventProfile(profile: Profile): EventProfile {
+  const age = new Date().getFullYear() - new Date(profile.birthday).getFullYear();
+  return {
+    id: profile.user_id.toString(),
+    name: `${profile.firstname} ${profile.lastname}`,
+    age,
+    bio: profile.profil_info?.bio || "Aucune bio fournie",
+    interests: profile.profil_info?.interests || [],
+    images: profile.photos.map(p => p.file_path),
+    customFields: profile.profil_info || {},
+  };
+}
 
-export function EventSwiper({ onMatch }: EventSwiperProps) {
-  const [profiles, setProfiles] = useState<EventProfile[]>([
-    {
-      id: "1",
-      name: "Alice",
-      age: 26,
-      bio: "Product designer passionnée par les événements tech et le café de spécialité.",
-      interests: ["UX/UI", "Tech meetups", "Musique"],
-      images: [
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=80",
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=80",
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&q=80",
-      ],
-      customFields: {
-        "Profil LinkedIn": "linkedin.com/in/alice-design",
-        "Métier": "Product Designer",
-      },
-    },
-    {
-      id: "2",
-      name: "Brice",
-      age: 29,
-      bio: "Dév full‑stack, toujours partant pour un afterwork ou un hackathon.",
-      interests: ["JavaScript", "Startups", "Basket"],
-      images: [
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80",
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80",
-        "https://images.unsplash.com/photo-1500648067791-00dcc994a43e?w=800&q=80",
-        "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&q=80",
-      ],
-      customFields: {
-        "Stack": "TS, React, Node",
-        "Ville": "Paris",
-      },
-    },
-    {
-      id: "3",
-      name: "Chloé",
-      age: 24,
-      bio: "Étudiante en marketing, curieuse de rencontrer des profils variés.",
-      interests: ["Marketing", "Podcasts", "Yoga"],
-      images: [
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&q=80",
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=80",
-      ],
-    },
-    {
-      id: "4",
-      name: "David",
-      age: 31,
-      bio: "Chef d'entreprise dans la tech, passionné d'innovation et de networking.",
-      interests: ["Entrepreneuriat", "IA", "Course à pied"],
-      images: [
-        "https://images.unsplash.com/photo-1500648067791-00dcc994a43e?w=800&q=80",
-        "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=800&q=80",
-        "https://images.unsplash.com/photo-1463453091185-61582044d556?w=800&q=80",
-      ],
-      customFields: {
-        "Entreprise": "TechStart SAS",
-        "Secteur": "SaaS B2B",
-      },
-    },
-    {
-      id: "5",
-      name: "Emma",
-      age: 27,
-      bio: "Data scientist curieuse, fan de conférences et de rencontres inspirantes.",
-      interests: ["Machine Learning", "Python", "Photographie"],
-      images: [
-        "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&q=80",
-        "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=80",
-        "https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?w=800&q=80",
-      ],
-    },
-  ]);
+export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
+  const router = useRouter();
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<EventProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const position = useRef(new Animated.ValueXY()).current;
-
   const currentProfile = profiles[currentIndex];
 
+  // 🔄 LOAD API PROFILES
   useEffect(() => {
-    position.setValue({ x: 0, y: 0 });
-    position.setOffset({ x: 0, y: 0 });
-    position.flattenOffset();
-    setCurrentImageIndex(0);
+    loadProfiles();
+  }, [eventId]);
+
+  const loadProfiles = async () => {
+    setLoading(true);
+    try {
+      const newProfiles = await matchService.getProfiles(eventId, 20);
+      setProfiles(newProfiles);
+      setCurrentIndex(0);
+    } catch (error) {
+      console.error('Erreur chargement profils:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentProfile) {
+      position.setValue({ x: 0, y: 0 });
+      position.setOffset({ x: 0, y: 0 });
+      position.flattenOffset();
+      setCurrentImageIndex(0);
+    }
   }, [currentIndex]);
 
   const resetPosition = () => {
@@ -130,7 +94,7 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
     }).start();
   };
 
-  const forceSwipe = (direction: "left" | "right") => {
+  const forceSwipe = async (direction: "left" | "right") => {
     const x = direction === "right" ? width + 100 : -width - 100;
     Animated.timing(position, {
       toValue: { x, y: 0 },
@@ -139,62 +103,79 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
     }).start(() => onSwipeComplete(direction));
   };
 
-  const onSwipeComplete = (direction: "left" | "right") => {
-    const profile = profiles[currentIndex];
-    if (!profile) return;
+  const onSwipeComplete = async (direction: "left" | "right") => {
+    if (!currentProfile) return;
 
-    if (direction === "right" && onMatch) {
-      onMatch(profile.id);
+    try {
+      if (direction === "right") {
+        const result = await matchService.likeProfile(eventId, currentProfile.user_id);
+        if (result.matched) {
+          onMatch?.();
+          refreshMatches(eventId);
+          router.push(`/(main)/events/${eventId}/(event-tabs)/profile`);
+        }
+      } else {
+        await matchService.passProfile(eventId, currentProfile.user_id);
+      }
+    } catch (error) {
+      console.error(`${direction} failed:`, error);
     }
 
-    position.setValue({ x: 0, y: 0 });
-    position.setOffset({ x: 0, y: 0 });
+    nextProfile();
+  };
 
-    setCurrentIndex((prev) => prev + 1);
+  const nextProfile = () => {
+    if (currentIndex + 1 < profiles.length) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      loadProfiles();
+    }
   };
 
   const handleModalSwipe = (direction: "left" | "right") => {
     setShowProfileModal(false);
-    setTimeout(() => {
-      forceSwipe(direction);
-    }, 300);
+    setTimeout(() => forceSwipe(direction), 300);
   };
 
   const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_, gesture) => {
-          const isHorizontal = Math.abs(gesture.dx) > Math.abs(gesture.dy);
-          const isBigEnoughMovement = Math.abs(gesture.dx) > 5;
-          return isHorizontal && isBigEnoughMovement;
-        },
-        onPanResponderGrant: () => {
-          position.setOffset({
-            x: position.x._value,
-            y: position.y._value,
-          });
-          position.setValue({ x: 0, y: 0 });
-        },
-        onPanResponderMove: Animated.event(
-          [null, { dx: position.x, dy: position.y }],
-          { useNativeDriver: false }
-        ),
-        onPanResponderRelease: (_, gesture) => {
-          position.flattenOffset();
-
-          if (gesture.dx > SWIPE_THRESHOLD) {
-            forceSwipe("right");
-          } else if (gesture.dx < -SWIPE_THRESHOLD) {
-            forceSwipe("left");
-          } else {
-            resetPosition();
-          }
-        },
-        onPanResponderTerminationRequest: () => true,
-      }),
+    () => PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        const isHorizontal = Math.abs(gesture.dx) > Math.abs(gesture.dy);
+        return isHorizontal && Math.abs(gesture.dx) > 5;
+      },
+      onPanResponderGrant: () => {
+        position.setOffset({
+          x: position.x._value,
+          y: position.y._value,
+        });
+        position.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: position.x, dy: position.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (_, gesture) => {
+        position.flattenOffset();
+        if (gesture.dx > SWIPE_THRESHOLD) {
+          forceSwipe("right");
+        } else if (gesture.dx < -SWIPE_THRESHOLD) {
+          forceSwipe("left");
+        } else {
+          resetPosition();
+        }
+      },
+    }),
     [currentIndex]
   );
+
+  if (loading) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>Chargement des profils...</Text>
+      </View>
+    );
+  }
 
   if (!currentProfile) {
     return (
@@ -203,12 +184,12 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
           <MaterialIcons name="favorite-border" size={40} color="#303030" />
         </View>
         <Text style={styles.emptyTitle}>Plus de profils disponibles</Text>
-        <Text style={styles.emptyText}>
-          Revenez plus tard pour découvrir de nouveaux participants !
-        </Text>
+        <Text style={styles.emptyText}>Revenez plus tard !</Text>
       </View>
     );
   }
+
+  const uiProfile = profileToEventProfile(currentProfile);
 
   const rotate = position.x.interpolate({
     inputRange: [-width * 1.5, 0, width * 1.5],
@@ -245,15 +226,15 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
           <View style={styles.card}>
             <View style={styles.imageSection}>
               <ImageBackground
-                key={`${currentProfile.id}-${currentImageIndex}`}
-                source={{ uri: currentProfile.images[currentImageIndex] }}
+                key={`${uiProfile.id}-${currentImageIndex}`}
+                source={{ uri: uiProfile.images[currentImageIndex] }}
                 style={styles.imageBackground}
                 resizeMode="cover"
               >
                 <View style={styles.imageOverlay} />
 
                 <View style={styles.imageTouchContainer} pointerEvents="box-none">
-                  {currentProfile.images.length > 1 && (
+                  {uiProfile.images.length > 1 && (
                     <>
                       <Pressable 
                         style={styles.imageTouchLeft}
@@ -267,9 +248,9 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
                   )}
                 </View>
 
-                {currentProfile.images.length > 1 && (
+                {uiProfile.images.length > 1 && (
                   <View style={styles.paginationContainer} pointerEvents="none">
-                    {currentProfile.images.map((_, index) => (
+                    {uiProfile.images.map((_, index) => (
                       <View
                         key={index}
                         style={[
@@ -288,12 +269,12 @@ export function EventSwiper({ onMatch }: EventSwiperProps) {
                 >
                   <View style={styles.nameRow} pointerEvents="box-none">
                     <Text style={styles.nameOnImage}>
-                      {currentProfile.name}, {currentProfile.age}
+                      {uiProfile.name}, {uiProfile.age}
                     </Text>
                     <Pressable 
                       style={styles.infoButton}
                       onPress={() => {
-                        setSelectedProfile(currentProfile);
+                        setSelectedProfile(uiProfile);
                         setShowProfileModal(true);
                       }}
                       pointerEvents="auto"
@@ -680,3 +661,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+function refreshMatches(eventId: number) {
+  throw new Error("Function not implemented.");
+}
+
