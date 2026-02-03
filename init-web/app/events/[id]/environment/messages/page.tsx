@@ -7,7 +7,6 @@ import { authService } from "../../../../services/auth.service";
 import { matchService, Conversation, Message, Photo, MatchUserProfile } from "../../../../services/match.service";
 import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 import { useRealTimeMessages } from "../../../../hooks/useRealTimeMessages";
 import { SocketConversationUpdate } from "../../../../services/socket.service";
 import { useUnreadMessagesContext } from "../../../../contexts/UnreadMessagesContext";
@@ -325,12 +324,7 @@ export default function MessagesPage() {
 
   const getProfileImage = (photos?: Photo[], firstname?: string, lastname?: string): string => {
     if (photos && photos.length > 0 && photos[0].file_path) {
-      const filePath = photos[0].file_path;
-      // If the file_path is a relative path, prepend API_URL
-      if (filePath.startsWith('/')) {
-        return `${API_URL}${filePath}`;
-      }
-      return filePath;
+      return photos[0].file_path;
     }
     return `https://ui-avatars.com/api/?name=${firstname || "U"}+${lastname || ""}&size=200&background=1271FF&color=fff`;
   };
