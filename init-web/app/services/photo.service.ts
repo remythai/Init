@@ -2,8 +2,6 @@
 
 import { authService } from './auth.service';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
 export interface Photo {
   id: number;
   user_id: number;
@@ -29,14 +27,11 @@ class PhotoService {
   /**
    * Get the full URL for a photo
    * file_path is relative like /uploads/photos/...
+   * Uses Next.js rewrites to proxy to backend
    */
   getPhotoUrl(filePath: string): string {
     if (!filePath) return '';
-    // If already a full URL, return as-is
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      return filePath;
-    }
-    return `${API_URL}${filePath}`;
+    return filePath;
   }
 
   /**
@@ -64,7 +59,7 @@ class PhotoService {
 
     let response: Response;
     try {
-      response = await fetch(`${API_URL}/api/users/photos`, {
+      response = await fetch(`/api/users/photos`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

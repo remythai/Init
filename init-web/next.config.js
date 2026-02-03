@@ -2,10 +2,15 @@
 const nextConfig = {
   output: "standalone",
   async rewrites() {
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || "http://localhost:3000";
     return [
       {
-        source: "/api/:path*",                    // toutes les requêtes /api/...
-        destination: "http://init_api:3000/api/:path*", // vers le backend Docker
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: "/uploads/:path*",
+        destination: `${backendUrl}/uploads/:path*`,
       },
     ];
   },

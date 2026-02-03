@@ -405,7 +405,7 @@ export default function ReportsPage() {
                             }`}
                           >
                             <img
-                              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${photo.file_path}`}
+                              src={photo.file_path}
                               alt="Photo signalee"
                               className="w-full h-full object-cover"
                             />
