@@ -21,10 +21,6 @@ RUN apk add --no-cache wget
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Create uploads directory with correct permissions
-RUN mkdir -p /app/uploads/photos && \
-    chown -R nodejs:nodejs /app/uploads
-
 # Copy only package files
 COPY --chown=nodejs:nodejs package*.json ./
 
@@ -32,6 +28,12 @@ COPY --chown=nodejs:nodejs package*.json ./
 RUN npm ci --only=production
 
 COPY --chown=nodejs:nodejs . .
+
+# Create uploads directory with correct permissions AFTER copy
+# This ensures the directory exists and is writable even if volume is mounted
+RUN mkdir -p /app/uploads/photos && \
+    chown -R nodejs:nodejs /app/uploads && \
+    chmod -R 755 /app/uploads
 
 USER nodejs
 
