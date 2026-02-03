@@ -16,6 +16,12 @@ export const OrgaController = {
       throw new ValidationError('name, email et mot de passe sont requis');
     }
 
+    // Beta: restrict organizer registration to allowed emails only
+    const allowedOrgaEmails = ['mtech.bdx1@gmail.com'];
+    if (!allowedOrgaEmails.includes(mail.toLowerCase())) {
+      throw new ValidationError('Cette adresse email n\'est pas autorisée à créer un compte organisateur');
+    }
+
     if (password.length < 8) {
       throw new ValidationError('Le mot de passe doit contenir au moins 8 caractères');
     }

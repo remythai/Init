@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [organizerPhone, setOrganizerPhone] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const [acceptedCGU, setAcceptedCGU] = useState(false);
 
   const validateAge = (dateStr: string): boolean => {
     const birth = new Date(dateStr);
@@ -123,6 +124,9 @@ export default function AuthPage() {
         }
         if (password !== confirmPassword) {
           throw new Error("Les mots de passe ne correspondent pas");
+        }
+        if (!acceptedCGU) {
+          throw new Error("Vous devez accepter les CGU et la politique de confidentialité");
         }
       }
 
@@ -546,10 +550,35 @@ export default function AuthPage() {
             </>
           )}
 
+          {/* CGU Checkbox - Registration only */}
+          {!isLogin && (
+            <div className="flex items-start gap-3 mt-4">
+              <input
+                type="checkbox"
+                id="acceptCGU"
+                checked={acceptedCGU}
+                onChange={(e) => setAcceptedCGU(e.target.checked)}
+                disabled={loading}
+                className="mt-1 w-4 h-4 text-[#1271FF] bg-white border-gray-300 rounded focus:ring-[#1271FF] focus:ring-2 cursor-pointer"
+              />
+              <label htmlFor="acceptCGU" className="text-sm text-[#303030] cursor-pointer">
+                J'accepte les{" "}
+                <Link href="/legal/cgu" className="text-[#1271FF] hover:underline" target="_blank">
+                  Conditions Générales d'Utilisation
+                </Link>{" "}
+                et la{" "}
+                <Link href="/legal/confidentialite" className="text-[#1271FF] hover:underline" target="_blank">
+                  Politique de confidentialité
+                </Link>{" "}
+                *
+              </label>
+            </div>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (!isLogin && !acceptedCGU)}
             className="w-full bg-[#303030] hover:bg-[#404040] text-white py-3 rounded-lg font-medium mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading
