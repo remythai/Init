@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${BACKEND_CONTAINER_NAME}
     env_file:
-      - ./init-API/.env
+      - .env
     environment:
       NODE_ENV: production
       PORT: ${BACKEND_PORT}
