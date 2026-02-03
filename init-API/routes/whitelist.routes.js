@@ -32,15 +32,39 @@ router.post(
 );
 
 /**
+ * POST /api/events/:id/whitelist/import/preview
+ * Preview CSV file headers for column selection
+ * Body: { content: "..." }
+ */
+router.post(
+  '/:id/whitelist/import/preview',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(WhitelistController.previewImport)
+);
+
+/**
  * POST /api/events/:id/whitelist/import
  * Import phones from CSV or XML
- * Body: { content: "...", format: "csv" | "xml" }
+ * Body: { content: "...", format: "csv" | "xml", columnIndex?: number }
  */
 router.post(
   '/:id/whitelist/import',
   authMiddleware,
   requireRole('orga'),
   asyncHandler(WhitelistController.importFile)
+);
+
+/**
+ * DELETE /api/events/:id/whitelist/bulk
+ * Remove multiple phones from whitelist
+ * Body: { phones: ["+33..."], permanent?: boolean }
+ */
+router.delete(
+  '/:id/whitelist/bulk',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(WhitelistController.bulkRemove)
 );
 
 /**

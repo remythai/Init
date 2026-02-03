@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export default function Footer() {
   return (
@@ -10,10 +11,11 @@ export default function Footer() {
           </div>
           <span className="font-poppins font-bold text-white">Init</span>
         </div>
-        <div className="flex gap-6 md:gap-12 text-sm text-white/60 font-roboto">
-          <a href="#" className="hover:text-white transition-colors">Conditions</a>
-          <a href="#" className="hover:text-white transition-colors">Confidentialité</a>
-          <a href="#" className="hover:text-white transition-colors">Contact</a>
+        <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-sm text-white/60 font-roboto">
+          <Link href="/legal/cgu" className="hover:text-white transition-colors">CGU</Link>
+          <Link href="/legal/confidentialite" className="hover:text-white transition-colors">Confidentialité</Link>
+          <Link href="/legal/mentions-legales" className="hover:text-white transition-colors">Mentions légales</Link>
+          <a href="mailto:antton.ducos@gmail.com" className="hover:text-white transition-colors">Contact</a>
         </div>
         <p className="font-roboto text-sm text-white/40">© 2026 Init</p>
       </div>

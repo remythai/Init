@@ -13,6 +13,7 @@ import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
 import whitelistRoutes from './routes/whitelist.routes.js';
 import photoRoutes from './routes/photo.routes.js';
+import reportRoutes from './routes/report.routes.js';
 
 import { errorHandler } from './utils/errors.js';
 import { initializeSocket } from './socket/index.js';
@@ -76,6 +77,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/events', whitelistRoutes); // Whitelist routes under /api/events/:id/whitelist
+app.use('/api/events', reportRoutes); // Report routes under /api/events/:id/reports
 app.use('/api/matching', matchRoutes);
 
 // Health route

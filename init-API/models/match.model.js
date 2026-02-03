@@ -115,6 +115,17 @@ export const MatchModel = {
   },
 
   /**
+   * Find a match by ID
+   */
+  async findById(matchId) {
+    const result = await pool.query(
+      'SELECT * FROM matches WHERE id = $1',
+      [matchId]
+    );
+    return result.rows[0];
+  },
+
+  /**
    * Get all matches for a user on a specific event
    * Photos: prioritizes event-specific photos, falls back to general photos
    */
@@ -516,10 +527,43 @@ export const MatchModel = {
     // Delete likes where user is liker or liked
     const result = await pool.query(
       `DELETE FROM likes
-       WHERE event_id = $1 AND (liker_id = $2 OR liked_id = $2)
-       RETURNING id`,
+       WHERE event_id = $1 AND (liker_id = $2 OR liked_id = $2)`,
       [eventId, userId]
     );
-    return result.rows;
+    return result.rowCount;
+  },
+
+  /**
+   * Get a user's profile for viewing in a match conversation
+   * Includes event-specific photos and profil_info, but excludes sensitive data (email, phone)
+   */
+  async getMatchUserProfile(userId, eventId) {
+    const result = await pool.query(
+      `SELECT
+        u.id as user_id,
+        u.firstname,
+        u.lastname,
+        u.birthday,
+        uer.profil_info,
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = $2
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                ))
+              )
+          ),
+          '[]'::json
+        ) as photos
+      FROM users u
+      LEFT JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $2
+      WHERE u.id = $1`,
+      [userId, eventId]
+    );
+    return result.rows[0];
   }
 };

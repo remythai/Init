@@ -1,7 +1,20 @@
 import PhotoModel from '../models/photo.model.js';
+import { BlockedUserModel } from '../models/blockedUser.model.js';
 import { getPhotoUrl, deletePhotoFile } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
 import { success } from '../utils/responses.js';
+
+/**
+ * Check if user is blocked from an event
+ * Throws error if blocked
+ */
+const checkNotBlocked = async (eventId, userId) => {
+  if (!eventId) return;
+  const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+  if (isBlocked) {
+    throw new AppError(403, 'Vous ne pouvez plus modifier vos photos sur cet événement');
+  }
+};
 
 const MAX_PHOTOS_PER_CONTEXT = 6;
 
@@ -17,6 +30,9 @@ export const uploadPhoto = async (req, res, next) => {
     if (!req.file) {
       throw new AppError(400, 'Aucun fichier fourni');
     }
+
+    // Check if user is blocked from this event
+    await checkNotBlocked(eventId, userId);
 
     // Check photo limit
     const count = await PhotoModel.countByUserAndEvent(userId, eventId || null);
@@ -132,6 +148,9 @@ export const deletePhoto = async (req, res, next) => {
       throw new AppError(403, 'Vous ne pouvez pas supprimer cette photo');
     }
 
+    // Check if user is blocked from this event
+    await checkNotBlocked(photo.event_id, userId);
+
     // Delete from database
     await PhotoModel.delete(photoId);
 
@@ -173,6 +192,9 @@ export const setPrimaryPhoto = async (req, res, next) => {
       throw new AppError(403, 'Vous ne pouvez pas modifier cette photo');
     }
 
+    // Check if user is blocked from this event
+    await checkNotBlocked(photo.event_id, userId);
+
     const updatedPhoto = await PhotoModel.setPrimary(photoId);
 
     success(res, updatedPhoto, 'Photo définie comme principale');
@@ -194,6 +216,9 @@ export const reorderPhotos = async (req, res, next) => {
     if (!Array.isArray(photoIds) || photoIds.length === 0) {
       throw new AppError(400, 'photoIds doit être un tableau non vide');
     }
+
+    // Check if user is blocked from this event
+    await checkNotBlocked(eventId, userId);
 
     // Verify ownership of all photos
     for (const photoId of photoIds) {
@@ -228,6 +253,9 @@ export const copyPhotosToEvent = async (req, res, next) => {
     if (!eventId) {
       throw new AppError(400, 'eventId requis');
     }
+
+    // Check if user is blocked from this event
+    await checkNotBlocked(eventId, userId);
 
     // Get photos to copy
     let photosSource;

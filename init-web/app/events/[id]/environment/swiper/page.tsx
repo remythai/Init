@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Heart, Sparkles, User, UserPlus, Clock } from "lucide-react";
+import { X, Heart, Sparkles, User, UserPlus, Clock, Flag, AlertTriangle } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
 import { matchService, Profile, ApiError } from "../../../../services/match.service";
+import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
 
@@ -39,6 +40,12 @@ export default function SwiperPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [swiping, setSwiping] = useState(false);
   const [newUserNotification, setNewUserNotification] = useState<SocketUserJoined | null>(null);
+
+  // Report state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState<ReportType | null>(null);
+  const [reportDescription, setReportDescription] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const currentUserId = useRef<number | null>(null);
 
   // Animation state: track which card is exiting and in which direction
@@ -327,6 +334,34 @@ export default function SwiperPage() {
     setMatchId(null);
   };
 
+  const openReportModal = () => {
+    setReportType(null);
+    setReportDescription("");
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportType || !currentProfile) return;
+
+    setSubmittingReport(true);
+    try {
+      await reportService.createReport(eventId, {
+        reportedUserId: currentProfile.user_id,
+        reportType,
+        reason: 'inappropriate',
+        description: reportDescription || undefined,
+      });
+      setShowReportModal(false);
+      handleSwipe('left');
+      alert("Signalement envoye. L'organisateur va l'examiner.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors du signalement";
+      alert(message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   const getProfileImage = (profile: Profile, index: number = 0): string => {
     if (profile.photos && profile.photos.length > index && profile.photos[index].file_path) {
       const filePath = profile.photos[index].file_path;
@@ -597,15 +632,27 @@ export default function SwiperPage() {
                               <span className="font-normal">, {getAge(currentProfile)}</span>
                             )}
                           </h2>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!dragState?.isDragging) setShowProfileModal(true);
-                            }}
-                            className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center ml-3 hover:bg-white/40 transition-colors z-20"
-                          >
-                            <User className="w-6 h-6 text-white" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!dragState?.isDragging) setShowProfileModal(true);
+                              }}
+                              className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/40 transition-colors z-20"
+                            >
+                              <User className="w-6 h-6 text-white" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!dragState?.isDragging) openReportModal();
+                              }}
+                              className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-red-500/50 transition-colors z-20"
+                              title="Signaler"
+                            >
+                              <Flag className="w-5 h-5 text-white" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -860,6 +907,76 @@ export default function SwiperPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && currentProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !submittingReport && setShowReportModal(false)}
+          />
+          <div className="relative bg-[#303030] rounded-2xl p-6 max-w-md mx-4 w-full">
+            <h3 className="font-poppins font-semibold text-xl text-white mb-2">
+              Signaler {currentProfile.firstname}
+            </h3>
+            <p className="text-white/60 text-sm mb-6">
+              {!reportType ? "Que souhaitez-vous signaler ?" : "Ajoutez des details si necessaire"}
+            </p>
+
+            {/* Step 1: Type selection */}
+            {!reportType ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => setReportType('photo')}
+                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <div className="font-medium text-white">Photo inappropriee</div>
+                  <div className="text-sm text-white/60">Image choquante ou offensante</div>
+                </button>
+                <button
+                  onClick={() => setReportType('profile')}
+                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <div className="font-medium text-white">Profil offensant</div>
+                  <div className="text-sm text-white/60">Informations inappropriees</div>
+                </button>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="w-full py-3 text-white/60 hover:text-white transition-colors mt-2"
+                >
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              /* Step 2: Description */
+              <div className="space-y-4">
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="Decrivez la situation pour aider l'organisateur..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setReportType(null)}
+                    disabled={submittingReport}
+                    className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors disabled:opacity-50"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    onClick={handleReportSubmit}
+                    disabled={submittingReport}
+                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#0d5dd8] transition-colors disabled:opacity-50"
+                  >
+                    {submittingReport ? "Envoi..." : "Signaler"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -62,11 +62,25 @@ router.get(
   asyncHandler(EventController.getBlockedUsers)
 );
 
+router.post(
+  '/:id/blocked',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.blockUser)
+);
+
 router.delete(
   '/:id/blocked/:userId',
   authMiddleware,
   requireRole('orga'),
   asyncHandler(EventController.unblockParticipant)
+);
+
+router.get(
+  '/:id/statistics',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.getStatistics)
 );
 
 // Routes for Users only
