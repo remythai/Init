@@ -5,11 +5,7 @@ import { asyncHandler } from '../utils/errors.js';
 
 const router = Router();
 
-//Public routes
-router.get('/', asyncHandler(EventController.getAll));
-router.get('/:id', asyncHandler(EventController.getById));
-
-//Protected routes for orga
+// Routes for Orga only
 router.post(
   '/',
   authMiddleware,
@@ -21,7 +17,14 @@ router.get(
   '/orga/my-events',
   authMiddleware,
   requireRole('orga'),
-  asyncHandler(EventController.getMyEvents)
+  asyncHandler(EventController.getMyOrgaEvents)
+);
+
+router.get(
+  '/:id',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.getEventByID)
 );
 
 router.put(
@@ -45,11 +48,69 @@ router.get(
   asyncHandler(EventController.getParticipants)
 );
 
-router.put(
-  '/:eventId/participants/:userId/status',
+router.delete(
+  '/:id/participants/:userId',
   authMiddleware,
   requireRole('orga'),
-  asyncHandler(EventController.updateRegistrationStatus)
+  asyncHandler(EventController.removeParticipant)
+);
+
+router.get(
+  '/:id/blocked',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.getBlockedUsers)
+);
+
+router.delete(
+  '/:id/blocked/:userId',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.unblockParticipant)
+);
+
+// Routes for Users only
+
+router.post(
+  '/:id/register',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.register)
+);
+
+router.put(
+  '/:id/register',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.updateRegistration)
+);
+
+router.delete(
+  '/:id/register',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.unregister)
+);
+
+router.get(
+  '/:id/my-profile',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.getMyEventProfile)
+);
+
+router.get(
+  '/users/my-events',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.getMyRegisteredEvents)
+);
+
+router.get(
+  '/users/list',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.getPublicEventsForUser)
 );
 
 export default router;

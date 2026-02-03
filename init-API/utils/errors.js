@@ -1,7 +1,8 @@
 export class AppError extends Error {
-  constructor(message, statusCode) {
+  constructor(message, statusCode, code = null) {
     super(message);
     this.statusCode = statusCode;
+    this.code = code;
     this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
@@ -37,7 +38,43 @@ export class ConflictError extends AppError {
   }
 }
 
+export class EventExpiredError extends AppError {
+  constructor(message = 'La période de disponibilité de cet événement est terminée') {
+    super(message, 403, 'EVENT_EXPIRED');
+  }
+}
+
+export class UserBlockedError extends AppError {
+  constructor(message = 'Vous avez été bloqué de cet événement par l\'organisateur') {
+    super(message, 403, 'USER_BLOCKED');
+  }
+}
+
 export const errorHandler = (err, req, res, next) => {
+  // Handle multer errors
+  if (err.name === 'MulterError') {
+    let message = 'Erreur lors du téléchargement du fichier';
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'Le fichier est trop volumineux (max 5 Mo)';
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      message = 'Trop de fichiers';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Champ de fichier inattendu';
+    }
+    return res.status(400).json({
+      error: message,
+      code: 'FILE_UPLOAD_ERROR'
+    });
+  }
+
+  // Handle file filter errors (invalid mime type)
+  if (err.message && err.message.includes('Type de fichier non autorisé')) {
+    return res.status(400).json({
+      error: err.message,
+      code: 'INVALID_FILE_TYPE'
+    });
+  }
+
   if (err.code === '23505') {
     const field = err.constraint?.includes('mail') ? 'email' : 
                   err.constraint?.includes('tel') ? 'téléphone' : 'champ';
@@ -62,9 +99,11 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      error: err.message
-    });
+    const response = { error: err.message };
+    if (err.code) {
+      response.code = err.code;
+    }
+    return res.status(err.statusCode).json(response);
   }
 
   console.error('Unexpected error:', err);

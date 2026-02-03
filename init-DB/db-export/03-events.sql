@@ -1,0 +1,232 @@
+--
+-- Events and related tables
+--
+
+-- -----------------------------------------------------------------------------
+-- Table: events
+-- Description: Dating events organized by organizations
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.events (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    description text DEFAULT ' '::text NOT NULL,
+    location text,
+    orga_id integer NOT NULL,
+    -- Physical event dates (optional)
+    start_at timestamp without time zone,
+    end_at timestamp without time zone,
+    event_date timestamp without time zone,
+    -- App availability dates (required)
+    app_start_at timestamp without time zone NOT NULL,
+    app_end_at timestamp without time zone NOT NULL,
+    -- Theme
+    theme character varying(50) DEFAULT 'général'::character varying,
+    cooldown interval,
+    max_participants integer,
+    is_public boolean DEFAULT true NOT NULL,
+    has_whitelist boolean DEFAULT false NOT NULL,
+    has_link_access boolean DEFAULT false NOT NULL,
+    has_password_access boolean DEFAULT false NOT NULL,
+    access_password_hash text,
+    custom_fields jsonb DEFAULT '[]'::jsonb,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_physical_event_dates CHECK ((start_at IS NULL AND end_at IS NULL) OR (end_at > start_at)),
+    CONSTRAINT chk_app_dates CHECK ((app_end_at > app_start_at))
+);
+
+ALTER TABLE public.events OWNER TO dating_admin;
+
+CREATE SEQUENCE public.events_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.events_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.events_id_seq OWNED BY public.events.id;
+ALTER TABLE ONLY public.events ALTER COLUMN id SET DEFAULT nextval('public.events_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.events ADD CONSTRAINT events_pkey PRIMARY KEY (id);
+
+-- Foreign key
+ALTER TABLE ONLY public.events
+    ADD CONSTRAINT events_orga_id_fkey
+    FOREIGN KEY (orga_id) REFERENCES public.orga(id) ON DELETE CASCADE;
+
+-- Indexes
+CREATE INDEX idx_events_orga_id ON public.events USING btree (orga_id);
+CREATE INDEX idx_events_start_at ON public.events USING btree (start_at);
+CREATE INDEX idx_events_app_start_at ON public.events USING btree (app_start_at);
+CREATE INDEX idx_events_app_end_at ON public.events USING btree (app_end_at);
+CREATE INDEX idx_events_custom_fields ON public.events USING gin (custom_fields);
+
+-- Trigger
+CREATE TRIGGER update_events_updated_at
+    BEFORE UPDATE ON public.events
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- -----------------------------------------------------------------------------
+-- Table: event_photos
+-- Description: Photos associated with events
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.event_photos (
+    event_id integer NOT NULL,
+    photo_id integer NOT NULL,
+    display_order integer NOT NULL
+);
+
+ALTER TABLE public.event_photos OWNER TO dating_admin;
+
+-- Primary key
+ALTER TABLE ONLY public.event_photos ADD CONSTRAINT event_photos_pkey PRIMARY KEY (event_id, photo_id);
+
+-- Foreign keys
+ALTER TABLE ONLY public.event_photos
+    ADD CONSTRAINT event_photos_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.event_photos
+    ADD CONSTRAINT event_photos_photo_id_fkey
+    FOREIGN KEY (photo_id) REFERENCES public.photos(id) ON DELETE CASCADE;
+
+-- -----------------------------------------------------------------------------
+-- Table: event_whitelist
+-- Description: Phone-based whitelist for controlling event access
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.event_whitelist (
+    id integer NOT NULL,
+    event_id integer NOT NULL,
+    phone character varying(20) NOT NULL,
+    status character varying(20) DEFAULT 'active' NOT NULL,
+    source character varying(20) DEFAULT 'manual' NOT NULL,
+    user_id integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    removed_at timestamp without time zone,
+    CONSTRAINT event_whitelist_status_check CHECK (status IN ('active', 'removed')),
+    CONSTRAINT event_whitelist_source_check CHECK (source IN ('manual', 'csv', 'xml'))
+);
+
+ALTER TABLE public.event_whitelist OWNER TO dating_admin;
+
+CREATE SEQUENCE public.event_whitelist_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.event_whitelist_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.event_whitelist_id_seq OWNED BY public.event_whitelist.id;
+ALTER TABLE ONLY public.event_whitelist ALTER COLUMN id SET DEFAULT nextval('public.event_whitelist_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.event_whitelist ADD CONSTRAINT event_whitelist_pkey PRIMARY KEY (id);
+
+-- Unique constraint (one phone per event)
+ALTER TABLE ONLY public.event_whitelist ADD CONSTRAINT event_whitelist_event_phone_unique UNIQUE (event_id, phone);
+
+-- Foreign keys
+ALTER TABLE ONLY public.event_whitelist
+    ADD CONSTRAINT event_whitelist_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.event_whitelist
+    ADD CONSTRAINT event_whitelist_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+-- Indexes
+CREATE INDEX idx_event_whitelist_phone ON public.event_whitelist USING btree (phone);
+CREATE INDEX idx_event_whitelist_event_status ON public.event_whitelist USING btree (event_id, status);
+
+-- Trigger
+CREATE TRIGGER update_event_whitelist_updated_at
+    BEFORE UPDATE ON public.event_whitelist
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- -----------------------------------------------------------------------------
+-- Table: event_link_access
+-- Description: Access tokens for event invitation links
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.event_link_access (
+    id integer NOT NULL,
+    event_id integer NOT NULL,
+    access_token text NOT NULL,
+    used boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.event_link_access OWNER TO dating_admin;
+
+CREATE SEQUENCE public.event_link_access_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.event_link_access_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.event_link_access_id_seq OWNED BY public.event_link_access.id;
+ALTER TABLE ONLY public.event_link_access ALTER COLUMN id SET DEFAULT nextval('public.event_link_access_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.event_link_access ADD CONSTRAINT event_link_access_pkey PRIMARY KEY (id);
+
+-- Unique constraint
+ALTER TABLE ONLY public.event_link_access ADD CONSTRAINT event_link_access_access_token_key UNIQUE (access_token);
+
+-- Foreign key
+ALTER TABLE ONLY public.event_link_access
+    ADD CONSTRAINT event_link_access_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+-- -----------------------------------------------------------------------------
+-- Table: event_blocked_users
+-- Description: Users who have been removed/blocked from events and cannot re-register
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.event_blocked_users (
+    id integer NOT NULL,
+    event_id integer NOT NULL,
+    user_id integer NOT NULL,
+    blocked_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    reason character varying(255)
+);
+
+ALTER TABLE public.event_blocked_users OWNER TO dating_admin;
+
+CREATE SEQUENCE public.event_blocked_users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.event_blocked_users_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.event_blocked_users_id_seq OWNED BY public.event_blocked_users.id;
+ALTER TABLE ONLY public.event_blocked_users ALTER COLUMN id SET DEFAULT nextval('public.event_blocked_users_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.event_blocked_users ADD CONSTRAINT event_blocked_users_pkey PRIMARY KEY (id);
+
+-- Unique constraint (one entry per user per event)
+ALTER TABLE ONLY public.event_blocked_users ADD CONSTRAINT event_blocked_users_event_user_unique UNIQUE (event_id, user_id);
+
+-- Foreign keys
+ALTER TABLE ONLY public.event_blocked_users
+    ADD CONSTRAINT event_blocked_users_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.event_blocked_users
+    ADD CONSTRAINT event_blocked_users_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+-- Index
+CREATE INDEX idx_event_blocked_users_event ON public.event_blocked_users USING btree (event_id);
+CREATE INDEX idx_event_blocked_users_user ON public.event_blocked_users USING btree (user_id);

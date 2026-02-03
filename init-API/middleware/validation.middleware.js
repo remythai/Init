@@ -7,23 +7,39 @@ export const validationSchemas = {
     birthday: { required: true, type: 'age18' },
     password: { required: true, type: 'string', minLength: 8 }
   },
+
   userLogin: {
     tel: { required: true, type: 'phone' },
     password: { required: true, type: 'string' }
   },
+
+  userUpdate: {
+    firstname: { required: false, type: 'string', minLength: 2, maxLength: 100 },
+    lastname: { required: false, type: 'string', minLength: 2, maxLength: 100 },
+    mail: { required: false, type: 'email' },
+    tel: { required: false, type: 'phone' }
+  },
+
   orgaRegister: {
-    nom: { required: true, type: 'string', minLength: 2, maxLength: 255 },
+    name: { required: true, type: 'string', minLength: 2, maxLength: 255 },
     mail: { required: true, type: 'email' },
     description: { required: false, type: 'string' },
     tel: { required: false, type: 'phone' },
     password: { required: true, type: 'string', minLength: 8 }
   },
+
   orgaLogin: {
     mail: { required: true, type: 'email' },
     password: { required: true, type: 'string' }
+  },
+
+  orgaUpdate: {
+    nom: { required: false, type: 'string', minLength: 2, maxLength: 255 },
+    mail: { required: false, type: 'email' },
+    tel: { required: false, type: 'phone' },
+    description: { required: false, type: 'string' }
   }
 };
-
 const validators = {
   string: (value, rules) => {
     if (typeof value !== 'string') return 'Doit être une chaîne de caractères';
@@ -38,7 +54,7 @@ const validators = {
   
   email: (value) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) return 'Format d\'email invalide';
+    if (!emailRegex.test(value)) return "Format d'email invalide";
     return null;
   },
   
@@ -74,7 +90,9 @@ export const validate = (schemaName) => {
   return (req, res, next) => {
     const schema = validationSchemas[schemaName];
     if (!schema) {
-      return next(new Error(`Schema de validation '${schemaName}' introuvable`));
+      return res.status(500).json({
+        error: `Schéma de validation '${schemaName}' introuvable`
+      });
     }
 
     const errors = {};
@@ -97,6 +115,12 @@ export const validate = (schemaName) => {
           errors[field] = error;
         }
       }
+    }
+
+    if ((schemaName === 'userUpdate' || schemaName === 'orgaUpdate') && Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        error: 'Aucun champ à mettre à jour fourni'
+      });
     }
 
     if (Object.keys(errors).length > 0) {

@@ -49,7 +49,7 @@ export const UserController = {
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
 
-    await TokenModel.create(user.id, refreshToken, expiry);
+    await TokenModel.create(user.id, refreshToken, expiry, 'user');
 
     return success(res, {
       accessToken,
@@ -76,8 +76,11 @@ export const UserController = {
       throw new UnauthorizedError('Refresh token invalide ou expiré');
     }
 
+    const entityId = tokenEntry.user_id || tokenEntry.orga_id;
+    const role = tokenEntry.user_type;
+
     const accessToken = jwt.sign(
-      { id: tokenEntry.user_id, role: 'user' },
+      { id: entityId, role: role },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -135,6 +138,7 @@ export const UserController = {
   },
 
   async deleteAccount(req, res) {
+    await TokenModel.deleteAllForUser(req.user.id, 'user');
     await UserModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
   }

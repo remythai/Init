@@ -2,12 +2,12 @@ import pool from '../config/database.js';
 
 export const OrgaModel = {
   async create(orgaData) {
-    const { nom, mail, description, tel, password_hash } = orgaData;
+    const { name, mail, description, tel, password_hash } = orgaData;
     const result = await pool.query(
       `INSERT INTO orga (nom, mail, description, tel, password_hash)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, nom, mail, description, tel, created_at`,
-      [nom, mail, description, tel, password_hash]
+      [name, mail, description, tel, password_hash]
     );
     return result.rows[0];
   },
