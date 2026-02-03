@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Calendar, MapPin, Users, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check, Camera, Shield, Ban } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check, Camera, Shield, Ban, BarChart3 } from "lucide-react";
 import { authService } from "../../services/auth.service";
 import {
   eventService,
@@ -693,6 +693,20 @@ export default function EventDetailPage() {
                   </Link>
                 )}
               </div>
+              <Link
+                href={`/events/${eventId}/statistics`}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-[#1271FF] to-[#0d5dd8] text-white font-medium hover:opacity-90 transition-opacity"
+              >
+                <BarChart3 className="w-5 h-5" />
+                Voir les statistiques
+              </Link>
+              <Link
+                href={`/events/${eventId}/reports`}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors border border-red-200"
+              >
+                <Flag className="w-5 h-5" />
+                Signalements
+              </Link>
             </div>
           ) : event.isBlocked ? (
             /* User is blocked from this event */

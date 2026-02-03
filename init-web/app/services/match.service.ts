@@ -53,6 +53,8 @@ export interface Conversation {
   match_id: number;
   is_archived?: boolean;
   is_event_expired?: boolean;
+  is_blocked?: boolean;
+  is_other_user_blocked?: boolean;
   user: {
     id: number;
     firstname: string;
@@ -282,6 +284,32 @@ class MatchService {
       throw new Error(error.error || 'Erreur');
     }
   }
+
+  /**
+   * Get the profile of the other user in a match
+   */
+  async getMatchProfile(matchId: number): Promise<MatchUserProfile> {
+    const response = await authService.authenticatedFetch(
+      `/api/matching/matches/${matchId}/profile`
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Erreur lors de la récupération du profil');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+}
+
+export interface MatchUserProfile {
+  user_id: number;
+  firstname: string;
+  lastname: string;
+  birthday?: string;
+  profil_info?: Record<string, unknown>;
+  photos?: Photo[];
 }
 
 export const matchService = new MatchService();

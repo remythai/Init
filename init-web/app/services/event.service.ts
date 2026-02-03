@@ -383,10 +383,9 @@ class EventService {
 
   async removeParticipant(eventId: string, userId: number, action: 'block' | 'delete' = 'block'): Promise<void> {
     const response = await authService.authenticatedFetch(
-      `/api/events/${eventId}/participants/${userId}`,
+      `/api/events/${eventId}/participants/${userId}?action=${action}`,
       {
-        method: 'DELETE',
-        body: JSON.stringify({ action })
+        method: 'DELETE'
       }
     );
 
@@ -394,6 +393,33 @@ class EventService {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || error.message || 'Erreur lors de la suppression du participant');
     }
+  }
+
+  async blockUser(eventId: string, userId: number, reason?: string): Promise<void> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/blocked`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId, reason })
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors du blocage');
+    }
+  }
+
+  async getEventStatistics(eventId: string): Promise<EventStatistics> {
+    const response = await authService.authenticatedFetch(`/api/events/${eventId}/statistics`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la récupération des statistiques');
+    }
+
+    const data = await response.json();
+    return data.data.statistics;
   }
 }
 
@@ -407,6 +433,39 @@ export interface BlockedUser {
   lastname: string;
   mail: string;
   tel: string;
+}
+
+export interface EventStatistics {
+  participants: {
+    total: number;
+    active: number;
+    engagement_rate: number;
+  };
+  whitelist: {
+    total: number;
+    registered: number;
+    pending: number;
+    removed: number;
+    conversion_rate: number;
+  };
+  matching: {
+    total_matches: number;
+    average_matches_per_user: number;
+    reciprocity_rate: number;
+  };
+  swipes: {
+    total: number;
+    likes: number;
+    passes: number;
+    users_who_swiped: number;
+    like_rate: number;
+  };
+  messages: {
+    total: number;
+    users_who_sent: number;
+    conversations_active: number;
+    average_per_conversation: number;
+  };
 }
 
 // Utility functions

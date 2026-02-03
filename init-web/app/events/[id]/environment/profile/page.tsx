@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Camera, Edit2, Check, X } from "lucide-react";
+import { Camera, Edit2, Check, X, AlertTriangle } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
 import { matchService } from "../../../../services/match.service";
 import { eventService, CustomField, getFieldId, getFieldPlaceholder } from "../../../../services/event.service";
@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [profile, setProfile] = useState<{
     firstname: string;
     lastname: string;
@@ -48,6 +49,7 @@ export default function ProfilePage() {
       loadMatchStats();
       loadEventProfile();
       loadEventPhotos();
+      checkBlockedStatus();
     };
 
     initPage();
@@ -131,6 +133,15 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Error loading match stats:", error);
       setMatchCount(0);
+    }
+  };
+
+  const checkBlockedStatus = async () => {
+    try {
+      const eventData = await eventService.getEventById(eventId);
+      setIsBlocked(eventData?.is_blocked || false);
+    } catch (error) {
+      console.error("Error checking blocked status:", error);
     }
   };
 
@@ -219,15 +230,32 @@ export default function ProfilePage() {
           </h1>
         </div>
 
+        {/* Blocked Warning */}
+        {isBlocked && (
+          <div className="bg-red-500/20 border border-red-500/50 rounded-2xl p-4 mb-4 flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
+            <div>
+              <p className="text-red-300 font-semibold">Profil bloque</p>
+              <p className="text-red-300/80 text-sm">
+                Vous avez ete retire de cet evenement. Vous ne pouvez plus modifier votre profil ni vos photos.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Photos */}
         <div className="bg-white/10 rounded-2xl p-5 mb-4">
           <h2 className="font-semibold text-white mb-4">Mes photos</h2>
-          <PhotoManager
-            eventId={eventId}
-            showCopyFromGeneral={true}
-            onPhotosChange={handlePhotosChange}
-            darkMode={true}
-          />
+          {isBlocked ? (
+            <p className="text-white/60 italic text-sm">Modification des photos desactivee</p>
+          ) : (
+            <PhotoManager
+              eventId={eventId}
+              showCopyFromGeneral={true}
+              onPhotosChange={handlePhotosChange}
+              darkMode={true}
+            />
+          )}
         </div>
 
         {/* Stats */}
@@ -244,12 +272,14 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-white">Mon profil evenement</h2>
               {!editing ? (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-[#1271FF] hover:text-[#0d5dd8] transition-colors"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
+                !isBlocked && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="text-[#1271FF] hover:text-[#0d5dd8] transition-colors"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                )
               ) : (
                 <div className="flex gap-2">
                   <button
