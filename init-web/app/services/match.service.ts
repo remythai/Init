@@ -1,6 +1,17 @@
 // services/match.service.ts
 import { authService } from './auth.service';
 
+// Custom error class to include error code
+export class ApiError extends Error {
+  code: string | null;
+
+  constructor(message: string, code: string | null = null) {
+    super(message);
+    this.code = code;
+    this.name = 'ApiError';
+  }
+}
+
 export interface Photo {
   id: number;
   file_path: string;
@@ -40,6 +51,8 @@ export interface Match {
 
 export interface Conversation {
   match_id: number;
+  is_archived?: boolean;
+  is_event_expired?: boolean;
   user: {
     id: number;
     firstname: string;
@@ -80,7 +93,7 @@ class MatchService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Erreur lors de la récupération des profils');
+      throw new ApiError(error.error || 'Erreur lors de la récupération des profils', error.code || null);
     }
 
     const data = await response.json();
@@ -101,7 +114,7 @@ class MatchService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Erreur lors du like');
+      throw new ApiError(error.error || 'Erreur lors du like', error.code || null);
     }
 
     const data = await response.json();
@@ -244,6 +257,15 @@ class MatchService {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || 'Erreur lors du marquage du message');
     }
+  }
+
+  /**
+   * Mark all messages in a conversation as read
+   * This re-fetches messages which triggers the backend to mark them as read
+   */
+  async markConversationMessagesAsRead(matchId: number): Promise<void> {
+    // The getMessages endpoint marks all messages as read
+    await this.getMessages(matchId, 1);
   }
 
   /**

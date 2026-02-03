@@ -10,7 +10,10 @@ import {
   eventService,
   transformEventResponses,
   Event,
+  CustomField,
+  getFieldId,
 } from "../services/event.service";
+import BottomNavigation from "../components/BottomNavigation";
 
 export default function EventsPage() {
   const router = useRouter();
@@ -33,9 +36,14 @@ export default function EventsPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    // Physical event dates (optional)
+    has_physical_event: false,
     start_at: "",
     end_at: "",
     location: "",
+    // App availability dates (required)
+    app_start_at: "",
+    app_end_at: "",
     max_participants: "",
     is_public: true,
     has_whitelist: false,
@@ -51,13 +59,12 @@ export default function EventsPage() {
   const [showCustomFieldForm, setShowCustomFieldForm] = useState(false);
   const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
   const [currentField, setCurrentField] = useState<CustomField>({
-    id: "",
     type: "text",
     label: "",
     required: false,
     options: [],
   });
-  const [newOption, setNewOption] = useState({ label: "", value: "" });
+  const [newOption, setNewOption] = useState("");
 
   // Address autocomplete
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -69,15 +76,6 @@ export default function EventsPage() {
 
   // Success message
   const [successMessage, setSuccessMessage] = useState("");
-
-  interface CustomField {
-    id: string;
-    type: string;
-    label: string;
-    required?: boolean;
-    placeholder?: string;
-    options?: { label: string; value: string }[];
-  }
 
   interface AddressSuggestion {
     place_id: number;
@@ -95,7 +93,7 @@ export default function EventsPage() {
     };
   }
 
-  const fieldTypes = [
+  const fieldTypes: { value: CustomField['type']; label: string }[] = [
     { value: "text", label: "Texte court" },
     { value: "textarea", label: "Texte long" },
     { value: "number", label: "Nombre" },
@@ -186,15 +184,15 @@ export default function EventsPage() {
 
   // Custom fields handlers
   const handleAddOption = () => {
-    if (!newOption.value.trim() || !newOption.label.trim()) {
+    if (!newOption.trim()) {
       return;
     }
 
     setCurrentField({
       ...currentField,
-      options: [...(currentField.options || []), { ...newOption }],
+      options: [...(currentField.options || []), newOption.trim()],
     });
-    setNewOption({ value: "", label: "" });
+    setNewOption("");
   };
 
   const handleRemoveOption = (index: number) => {
@@ -204,7 +202,7 @@ export default function EventsPage() {
   };
 
   const handleSaveCustomField = () => {
-    if (!currentField.id.trim() || !currentField.label.trim()) {
+    if (!currentField.label.trim()) {
       return;
     }
 
@@ -217,14 +215,15 @@ export default function EventsPage() {
       updatedFields[editingFieldIndex] = currentField;
       setCustomFields(updatedFields);
     } else {
-      if (customFields.some((f) => f.id === currentField.id)) {
+      // Vérifier si un champ avec le même label existe déjà
+      const newFieldId = getFieldId(currentField.label);
+      if (customFields.some((f) => getFieldId(f.label) === newFieldId)) {
         return;
       }
       setCustomFields([...customFields, currentField]);
     }
 
     setCurrentField({
-      id: "",
       type: "text",
       label: "",
       required: false,
@@ -299,31 +298,49 @@ export default function EventsPage() {
       setCreateError("La description est requise");
       return;
     }
-    if (!formData.location.trim()) {
-      setCreateError("Le lieu est requis");
+    // App availability dates are required
+    if (!formData.app_start_at) {
+      setCreateError("La date de debut de disponibilite de l'app est requise");
       return;
     }
-    if (!formData.start_at) {
-      setCreateError("La date de debut est requise");
-      return;
-    }
-    if (!formData.end_at) {
-      setCreateError("La date de fin est requise");
+    if (!formData.app_end_at) {
+      setCreateError("La date de fin de disponibilite de l'app est requise");
       return;
     }
 
-    const startDate = new Date(formData.start_at);
-    const endDate = new Date(formData.end_at);
-    const now = new Date();
+    const appStartDate = new Date(formData.app_start_at);
+    const appEndDate = new Date(formData.app_end_at);
 
-    if (startDate < now) {
-      setCreateError("La date de debut ne peut pas etre dans le passe");
+    if (appEndDate <= appStartDate) {
+      setCreateError("La date de fin de l'app doit etre apres la date de debut");
       return;
     }
 
-    if (endDate <= startDate) {
-      setCreateError("La date de fin doit etre apres la date de debut");
-      return;
+    // Physical event dates (optional)
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    if (formData.has_physical_event) {
+      if (!formData.location.trim()) {
+        setCreateError("Le lieu est requis pour un evenement physique");
+        return;
+      }
+      if (!formData.start_at) {
+        setCreateError("La date de debut de l'evenement physique est requise");
+        return;
+      }
+      if (!formData.end_at) {
+        setCreateError("La date de fin de l'evenement physique est requise");
+        return;
+      }
+
+      startDate = new Date(formData.start_at);
+      endDate = new Date(formData.end_at);
+
+      if (endDate <= startDate) {
+        setCreateError("La date de fin de l'evenement physique doit etre apres la date de debut");
+        return;
+      }
     }
 
     const maxParticipants = parseInt(formData.max_participants);
@@ -348,16 +365,25 @@ export default function EventsPage() {
       const eventData: Parameters<typeof eventService.createEvent>[0] = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        start_at: startDate.toISOString(),
-        end_at: endDate.toISOString(),
-        location: formData.location.trim(),
+        location: formData.has_physical_event ? formData.location.trim() : undefined,
         max_participants: maxParticipants,
         is_public: formData.is_public,
         has_whitelist: formData.has_whitelist,
         has_link_access: formData.has_link_access,
         has_password_access: formData.has_password_access,
         custom_fields: customFields.length > 0 ? customFields : undefined,
+        // App availability dates (required)
+        app_start_at: appStartDate.toISOString(),
+        app_end_at: appEndDate.toISOString(),
+        // Theme
+        theme: formData.theme,
       };
+
+      // Physical event dates (optional)
+      if (formData.has_physical_event && startDate && endDate) {
+        eventData.start_at = startDate.toISOString();
+        eventData.end_at = endDate.toISOString();
+      }
 
       if (formData.has_password_access && formData.access_password) {
         eventData.access_password = formData.access_password;
@@ -373,9 +399,12 @@ export default function EventsPage() {
       setFormData({
         name: "",
         description: "",
+        has_physical_event: false,
         start_at: "",
         end_at: "",
         location: "",
+        app_start_at: "",
+        app_end_at: "",
         max_participants: "",
         is_public: true,
         has_whitelist: false,
@@ -443,7 +472,7 @@ export default function EventsPage() {
     const matchesSearch =
       event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.theme.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase());
+      (event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesTheme =
       selectedTheme === "all" ||
       event.theme.toLowerCase() === selectedTheme.toLowerCase();
@@ -453,8 +482,8 @@ export default function EventsPage() {
     let matchesDate = true;
     if (dateFilter === "today") {
       matchesDate =
-        event.date.toLowerCase().includes("aujourd'hui") ||
-        event.date.toLowerCase().includes("aujourd");
+        event.appDate.toLowerCase().includes("aujourd'hui") ||
+        event.appDate.toLowerCase().includes("aujourd");
     }
 
     return matchesFilter && matchesSearch && matchesTheme && matchesAvailability && matchesDate;
@@ -614,13 +643,21 @@ export default function EventsPage() {
                     </h3>
 
                     <div className="space-y-2">
+                      {event.hasPhysicalEvent && (
+                        <>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Calendar className="w-4 h-4" />
+                            <span className="text-sm">{event.physicalDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <MapPin className="w-4 h-4" />
+                            <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span className="text-sm">{event.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm">{event.location}</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
+                        <span className="text-sm">{event.appDate}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Users className="w-4 h-4" />
@@ -662,7 +699,7 @@ export default function EventsPage() {
 
       {/* Filter Tabs (for users) */}
       {userType === "user" && (
-        <div className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
+        <div className="fixed bottom-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
           <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg flex max-w-md mx-auto">
             <button
               onClick={() => setActiveFilter("all")}
@@ -902,80 +939,152 @@ export default function EventsPage() {
                 />
               </div>
 
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-[#303030] mb-2">
-                    Date et heure de début *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.start_at}
-                    onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
-                    disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-[#303030] mb-2">
-                    Date et heure de fin *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.end_at}
-                    onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
-                    disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
-                  />
+              {/* App Availability Dates (Required) */}
+              <div className="space-y-3 pt-4 border-t">
+                <h3 className="font-semibold text-[#303030]">
+                  Disponibilite de l'app *
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Periode pendant laquelle les utilisateurs peuvent acceder au swiper, matcher et discuter.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                      Debut de disponibilite *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.app_start_at}
+                      onChange={(e) => setFormData({ ...formData, app_start_at: e.target.value })}
+                      disabled={creating}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                      Fin de disponibilite *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.app_end_at}
+                      onChange={(e) => setFormData({ ...formData, app_end_at: e.target.value })}
+                      disabled={creating}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Location with autocomplete */}
-              <div className="relative">
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  Lieu *
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    onFocus={() => {
-                      if (addressSuggestions.length > 0) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                    placeholder="Commencez a taper une adresse..."
-                    disabled={creating}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
-                  />
-                  {loadingSuggestions && (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <div className="w-5 h-5 border-2 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
+              {/* Physical Event Toggle */}
+              <div className="space-y-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, has_physical_event: !formData.has_physical_event })}
+                  disabled={creating}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                >
+                  <div className="text-left">
+                    <p className="font-medium text-[#303030]">Evenement physique</p>
+                    <p className="text-sm text-gray-600">
+                      {formData.has_physical_event ? "L'evenement a un lieu et une date" : "Pas de lieu ni de date physique"}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                      formData.has_physical_event ? "bg-[#1271FF]" : "bg-gray-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                        formData.has_physical_event ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </button>
 
-                {/* Address Suggestions */}
-                {showSuggestions && addressSuggestions.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                    {addressSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.place_id}
-                        type="button"
-                        onClick={() => selectAddress(suggestion)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-0"
-                      >
-                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-[#303030] line-clamp-2">
-                          {suggestion.display_name}
-                        </span>
-                      </button>
-                    ))}
+                {/* Physical Event Dates and Location */}
+                {formData.has_physical_event && (
+                  <div className="space-y-4 p-4 bg-gray-50 rounded-xl">
+                    <p className="text-sm text-gray-600">
+                      Quand et ou se deroule l'evenement physique.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-[#303030] mb-2">
+                          Debut de l'evenement *
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formData.start_at}
+                          onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
+                          disabled={creating}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-[#303030] mb-2">
+                          Fin de l'evenement *
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formData.end_at}
+                          onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
+                          disabled={creating}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Location inside physical event section */}
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-[#303030] mb-2">
+                        Lieu *
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          onFocus={() => {
+                            if (addressSuggestions.length > 0) {
+                              setShowSuggestions(true);
+                            }
+                          }}
+                          placeholder="Commencez a taper une adresse..."
+                          disabled={creating}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                        />
+                        {loadingSuggestions && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <div className="w-5 h-5 border-2 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Address Suggestions */}
+                      {showSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                          {addressSuggestions.map((suggestion) => (
+                            <button
+                              key={suggestion.place_id}
+                              type="button"
+                              onClick={() => selectAddress(suggestion)}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-0"
+                            >
+                              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-[#303030] line-clamp-2">
+                                {suggestion.display_name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
+
 
               {/* Max Participants */}
               <div>
@@ -1128,7 +1237,7 @@ export default function EventsPage() {
                   <div className="space-y-2">
                     {customFields.map((field, index) => (
                       <div
-                        key={field.id}
+                        key={getFieldId(field.label)}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <div>
@@ -1219,7 +1328,6 @@ export default function EventsPage() {
               setShowCustomFieldForm(false);
               setEditingFieldIndex(null);
               setCurrentField({
-                id: "",
                 type: "text",
                 label: "",
                 required: false,
@@ -1238,7 +1346,6 @@ export default function EventsPage() {
                   setShowCustomFieldForm(false);
                   setEditingFieldIndex(null);
                   setCurrentField({
-                    id: "",
                     type: "text",
                     label: "",
                     required: false,
@@ -1253,30 +1360,10 @@ export default function EventsPage() {
 
             {/* Modal Body */}
             <div className="p-5 space-y-5 overflow-y-auto max-h-[60vh]">
-              {/* Field ID */}
+              {/* Field Label (Question) */}
               <div>
                 <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  ID du champ *
-                </label>
-                <input
-                  type="text"
-                  value={currentField.id}
-                  onChange={(e) =>
-                    setCurrentField({ ...currentField, id: e.target.value })
-                  }
-                  placeholder="Ex: linkedin_url"
-                  disabled={editingFieldIndex !== null}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
-                />
-                <p className="text-xs text-gray-600 mt-1">
-                  Identifiant unique (sans espaces)
-                </p>
-              </div>
-
-              {/* Field Label */}
-              <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  Label *
+                  Question *
                 </label>
                 <input
                   type="text"
@@ -1284,9 +1371,10 @@ export default function EventsPage() {
                   onChange={(e) =>
                     setCurrentField({ ...currentField, label: e.target.value })
                   }
-                  placeholder="Ex: Profil LinkedIn"
+                  placeholder="Ex: Quel est votre profil LinkedIn ?"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                 />
+                <p className="text-xs text-gray-500 mt-1">Cette question sera affichee aux participants</p>
               </div>
 
               {/* Field Type */}
@@ -1312,22 +1400,6 @@ export default function EventsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Placeholder */}
-              <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
-                  Placeholder (optionnel)
-                </label>
-                <input
-                  type="text"
-                  value={currentField.placeholder || ""}
-                  onChange={(e) =>
-                    setCurrentField({ ...currentField, placeholder: e.target.value })
-                  }
-                  placeholder="Ex: https://linkedin.com/in/..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                />
               </div>
 
               {/* Required Toggle */}
@@ -1359,7 +1431,7 @@ export default function EventsPage() {
               {needsOptions && (
                 <div className="space-y-3 pt-4 border-t">
                   <label className="block text-sm font-semibold text-[#303030]">
-                    Options *
+                    Choix possibles *
                   </label>
 
                   {currentField.options && currentField.options.length > 0 && (
@@ -1369,10 +1441,7 @@ export default function EventsPage() {
                           key={index}
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                         >
-                          <div>
-                            <p className="font-medium text-[#303030]">{option.label}</p>
-                            <p className="text-xs text-gray-600">{option.value}</p>
-                          </div>
+                          <p className="font-medium text-[#303030]">{option}</p>
                           <button
                             type="button"
                             onClick={() => handleRemoveOption(index)}
@@ -1388,21 +1457,11 @@ export default function EventsPage() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={newOption.value}
-                      onChange={(e) =>
-                        setNewOption({ ...newOption, value: e.target.value })
-                      }
-                      placeholder="Valeur"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
-                    />
-                    <input
-                      type="text"
-                      value={newOption.label}
-                      onChange={(e) =>
-                        setNewOption({ ...newOption, label: e.target.value })
-                      }
-                      placeholder="Label"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      value={newOption}
+                      onChange={(e) => setNewOption(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddOption())}
+                      placeholder="Ajouter un choix..."
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <button
                       type="button"
@@ -1423,7 +1482,6 @@ export default function EventsPage() {
                   setShowCustomFieldForm(false);
                   setEditingFieldIndex(null);
                   setCurrentField({
-                    id: "",
                     type: "text",
                     label: "",
                     required: false,
@@ -1444,6 +1502,9 @@ export default function EventsPage() {
           </div>
         </div>
       )}
+
+      {/* Bottom Navigation for users */}
+      <BottomNavigation userType={userType} />
     </div>
   );
 }

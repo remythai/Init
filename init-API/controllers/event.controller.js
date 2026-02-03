@@ -2,6 +2,8 @@ import { EventModel } from '../models/event.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
 import { UserModel } from '../models/user.model.js';
 import { WhitelistModel } from '../models/whitelist.model.js';
+import { MatchModel } from '../models/match.model.js';
+import { BlockedUserModel } from '../models/blockedUser.model.js';
 
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
@@ -15,14 +17,29 @@ export const EventController = {
     const {
       name, description, start_at, end_at, location,
       max_participants, is_public, has_whitelist, has_link_access,
-      has_password_access, access_password, cooldown, custom_fields
+      has_password_access, access_password, cooldown, custom_fields,
+      app_start_at, app_end_at, theme
     } = req.body;
 
-    const start = new Date(start_at);
-    const end = new Date(end_at);
+    // Validate app availability dates (required)
+    if (!app_start_at || !app_end_at) {
+      throw new ValidationError('Les dates de disponibilité de l\'app sont requises');
+    }
 
-    if (end <= start) {
-      throw new ValidationError('La date de fin doit être après la date de début');
+    const appStart = new Date(app_start_at);
+    const appEnd = new Date(app_end_at);
+
+    if (appEnd <= appStart) {
+      throw new ValidationError('La date de fin de l\'app doit être après la date de début');
+    }
+
+    // Validate physical event dates if provided
+    if (start_at && end_at) {
+      const physicalStart = new Date(start_at);
+      const physicalEnd = new Date(end_at);
+      if (physicalEnd <= physicalStart) {
+        throw new ValidationError('La date de fin de l\'événement doit être après la date de début');
+      }
     }
 
     let access_password_hash = null;
@@ -40,9 +57,15 @@ export const EventController = {
       orga_id: req.user.id,
       name,
       description: description || ' ',
-      start_at,
-      end_at,
-      location,
+      // Physical event dates (optional)
+      start_at: start_at || null,
+      end_at: end_at || null,
+      location: location || null,
+      // App availability dates (required)
+      app_start_at,
+      app_end_at,
+      // Theme
+      theme: theme || 'général',
       max_participants,
       is_public: is_public !== undefined ? is_public : true,
       has_whitelist: has_whitelist || false,
@@ -78,17 +101,25 @@ export const EventController = {
 
   async getMyOrgaEvents(req, res) {
     const events = await EventModel.findByOrgaId(req.user.id);
-  
+
     const eventsWithCount = await Promise.all(
       events.map(async (event) => {
-        const { id, name, location, event_date, max_participants } = event;
-        
+        const { id, name, location, event_date, max_participants, start_at, end_at, app_start_at, app_end_at, theme, description } = event;
+
         return {
           id,
           name,
           location,
           event_date,
           max_participants,
+          description,
+          theme,
+          // Physical event dates (optional)
+          start_at,
+          end_at,
+          // App availability dates (required)
+          app_start_at,
+          app_end_at,
           participant_count: await EventModel.countParticipants(event.id)
         };
       })
@@ -109,19 +140,26 @@ export const EventController = {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
 
-    const { 
-      name, description, start_at, end_at, location, 
-      max_participants, is_public, has_whitelist, has_link_access, 
-      has_password_access, access_password, cooldown, custom_fields 
+    const {
+      name, description, start_at, end_at, location,
+      app_start_at, app_end_at, theme,
+      max_participants, is_public, has_whitelist, has_link_access,
+      has_password_access, access_password, cooldown, custom_fields
     } = req.body;
-    
+
     const updates = {};
 
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
-    if (start_at) updates.start_at = start_at;
-    if (end_at) updates.end_at = end_at;
-    if (location !== undefined) updates.location = location;
+    // Physical event dates (optional)
+    if (start_at !== undefined) updates.start_at = start_at || null;
+    if (end_at !== undefined) updates.end_at = end_at || null;
+    if (location !== undefined) updates.location = location || null;
+    // App availability dates
+    if (app_start_at) updates.app_start_at = app_start_at;
+    if (app_end_at) updates.app_end_at = app_end_at;
+    // Theme
+    if (theme) updates.theme = theme;
     if (max_participants !== undefined) updates.max_participants = max_participants;
     if (is_public !== undefined) updates.is_public = is_public;
     if (has_whitelist !== undefined) updates.has_whitelist = has_whitelist;
@@ -138,12 +176,23 @@ export const EventController = {
       updates.custom_fields = custom_fields;
     }
 
+    // Validate physical event dates if provided
     if (updates.start_at || updates.end_at) {
       const start = new Date(updates.start_at || event.start_at);
       const end = new Date(updates.end_at || event.end_at);
-      
-      if (end <= start) {
-        throw new ValidationError('La date de fin doit être après la date de début');
+
+      if (start && end && end <= start) {
+        throw new ValidationError('La date de fin de l\'événement doit être après la date de début');
+      }
+    }
+
+    // Validate app availability dates if provided
+    if (updates.app_start_at || updates.app_end_at) {
+      const appStart = new Date(updates.app_start_at || event.app_start_at);
+      const appEnd = new Date(updates.app_end_at || event.app_end_at);
+
+      if (appEnd <= appStart) {
+        throw new ValidationError('La date de fin de l\'app doit être après la date de début');
       }
     }
 
@@ -189,6 +238,90 @@ export const EventController = {
     return success(res, participants);
   },
 
+  async removeParticipant(req, res) {
+    const eventId = parseInt(req.params.id);
+    const userId = parseInt(req.params.userId);
+    const { action = 'block' } = req.body; // 'block' or 'delete'
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Vous ne pouvez supprimer que les participants de vos événements');
+    }
+
+    // Check if user is registered
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new NotFoundError('Ce participant n\'est pas inscrit à cet événement');
+    }
+
+    if (action === 'delete') {
+      // SUPPRESSION COMPLETE : comme s'il n'avait jamais existé
+      // Delete all matches and their messages
+      await MatchModel.deleteUserMatchesInEvent(userId, eventId);
+      // Delete all likes/swipes
+      await MatchModel.deleteUserLikesInEvent(userId, eventId);
+      // Remove registration (with profil_info)
+      await RegistrationModel.delete(userId, eventId);
+
+      return success(res, null, 'Participant supprimé définitivement');
+    } else {
+      // BLOCAGE : données persistantes, accès bloqué
+      // Archive matches (read-only conversations)
+      await MatchModel.archiveUserMatchesInEvent(userId, eventId);
+      // Keep registration but block user
+      await BlockedUserModel.block(eventId, userId, 'Bloqué par l\'organisateur');
+
+      return success(res, null, 'Participant bloqué de l\'événement');
+    }
+  },
+
+  async getBlockedUsers(req, res) {
+    const eventId = parseInt(req.params.id);
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Vous ne pouvez voir que les utilisateurs bloqués de vos événements');
+    }
+
+    const blockedUsers = await BlockedUserModel.getByEventId(eventId);
+    return success(res, blockedUsers);
+  },
+
+  async unblockParticipant(req, res) {
+    const eventId = parseInt(req.params.id);
+    const userId = parseInt(req.params.userId);
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Vous ne pouvez débloquer que les utilisateurs de vos événements');
+    }
+
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (!isBlocked) {
+      throw new NotFoundError('Cet utilisateur n\'est pas bloqué');
+    }
+
+    // Unblock user
+    await BlockedUserModel.unblock(eventId, userId);
+
+    // Unarchive matches so conversations work again
+    await MatchModel.unarchiveUserMatchesInEvent(userId, eventId);
+
+    return success(res, null, 'Utilisateur débloqué');
+  },
+
   async register(req, res) {
     const eventId = req.params.id;
     const userId = req.user.id;
@@ -201,6 +334,12 @@ export const EventController = {
 
     if (!event.is_public) {
       throw new ForbiddenError('Cet événement n\'est pas public');
+    }
+
+    // Check if user is blocked from this event
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isBlocked) {
+      throw new ForbiddenError('Vous n\'êtes plus autorisé à vous inscrire à cet événement');
     }
 
     // Check whitelist if enabled
@@ -251,16 +390,42 @@ export const EventController = {
   
     const registration = await RegistrationModel.create(userId, eventId, profil_info || {});
 
-    // Emit user joined event via Socket.io
-    const user = await UserModel.findById(userId);
+    // Emit user joined event via Socket.io (use getUserBasicInfo to include photos)
+    const userWithPhotos = await MatchModel.getUserBasicInfo(userId);
     emitUserJoinedEvent(eventId, {
-      id: user.id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      photos: user.photos || []
+      id: userWithPhotos.id,
+      firstname: userWithPhotos.firstname,
+      lastname: userWithPhotos.lastname,
+      photos: userWithPhotos.photos || []
     });
 
     return created(res, registration, 'Inscription réussie');
+  },
+
+  async updateRegistration(req, res) {
+    const eventId = req.params.id;
+    const userId = req.user.id;
+    const { profil_info } = req.body;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new NotFoundError('Inscription non trouvée');
+    }
+
+    // Validate custom data if event has custom fields
+    if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
+      if (profil_info && Object.keys(profil_info).length > 0) {
+        validateCustomData(event.custom_fields, profil_info);
+      }
+    }
+
+    const updated = await RegistrationModel.update(userId, eventId, profil_info || {});
+    return success(res, updated, 'Profil mis à jour');
   },
 
   async unregister(req, res) {
@@ -316,6 +481,26 @@ export const EventController = {
       total: events.length,
       limit: filters.limit,
       offset: filters.offset
+    });
+  },
+
+  async getMyEventProfile(req, res) {
+    const eventId = req.params.id;
+    const userId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (!registration) {
+      throw new NotFoundError('Vous n\'êtes pas inscrit à cet événement');
+    }
+
+    return success(res, {
+      profil_info: registration.profil_info || {},
+      custom_fields: event.custom_fields || []
     });
   }
 };

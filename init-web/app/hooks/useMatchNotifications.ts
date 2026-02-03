@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { socketService, SocketMatch, SocketUserJoined } from '../services/socket.service';
 import { authService } from '../services/auth.service';
 
@@ -16,34 +16,82 @@ interface UseMatchNotificationsOptions {
  */
 export function useMatchNotifications(options: UseMatchNotificationsOptions = {}) {
   const { eventId, onNewMatch, onUserJoined } = options;
-  const isConnected = useRef(false);
+  const [isReady, setIsReady] = useState(false);
   const joinedEvents = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
 
   // Initialize connection
   useEffect(() => {
-    const init = () => {
+    mountedRef.current = true;
+    let cleanupFn: (() => void) | undefined;
+
+    const init = async () => {
       const token = authService.getToken();
-      if (!token) return;
+      if (!token) {
+        console.log('useMatchNotifications: No token available');
+        return;
+      }
 
       // Connect socket if not connected
+      let socket = socketService.getSocket();
       if (!socketService.isConnected()) {
-        socketService.connect(token);
+        console.log('useMatchNotifications: Connecting socket...');
+        socket = socketService.connect(token);
       }
-      isConnected.current = true;
+
+      // If already connected, set ready immediately
+      if (socketService.isConnected()) {
+        console.log('useMatchNotifications: Already connected');
+        if (mountedRef.current) setIsReady(true);
+        return;
+      }
+
+      // Wait for connection event
+      const handleConnect = () => {
+        if (mountedRef.current) {
+          console.log('useMatchNotifications: Socket connected via event');
+          setIsReady(true);
+        }
+      };
+
+      socket?.on('connect', handleConnect);
+
+      // Also check after a delay as fallback
+      const timeout = setTimeout(() => {
+        if (mountedRef.current && socketService.isConnected()) {
+          console.log('useMatchNotifications: Socket ready (fallback check)');
+          setIsReady(true);
+        }
+      }, 1000);
+
+      cleanupFn = () => {
+        socket?.off('connect', handleConnect);
+        clearTimeout(timeout);
+      };
     };
 
     init();
+
+    return () => {
+      mountedRef.current = false;
+      cleanupFn?.();
+    };
   }, []);
 
   // Join/leave event room when eventId changes
   useEffect(() => {
-    if (!eventId || !isConnected.current) return;
+    console.log('useMatchNotifications: Event room effect', { eventId, isReady });
+    if (!eventId || !isReady) {
+      console.log('useMatchNotifications: Skipping event join - eventId:', eventId, 'isReady:', isReady);
+      return;
+    }
 
     const eventKey = String(eventId);
 
     // Leave previous event rooms
     joinedEvents.current.forEach((roomId) => {
       if (roomId !== eventKey) {
+        console.log('useMatchNotifications: Leaving previous event room', roomId);
         socketService.leaveEvent(roomId);
         joinedEvents.current.delete(roomId);
       }
@@ -51,49 +99,51 @@ export function useMatchNotifications(options: UseMatchNotificationsOptions = {}
 
     // Join new event room
     if (!joinedEvents.current.has(eventKey)) {
+      console.log('useMatchNotifications: Joining event room', eventKey);
       socketService.joinEvent(eventId);
       joinedEvents.current.add(eventKey);
     }
 
     return () => {
       if (eventId) {
+        console.log('useMatchNotifications: Cleanup - leaving event room', eventId);
         socketService.leaveEvent(eventId);
         joinedEvents.current.delete(eventKey);
       }
     };
-  }, [eventId]);
+  }, [eventId, isReady]);
 
   // Listen for new matches
   useEffect(() => {
-    if (!isConnected.current) return;
+    if (!isReady || !onNewMatch) return;
 
+    console.log('useMatchNotifications: Setting up match listener');
     const unsubscribe = socketService.onNewMatch((data: SocketMatch) => {
+      console.log('useMatchNotifications: Received match:new', data);
       // Filter by event if specified
       if (eventId && data.event_id !== Number(eventId)) return;
 
-      if (onNewMatch) {
-        onNewMatch(data);
-      }
+      onNewMatch(data);
     });
 
     return unsubscribe;
-  }, [eventId, onNewMatch]);
+  }, [eventId, onNewMatch, isReady]);
 
   // Listen for users joining event
   useEffect(() => {
-    if (!isConnected.current || !eventId) return;
+    if (!isReady || !eventId || !onUserJoined) return;
 
+    console.log('useMatchNotifications: Setting up userJoined listener');
     const unsubscribe = socketService.onUserJoinedEvent((data: SocketUserJoined) => {
+      console.log('useMatchNotifications: Received event:userJoined', data);
       // Filter by current event
       if (data.eventId !== Number(eventId)) return;
 
-      if (onUserJoined) {
-        onUserJoined(data);
-      }
+      onUserJoined(data);
     });
 
     return unsubscribe;
-  }, [eventId, onUserJoined]);
+  }, [eventId, onUserJoined, isReady]);
 
-  return {};
+  return { isReady };
 }

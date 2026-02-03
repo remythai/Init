@@ -12,9 +12,15 @@ CREATE TABLE public.events (
     description text DEFAULT ' '::text NOT NULL,
     location text,
     orga_id integer NOT NULL,
-    start_at timestamp without time zone NOT NULL,
-    end_at timestamp without time zone NOT NULL,
+    -- Physical event dates (optional)
+    start_at timestamp without time zone,
+    end_at timestamp without time zone,
     event_date timestamp without time zone,
+    -- App availability dates (required)
+    app_start_at timestamp without time zone NOT NULL,
+    app_end_at timestamp without time zone NOT NULL,
+    -- Theme
+    theme character varying(50) DEFAULT 'général'::character varying,
     cooldown interval,
     max_participants integer,
     is_public boolean DEFAULT true NOT NULL,
@@ -25,7 +31,8 @@ CREATE TABLE public.events (
     custom_fields jsonb DEFAULT '[]'::jsonb,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_event_dates CHECK ((end_at > start_at))
+    CONSTRAINT chk_physical_event_dates CHECK ((start_at IS NULL AND end_at IS NULL) OR (end_at > start_at)),
+    CONSTRAINT chk_app_dates CHECK ((app_end_at > app_start_at))
 );
 
 ALTER TABLE public.events OWNER TO dating_admin;
@@ -53,6 +60,8 @@ ALTER TABLE ONLY public.events
 -- Indexes
 CREATE INDEX idx_events_orga_id ON public.events USING btree (orga_id);
 CREATE INDEX idx_events_start_at ON public.events USING btree (start_at);
+CREATE INDEX idx_events_app_start_at ON public.events USING btree (app_start_at);
+CREATE INDEX idx_events_app_end_at ON public.events USING btree (app_end_at);
 CREATE INDEX idx_events_custom_fields ON public.events USING gin (custom_fields);
 
 -- Trigger
@@ -176,3 +185,48 @@ ALTER TABLE ONLY public.event_link_access ADD CONSTRAINT event_link_access_acces
 ALTER TABLE ONLY public.event_link_access
     ADD CONSTRAINT event_link_access_event_id_fkey
     FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+-- -----------------------------------------------------------------------------
+-- Table: event_blocked_users
+-- Description: Users who have been removed/blocked from events and cannot re-register
+-- -----------------------------------------------------------------------------
+CREATE TABLE public.event_blocked_users (
+    id integer NOT NULL,
+    event_id integer NOT NULL,
+    user_id integer NOT NULL,
+    blocked_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    reason character varying(255)
+);
+
+ALTER TABLE public.event_blocked_users OWNER TO dating_admin;
+
+CREATE SEQUENCE public.event_blocked_users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.event_blocked_users_id_seq OWNER TO dating_admin;
+ALTER SEQUENCE public.event_blocked_users_id_seq OWNED BY public.event_blocked_users.id;
+ALTER TABLE ONLY public.event_blocked_users ALTER COLUMN id SET DEFAULT nextval('public.event_blocked_users_id_seq'::regclass);
+
+-- Primary key
+ALTER TABLE ONLY public.event_blocked_users ADD CONSTRAINT event_blocked_users_pkey PRIMARY KEY (id);
+
+-- Unique constraint (one entry per user per event)
+ALTER TABLE ONLY public.event_blocked_users ADD CONSTRAINT event_blocked_users_event_user_unique UNIQUE (event_id, user_id);
+
+-- Foreign keys
+ALTER TABLE ONLY public.event_blocked_users
+    ADD CONSTRAINT event_blocked_users_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.event_blocked_users
+    ADD CONSTRAINT event_blocked_users_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+-- Index
+CREATE INDEX idx_event_blocked_users_event ON public.event_blocked_users USING btree (event_id);
+CREATE INDEX idx_event_blocked_users_user ON public.event_blocked_users USING btree (user_id);

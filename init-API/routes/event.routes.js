@@ -48,6 +48,27 @@ router.get(
   asyncHandler(EventController.getParticipants)
 );
 
+router.delete(
+  '/:id/participants/:userId',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.removeParticipant)
+);
+
+router.get(
+  '/:id/blocked',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.getBlockedUsers)
+);
+
+router.delete(
+  '/:id/blocked/:userId',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.unblockParticipant)
+);
+
 // Routes for Users only
 
 router.post(
@@ -69,6 +90,13 @@ router.delete(
   authMiddleware,
   requireRole('user'),
   asyncHandler(EventController.unregister)
+);
+
+router.get(
+  '/:id/my-profile',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.getMyEventProfile)
 );
 
 router.get(

@@ -1,5 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 
@@ -10,11 +12,15 @@ import orgaRoutes from './routes/orga.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
 import whitelistRoutes from './routes/whitelist.routes.js';
+import photoRoutes from './routes/photo.routes.js';
 
 import { errorHandler } from './utils/errors.js';
 import { initializeSocket } from './socket/index.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,6 +31,10 @@ const io = initializeSocket(httpServer);
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded files
+const uploadsPath = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // CORS
 app.use((req, res, next) => {
@@ -60,6 +70,8 @@ app.get('/api-docs.json', (req, res) => {
 });
 
 // Routes
+// Photo routes must come before user routes (more specific path first)
+app.use('/api/users/photos', photoRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orga', orgaRoutes);
 app.use('/api/events', eventRoutes);
