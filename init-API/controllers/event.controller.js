@@ -241,7 +241,7 @@ export const EventController = {
   async removeParticipant(req, res) {
     const eventId = parseInt(req.params.id);
     const userId = parseInt(req.params.userId);
-    const { action = 'block' } = req.body; // 'block' or 'delete'
+    const action = req.query.action || req.body?.action || 'block'; // 'block' or 'delete'
 
     const event = await EventModel.findById(eventId);
     if (!event) {
@@ -293,6 +293,38 @@ export const EventController = {
 
     const blockedUsers = await BlockedUserModel.getByEventId(eventId);
     return success(res, blockedUsers);
+  },
+
+  async blockUser(req, res) {
+    const eventId = parseInt(req.params.id);
+    const { user_id, reason } = req.body;
+
+    if (!user_id) {
+      throw new ValidationError('user_id est requis');
+    }
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== req.user.id) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    // Check if already blocked
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, user_id);
+    if (isBlocked) {
+      throw new ConflictError('Cet utilisateur est déjà bloqué');
+    }
+
+    // Archive matches if they exist
+    await MatchModel.archiveUserMatchesInEvent(user_id, eventId);
+
+    // Block the user
+    await BlockedUserModel.block(eventId, user_id, reason || 'Bloqué par l\'organisateur');
+
+    return success(res, null, 'Utilisateur bloqué');
   },
 
   async unblockParticipant(req, res) {
@@ -417,6 +449,12 @@ export const EventController = {
       throw new NotFoundError('Inscription non trouvée');
     }
 
+    // Check if user is blocked
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isBlocked) {
+      throw new ForbiddenError('Vous ne pouvez plus modifier votre profil sur cet événement');
+    }
+
     // Validate custom data if event has custom fields
     if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
       if (profil_info && Object.keys(profil_info).length > 0) {
@@ -501,6 +539,35 @@ export const EventController = {
     return success(res, {
       profil_info: registration.profil_info || {},
       custom_fields: event.custom_fields || []
+    });
+  },
+
+  /**
+   * GET /api/events/:id/statistics
+   * Get comprehensive statistics for an event (orga only)
+   */
+  async getStatistics(req, res) {
+    const eventId = parseInt(req.params.id);
+    const orgaId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== orgaId) {
+      throw new ForbiddenError('Accès non autorisé');
+    }
+
+    const statistics = await EventModel.getEventStatistics(eventId);
+
+    return success(res, {
+      event: {
+        id: event.id,
+        name: event.name,
+        has_whitelist: event.has_whitelist
+      },
+      statistics
     });
   }
 };

@@ -272,17 +272,30 @@ export const MatchController = {
 
     const conversations = await MatchModel.getAllConversations(userId);
 
+    // Get blocked status for each event
+    const blockedEventIds = new Set();
+    for (const conv of conversations) {
+      if (!blockedEventIds.has(conv.event_id)) {
+        const isBlocked = await BlockedUserModel.isBlocked(conv.event_id, userId);
+        if (isBlocked) {
+          blockedEventIds.add(conv.event_id);
+        }
+      }
+    }
+
     // Group by event
     const grouped = conversations.reduce((acc, conv) => {
       const eventKey = conv.event_id;
       const isEventExpired = conv.app_end_at ? new Date() > new Date(conv.app_end_at) : false;
+      const isBlocked = blockedEventIds.has(conv.event_id);
 
       if (!acc[eventKey]) {
         acc[eventKey] = {
           event: {
             id: conv.event_id,
             name: conv.event_name,
-            is_expired: isEventExpired
+            is_expired: isEventExpired,
+            is_blocked: isBlocked
           },
           conversations: []
         };
@@ -291,7 +304,13 @@ export const MatchController = {
         match_id: conv.match_id,
         is_archived: conv.is_archived || false,
         is_event_expired: isEventExpired,
-        user: {
+        is_blocked: isBlocked,
+        user: isBlocked ? {
+          id: conv.user_id,
+          firstname: 'Utilisateur',
+          lastname: '',
+          photos: []
+        } : {
           id: conv.user_id,
           firstname: conv.firstname,
           lastname: conv.lastname,
@@ -330,29 +349,48 @@ export const MatchController = {
       throw new ForbiddenError('Vous devez être inscrit à cet événement');
     }
 
+    // Check if current user is blocked
+    const isCurrentUserBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+
     const conversations = await MatchModel.getConversationsByEvent(userId, eventId);
     const isEventExpired = !isEventAppActive(event);
 
-    const formatted = conversations.map(conv => ({
-      match_id: conv.match_id,
-      is_archived: conv.is_archived || false,
-      is_event_expired: isEventExpired,
-      user: {
-        id: conv.user_id,
-        firstname: conv.firstname,
-        lastname: conv.lastname,
-        photos: conv.photos
-      },
-      last_message: conv.last_message ? {
-        content: conv.last_message.content,
-        sent_at: conv.last_message.sent_at,
-        is_mine: conv.last_message.sender_id === userId
-      } : null,
-      unread_count: conv.unread_count
+    // Build formatted conversations with other user blocked status
+    const formatted = await Promise.all(conversations.map(async conv => {
+      // Check if the other user is blocked
+      const isOtherUserBlocked = await BlockedUserModel.isBlocked(eventId, conv.user_id);
+
+      // Hide profile info if current user is blocked OR other user is blocked
+      const shouldHideProfile = isCurrentUserBlocked || isOtherUserBlocked;
+
+      return {
+        match_id: conv.match_id,
+        is_archived: conv.is_archived || false,
+        is_event_expired: isEventExpired,
+        is_blocked: isCurrentUserBlocked,
+        is_other_user_blocked: isOtherUserBlocked,
+        user: shouldHideProfile ? {
+          id: conv.user_id,
+          firstname: 'Utilisateur',
+          lastname: '',
+          photos: []
+        } : {
+          id: conv.user_id,
+          firstname: conv.firstname,
+          lastname: conv.lastname,
+          photos: conv.photos
+        },
+        last_message: conv.last_message ? {
+          content: conv.last_message.content,
+          sent_at: conv.last_message.sent_at,
+          is_mine: conv.last_message.sender_id === userId
+        } : null,
+        unread_count: conv.unread_count
+      };
     }));
 
     return success(res, {
-      event: { id: eventId, name: event.name, is_expired: isEventExpired },
+      event: { id: eventId, name: event.name, is_expired: isEventExpired, is_blocked: isCurrentUserBlocked },
       conversations: formatted
     });
   },
@@ -388,16 +426,36 @@ export const MatchController = {
     // Get messages
     const messages = await MatchModel.getMessages(matchId, limit, beforeId);
 
+    // Check if current user is blocked
+    const isCurrentUserBlocked = await BlockedUserModel.isBlocked(match.event_id, userId);
+
     // Get other user info
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
-    const otherUser = await MatchModel.getUserBasicInfo(otherUserId);
+
+    // Check if other user is blocked
+    const isOtherUserBlocked = await BlockedUserModel.isBlocked(match.event_id, otherUserId);
+
+    let otherUser;
+    // Hide profile info if current user is blocked OR if other user is blocked
+    if (isCurrentUserBlocked || isOtherUserBlocked) {
+      otherUser = {
+        id: otherUserId,
+        firstname: 'Utilisateur',
+        lastname: '',
+        photos: []
+      };
+    } else {
+      otherUser = await MatchModel.getUserBasicInfo(otherUserId);
+    }
 
     return success(res, {
       match: {
         id: matchId,
         event_id: match.event_id,
         event_name: match.event_name,
-        user: otherUser
+        user: otherUser,
+        is_blocked: isCurrentUserBlocked,
+        is_other_user_blocked: isOtherUserBlocked
       },
       messages
     });
@@ -514,5 +572,43 @@ export const MatchController = {
     const updated = await MatchModel.toggleMessageLike(messageId);
 
     return success(res, { is_liked: updated.is_liked });
+  },
+
+  /**
+   * GET /api/matching/matches/:matchId/profile
+   * Get the other user's profile in a match (for viewing in conversation)
+   */
+  async getMatchProfile(req, res) {
+    const matchId = parseInt(req.params.matchId);
+    const userId = req.user.id;
+
+    // Check match exists and user is part of it
+    const match = await MatchModel.getMatchById(matchId, userId);
+    if (!match) {
+      throw new NotFoundError('Conversation non trouvée');
+    }
+
+    // Check if current user is blocked
+    const isCurrentUserBlocked = await BlockedUserModel.isBlocked(match.event_id, userId);
+    if (isCurrentUserBlocked) {
+      throw new ForbiddenError('Vous ne pouvez pas voir ce profil');
+    }
+
+    // Get other user info
+    const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+
+    // Check if other user is blocked - their profile shouldn't be viewable
+    const isOtherUserBlocked = await BlockedUserModel.isBlocked(match.event_id, otherUserId);
+    if (isOtherUserBlocked) {
+      throw new ForbiddenError('Ce profil n\'est plus disponible');
+    }
+
+    // Get user profile with event-specific info
+    const profile = await MatchModel.getMatchUserProfile(otherUserId, match.event_id);
+    if (!profile) {
+      throw new NotFoundError('Profil non trouvé');
+    }
+
+    return success(res, profile);
   }
 };
