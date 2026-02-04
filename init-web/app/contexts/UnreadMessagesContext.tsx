@@ -21,6 +21,9 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
   const [eventUnreadMap, setEventUnreadMap] = useState<Map<string, Set<number>>>(new Map());
   const pathname = usePathname();
 
+  // Track if socket listeners are set up
+  const socketListenersSetup = useRef(false);
+
   // Mapping match_id -> event_id for real-time updates
   const matchToEventMap = useRef<Map<number, string>>(new Map());
 
@@ -80,8 +83,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     loadUnreadStatus();
   }, [pathname, loadUnreadStatus]);
 
-  // Listen for new messages via WebSocket
-  useEffect(() => {
+  // Ref to store cleanup function
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  // Setup socket and listeners
+  const setupSocket = useCallback(() => {
     const token = authService.getToken();
     if (!token) return;
 
@@ -89,11 +95,18 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     const userType = authService.getUserType();
     if (userType !== 'user') return;
 
+    // Skip if listeners are already set up
+    if (socketListenersSetup.current) return;
+
     // Connect to socket
     const socket = socketService.connect(token);
+    socketListenersSetup.current = true;
+
+    console.log('UnreadMessagesContext: Setting up socket listeners');
 
     // Handler for conversation updates
     const handleConversationUpdate = (data: SocketConversationUpdate) => {
+      console.log('UnreadMessagesContext: Received conversationUpdate', data);
       const matchId = data.match_id;
 
       // Don't mark as unread if this is the currently active conversation
@@ -114,14 +127,50 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
           newMap.set(eventId, eventUnreads);
           return newMap;
         });
+      } else {
+        // If we don't have this match in our mapping, refresh to get the latest data
+        loadUnreadStatus();
       }
     };
 
-    // Subscribe to conversation updates
-    socket.on('chat:conversationUpdate', handleConversationUpdate);
+    // Handler for new matches - refresh to get the mapping
+    const handleNewMatch = () => {
+      console.log('UnreadMessagesContext: Received new match');
+      loadUnreadStatus();
+    };
 
-    return () => {
+    // Handle socket reconnection - refresh data when reconnected
+    const handleConnect = () => {
+      console.log('UnreadMessagesContext: Socket connected/reconnected');
+      loadUnreadStatus();
+    };
+
+    // Subscribe to events
+    socket.on('chat:conversationUpdate', handleConversationUpdate);
+    socket.on('match:new', handleNewMatch);
+    socket.on('connect', handleConnect);
+
+    // Store cleanup function
+    cleanupRef.current = () => {
       socket.off('chat:conversationUpdate', handleConversationUpdate);
+      socket.off('match:new', handleNewMatch);
+      socket.off('connect', handleConnect);
+      socketListenersSetup.current = false;
+    };
+
+    // Load initial status
+    loadUnreadStatus();
+  }, [loadUnreadStatus]);
+
+  // Try to setup socket on mount and pathname changes (handles post-login navigation)
+  useEffect(() => {
+    setupSocket();
+  }, [setupSocket, pathname]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
     };
   }, []);
 

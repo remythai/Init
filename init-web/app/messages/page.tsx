@@ -89,9 +89,12 @@ function GeneralMessagesContent() {
     }
 
     setEventConversations((prev) => {
-      return prev.map((eventGroup) => {
+      // First, update the conversation and reorder within event group
+      let eventIndexWithUpdate = -1;
+      const updated = prev.map((eventGroup, eventIndex) => {
         const updatedConversations = eventGroup.conversations.map((conv) => {
           if (conv.match_id === data.match_id) {
+            eventIndexWithUpdate = eventIndex;
             return {
               ...conv,
               last_message: data.last_message,
@@ -101,7 +104,7 @@ function GeneralMessagesContent() {
           return conv;
         });
 
-        // Move updated conversation to top
+        // Move updated conversation to top within its event group
         const targetIndex = updatedConversations.findIndex((c) => c.match_id === data.match_id);
         if (targetIndex > 0) {
           const [conversation] = updatedConversations.splice(targetIndex, 1);
@@ -113,6 +116,14 @@ function GeneralMessagesContent() {
           conversations: updatedConversations,
         };
       });
+
+      // Then, move the event group with the update to the top
+      if (eventIndexWithUpdate > 0) {
+        const [eventGroup] = updated.splice(eventIndexWithUpdate, 1);
+        updated.unshift(eventGroup);
+      }
+
+      return updated;
     });
   }, [selectedMatchId, markConversationAsRead]);
 
@@ -244,9 +255,11 @@ function GeneralMessagesContent() {
 
       // Update conversation list
       setEventConversations((prev) => {
-        return prev.map((eventGroup) => {
+        let eventIndexWithUpdate = -1;
+        const updated = prev.map((eventGroup, eventIndex) => {
           const updatedConversations = eventGroup.conversations.map((conv) => {
             if (conv.match_id === selectedMatchId) {
+              eventIndexWithUpdate = eventIndex;
               return {
                 ...conv,
                 last_message: {
@@ -259,7 +272,7 @@ function GeneralMessagesContent() {
             return conv;
           });
 
-          // Move to top
+          // Move to top within event group
           const targetIndex = updatedConversations.findIndex((c) => c.match_id === selectedMatchId);
           if (targetIndex > 0) {
             const [conversation] = updatedConversations.splice(targetIndex, 1);
@@ -271,6 +284,14 @@ function GeneralMessagesContent() {
             conversations: updatedConversations,
           };
         });
+
+        // Move event group with the update to the top
+        if (eventIndexWithUpdate > 0) {
+          const [eventGroup] = updated.splice(eventIndexWithUpdate, 1);
+          updated.unshift(eventGroup);
+        }
+
+        return updated;
       });
 
       setNewMessage("");

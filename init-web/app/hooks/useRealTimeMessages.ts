@@ -26,10 +26,33 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
   const joinedRooms = useRef<Set<number>>(new Set());
   const mountedRef = useRef(true);
 
-  // Initialize connection and get current user
+  // Use refs for callbacks to avoid re-subscribing listeners when callbacks change
+  const onNewMessageRef = useRef(onNewMessage);
+  const onTypingRef = useRef(onTyping);
+  const onConversationUpdateRef = useRef(onConversationUpdate);
+  const matchIdRef = useRef(matchId);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    onNewMessageRef.current = onNewMessage;
+  }, [onNewMessage]);
+
+  useEffect(() => {
+    onTypingRef.current = onTyping;
+  }, [onTyping]);
+
+  useEffect(() => {
+    onConversationUpdateRef.current = onConversationUpdate;
+  }, [onConversationUpdate]);
+
+  useEffect(() => {
+    matchIdRef.current = matchId;
+  }, [matchId]);
+
+  // Initialize connection, get current user, and set up persistent listeners
   useEffect(() => {
     mountedRef.current = true;
-    let cleanupFn: (() => void) | undefined;
+    let cleanupFns: (() => void)[] = [];
 
     const init = async () => {
       const token = authService.getToken();
@@ -59,18 +82,91 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
       if (socketService.isConnected()) {
         console.log('useRealTimeMessages: Already connected');
         if (mountedRef.current) setIsReady(true);
-        return;
       }
 
-      // Wait for connection event
+      // Wait for connection event (handles both initial connect and reconnect)
       const handleConnect = () => {
         if (mountedRef.current) {
           console.log('useRealTimeMessages: Socket connected via event');
           setIsReady(true);
+
+          // Re-join the current chat room on reconnect
+          const currentMatchId = matchIdRef.current;
+          if (currentMatchId && !joinedRooms.current.has(currentMatchId)) {
+            console.log('useRealTimeMessages: Re-joining room after reconnect', currentMatchId);
+            socketService.joinChat(currentMatchId);
+            joinedRooms.current.add(currentMatchId);
+          }
+        }
+      };
+
+      const handleDisconnect = () => {
+        if (mountedRef.current) {
+          console.log('useRealTimeMessages: Socket disconnected');
+          setIsReady(false);
+          // Clear joined rooms on disconnect - they'll be re-joined on reconnect
+          joinedRooms.current.clear();
         }
       };
 
       socket?.on('connect', handleConnect);
+      socket?.on('disconnect', handleDisconnect);
+      cleanupFns.push(() => {
+        socket?.off('connect', handleConnect);
+        socket?.off('disconnect', handleDisconnect);
+      });
+
+      // Set up message listeners immediately (they persist across reconnects)
+      // New messages listener
+      const unsubNewMessage = socketService.onNewMessage((data: SocketMessage) => {
+        if (!mountedRef.current) return;
+        // Don't process messages sent by current user (already added locally)
+        if (data.senderId === currentUserId.current) return;
+
+        // Only process if for the current conversation (use ref for current matchId)
+        const currentMatchId = matchIdRef.current;
+        if (currentMatchId && data.matchId === currentMatchId && onNewMessageRef.current) {
+          // Add match_id to the message to satisfy the Message interface
+          const messageWithMatchId: Message = {
+            ...data.message,
+            match_id: data.matchId
+          };
+          onNewMessageRef.current(messageWithMatchId);
+        }
+      });
+      cleanupFns.push(unsubNewMessage);
+
+      // Typing listener
+      const unsubTyping = socketService.onTyping((data: SocketTyping) => {
+        if (!mountedRef.current) return;
+        const currentMatchId = matchIdRef.current;
+        if (data.matchId !== currentMatchId) return;
+        if (data.userId === currentUserId.current) return;
+
+        if (data.isTyping) {
+          setTypingUsers((prev) =>
+            prev.includes(data.userId) ? prev : [...prev, data.userId]
+          );
+        } else {
+          setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
+        }
+
+        if (onTypingRef.current) {
+          onTypingRef.current(data);
+        }
+      });
+      cleanupFns.push(unsubTyping);
+
+      // Conversation update listener
+      console.log('useRealTimeMessages: Setting up conversationUpdate listener');
+      const unsubConvUpdate = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+        if (!mountedRef.current) return;
+        console.log('useRealTimeMessages: Received conversationUpdate', data);
+        if (onConversationUpdateRef.current) {
+          onConversationUpdateRef.current(data);
+        }
+      });
+      cleanupFns.push(unsubConvUpdate);
 
       // Also check after a delay as fallback
       const timeout = setTimeout(() => {
@@ -79,20 +175,16 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
           setIsReady(true);
         }
       }, 1000);
-
-      cleanupFn = () => {
-        socket?.off('connect', handleConnect);
-        clearTimeout(timeout);
-      };
+      cleanupFns.push(() => clearTimeout(timeout));
     };
 
     init();
 
     return () => {
       mountedRef.current = false;
-      cleanupFn?.();
+      cleanupFns.forEach(fn => fn());
     };
-  }, []);
+  }, []); // Run once on mount, not when matchId changes
 
   // Join/leave chat room when matchId changes
   useEffect(() => {
@@ -119,67 +211,6 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
       }
     };
   }, [matchId, isReady]);
-
-  // Listen for new messages
-  useEffect(() => {
-    if (!isReady) return;
-
-    const unsubscribe = socketService.onNewMessage((data: SocketMessage) => {
-      // Don't process messages sent by current user (already added locally)
-      if (data.senderId === currentUserId.current) return;
-
-      // Only process if for the current conversation
-      if (matchId && data.matchId === matchId && onNewMessage) {
-        // Add match_id to the message to satisfy the Message interface
-        const messageWithMatchId: Message = {
-          ...data.message,
-          match_id: data.matchId
-        };
-        onNewMessage(messageWithMatchId);
-      }
-    });
-
-    return unsubscribe;
-  }, [matchId, onNewMessage, isReady]);
-
-  // Listen for typing indicators
-  useEffect(() => {
-    if (!isReady) return;
-
-    const unsubscribe = socketService.onTyping((data: SocketTyping) => {
-      if (data.matchId !== matchId) return;
-      if (data.userId === currentUserId.current) return;
-
-      if (data.isTyping) {
-        setTypingUsers((prev) =>
-          prev.includes(data.userId) ? prev : [...prev, data.userId]
-        );
-      } else {
-        setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
-      }
-
-      if (onTyping) {
-        onTyping(data);
-      }
-    });
-
-    return unsubscribe;
-  }, [matchId, onTyping, isReady]);
-
-  // Listen for conversation updates (for conversation list)
-  useEffect(() => {
-    if (!isReady) return;
-
-    console.log('useRealTimeMessages: Setting up conversationUpdate listener');
-    const unsubscribe = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
-      console.log('useRealTimeMessages: Received conversationUpdate', data);
-      if (onConversationUpdate) {
-        onConversationUpdate(data);
-      }
-    });
-
-    return unsubscribe;
-  }, [onConversationUpdate, isReady]);
 
   // Send typing indicator with debounce
   const sendTyping = useCallback((typing: boolean) => {
@@ -219,6 +250,7 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
   return {
     typingUsers,
     isTyping,
+    isReady,
     sendTyping
   };
 }
