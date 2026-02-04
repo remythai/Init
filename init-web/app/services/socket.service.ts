@@ -1,15 +1,20 @@
 import { io, Socket } from 'socket.io-client';
 
 // Get socket URL - resolved at connection time
-// With nginx, WebSocket goes through the same port as the frontend
 const getSocketUrl = (): string => {
-  // In browser, use the same origin (nginx proxies /socket.io/ to backend)
+  // Use NEXT_PUBLIC_API_URL if available (works in both dev and prod without nginx)
+  // This variable is inlined at build time by Next.js
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // In browser with nginx, use the same origin (nginx proxies /socket.io/ to backend)
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
 
   // Fallback for SSR or testing
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  return 'http://localhost:3000';
 };
 
 export interface SocketMessage {
@@ -184,7 +189,11 @@ class SocketService {
    * Listen for new messages
    */
   onNewMessage(callback: (data: SocketMessage) => void): () => void {
-    this.socket?.on('chat:newMessage', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add newMessage listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('chat:newMessage', callback);
     return () => {
       this.socket?.off('chat:newMessage', callback);
     };
@@ -194,7 +203,11 @@ class SocketService {
    * Listen for typing indicators
    */
   onTyping(callback: (data: SocketTyping) => void): () => void {
-    this.socket?.on('chat:typing', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add typing listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('chat:typing', callback);
     return () => {
       this.socket?.off('chat:typing', callback);
     };
@@ -204,7 +217,11 @@ class SocketService {
    * Listen for conversation updates
    */
   onConversationUpdate(callback: (data: SocketConversationUpdate) => void): () => void {
-    this.socket?.on('chat:conversationUpdate', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add conversationUpdate listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('chat:conversationUpdate', callback);
     return () => {
       this.socket?.off('chat:conversationUpdate', callback);
     };
@@ -214,7 +231,11 @@ class SocketService {
    * Listen for message read events
    */
   onMessageRead(callback: (data: { matchId: number; messageId: number; readBy: number }) => void): () => void {
-    this.socket?.on('chat:messageRead', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add messageRead listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('chat:messageRead', callback);
     return () => {
       this.socket?.off('chat:messageRead', callback);
     };
@@ -252,7 +273,11 @@ class SocketService {
    * Listen for new users joining event
    */
   onUserJoinedEvent(callback: (data: SocketUserJoined) => void): () => void {
-    this.socket?.on('event:userJoined', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add userJoinedEvent listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('event:userJoined', callback);
     return () => {
       this.socket?.off('event:userJoined', callback);
     };
@@ -266,7 +291,11 @@ class SocketService {
    * Listen for new matches
    */
   onNewMatch(callback: (data: SocketMatch) => void): () => void {
-    this.socket?.on('match:new', callback);
+    if (!this.socket) {
+      console.warn('Socket: Cannot add newMatch listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('match:new', callback);
     return () => {
       this.socket?.off('match:new', callback);
     };
