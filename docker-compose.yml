@@ -6,8 +6,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "${POSTGRES_EXPOSED_PORT}:${POSTGRES_PORT}"
+    # Port exposé uniquement en local pour debug (commenté en prod)
+    # ports:
+    #   - "127.0.0.1:5432:5432"
     volumes:
       - init_db_data:/var/lib/postgresql/data
       - ./init-DB/db-export:/docker-entrypoint-initdb.d:ro
@@ -42,7 +43,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "127.0.0.1:3001:3000"
     volumes:
       - ./init-API/uploads:/app/uploads
     restart: unless-stopped
@@ -68,7 +69,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "80:3000"
+      - "127.0.0.1:3002:3000"
     restart: unless-stopped
     networks:
       - init_net

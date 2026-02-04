@@ -1,21 +1,15 @@
 import { io, Socket } from 'socket.io-client';
 
 // Get socket URL - resolved at connection time
+// With nginx, WebSocket goes through the same port as the frontend
 const getSocketUrl = (): string => {
-  // Use NEXT_PUBLIC_API_URL if available (set at build time)
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    return envUrl;
-  }
-
-  // In browser, try to use the same host with backend port
+  // In browser, use the same origin (nginx proxies /socket.io/ to backend)
   if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    // Default to port 3000 for backend
-    return `${protocol}//${hostname}:3000`;
+    return window.location.origin;
   }
 
-  return 'http://localhost:3000';
+  // Fallback for SSR or testing
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 };
 
 export interface SocketMessage {
