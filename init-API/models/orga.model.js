@@ -22,7 +22,7 @@ export const OrgaModel = {
 
   async findById(id) {
     const result = await pool.query(
-      'SELECT id, nom, mail, description, tel, created_at, updated_at FROM orga WHERE id = $1',
+      'SELECT id, nom, mail, description, tel, logo_path, created_at, updated_at FROM orga WHERE id = $1',
       [id]
     );
     return result.rows[0];
@@ -42,7 +42,7 @@ export const OrgaModel = {
     values.push(id);
     const result = await pool.query(
       `UPDATE orga SET ${fields.join(', ')} WHERE id = $${paramCount}
-       RETURNING id, nom, mail, description, tel, updated_at`,
+       RETURNING id, nom, mail, description, tel, logo_path, updated_at`,
       values
     );
     return result.rows[0];

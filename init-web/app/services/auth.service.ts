@@ -43,6 +43,7 @@ export interface Orga {
   mail: string;
   description?: string;
   tel?: string;
+  logo_path?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -421,6 +422,43 @@ class AuthService {
 
   async updateCurrentOrga(updates: Partial<Orga>): Promise<Orga | null> {
     return await this.updateCurrentProfile(updates) as Orga | null;
+  }
+
+  async uploadOrgaLogo(file: File): Promise<string> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    const response = await fetch(`${API_URL}/api/orga/logo`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de l\'upload du logo');
+    }
+
+    const data = await response.json();
+    return data.data.logo_path;
+  }
+
+  async deleteOrgaLogo(): Promise<void> {
+    const response = await this.authenticatedFetch('/api/orga/logo', {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de la suppression du logo');
+    }
   }
 
   async validateToken(): Promise<boolean> {

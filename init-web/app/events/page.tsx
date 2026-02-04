@@ -506,27 +506,27 @@ export default function EventsPage() {
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/initLogoGray.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <Link
               href="/profile"
-              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+              className="flex items-center gap-1 md:gap-2 text-white/70 hover:text-white transition-colors"
             >
-              <User className="w-5 h-5" />
+              <User className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden md:inline">Mon Profil</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="text-white/70 hover:text-white text-sm transition-colors"
+              className="text-white/70 hover:text-white text-xs md:text-sm transition-colors"
             >
               Deconnexion
             </button>
@@ -542,8 +542,8 @@ export default function EventsPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-20 pb-32">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
+      <main className="pt-14 md:pt-16 pb-32">
+        <div className="max-w-7xl mx-auto px-3 md:px-8">
           {/* Page Title */}
           <div className="py-6 md:py-8">
             <h1 className="font-poppins text-2xl md:text-3xl font-bold text-[#303030]">
@@ -634,6 +634,16 @@ export default function EventsPage() {
                         </span>
                       )}
                     </div>
+                    {/* Orga Logo Badge */}
+                    {event.orgaLogo && (
+                      <div className="absolute bottom-3 right-3">
+                        <img
+                          src={event.orgaLogo}
+                          alt={event.orgaName || 'Organisateur'}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Event Content */}
@@ -699,7 +709,7 @@ export default function EventsPage() {
 
       {/* Filter Tabs (for users) */}
       {userType === "user" && (
-        <div className="fixed bottom-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
+        <div className="fixed bottom-24 md:bottom-28 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
           <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg flex max-w-md mx-auto">
             <button
               onClick={() => setActiveFilter("all")}
@@ -742,9 +752,9 @@ export default function EventsPage() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setIsAdvancedOpen(false)}
           />
-          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
+          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b">
+            <div className="flex-shrink-0 flex items-center justify-between p-5 border-b">
               <h2 className="font-poppins text-xl font-semibold text-[#303030]">
                 Recherche avancée
               </h2>
@@ -757,7 +767,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-6 overflow-y-auto max-h-[60vh]">
+            <div className="flex-1 p-5 space-y-6 overflow-y-auto">
               {/* Theme Filter */}
               <div>
                 <label className="block text-sm font-semibold text-[#303030] mb-3">
@@ -832,7 +842,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3 p-5 border-t">
+            <div className="flex-shrink-0 flex gap-3 p-5 border-t">
               <button
                 onClick={() => {
                   setSelectedTheme("all");
@@ -893,11 +903,15 @@ export default function EventsPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, 100) })}
                   placeholder="Ex: Soirée Networking"
+                  maxLength={100}
                   disabled={creating}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
                 />
+                <p className={`text-xs mt-1 text-right ${formData.name.length >= 90 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {formData.name.length}/100
+                </p>
               </div>
 
               {/* Theme */}
@@ -931,12 +945,24 @@ export default function EventsPage() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 1000) })}
                   placeholder="Decrivez votre evenement..."
                   rows={3}
+                  maxLength={1000}
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100 break-words"
+                  style={{ wordBreak: 'break-word' }}
                 />
+                <p className={`text-xs mt-1 text-right ${formData.description.length >= 900 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {formData.description.length}/1000
+                </p>
+              </div>
+
+              {/* Banner Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">Image de banniere :</span> Vous pourrez ajouter une image de banniere personnalisee apres la creation de l'evenement, en cliquant sur "Modifier" dans la page de l'evenement.
+                </p>
               </div>
 
               {/* App Availability Dates (Required) */}

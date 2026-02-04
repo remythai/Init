@@ -405,6 +405,8 @@ export default function MessagesPage() {
                     setIsArchived(conv.is_blocked || false);
                     setIsEventExpired(conv.is_event_expired || false);
                     setIsOtherUserBlocked(conv.is_other_user_blocked || false);
+                    // Update URL to reflect selected conversation (for layout to hide nav on mobile)
+                    router.replace(`/events/${eventId}/environment/messages?match=${conv.match_id}`, { scroll: false });
                   }}
                   className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left ${
                     selectedMatchId === conv.match_id ? "bg-white/10" : ""
@@ -451,13 +453,17 @@ export default function MessagesPage() {
       {/* Right Panel - Conversation */}
       <div className={`flex-1 flex flex-col ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {selectedMatchId && conversationData ? (
-          <div className="h-full flex flex-col bg-[#F5F5F5]">
+          <div className="h-full flex flex-col bg-[#3a3a3a]">
             {/* Conversation Header */}
-            <div className="flex-shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+            <div className="flex-shrink-0 bg-[#252525] border-b border-white/10 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setSelectedMatchId(null)}
-                  className="md:hidden text-gray-600 hover:text-gray-700 p-1"
+                  onClick={() => {
+                    setSelectedMatchId(null);
+                    // Clear URL param when going back to list
+                    router.replace(`/events/${eventId}/environment/messages`, { scroll: false });
+                  }}
+                  className="md:hidden text-white/60 hover:text-white p-1"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -476,10 +482,10 @@ export default function MessagesPage() {
                     className="w-10 h-10 rounded-full object-cover"
                   />
                   <div className="text-left">
-                    <h2 className="font-semibold text-[#303030]">
+                    <h2 className="font-semibold text-white">
                       {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
                     </h2>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-white/50">
                       {conversationData.match.event_name}
                     </p>
                   </div>
@@ -487,7 +493,7 @@ export default function MessagesPage() {
               </div>
               <button
                 onClick={openReportModal}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                className="p-2 text-white/40 hover:text-white rounded-lg hover:bg-white/10"
                 title="Signaler"
               >
                 <MoreVertical className="w-5 h-5" />
@@ -502,13 +508,13 @@ export default function MessagesPage() {
                 </div>
               ) : conversationData.messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-8 h-8 text-gray-400" />
+                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
+                    <MessageCircle className="w-8 h-8 text-white/40" />
                   </div>
-                  <p className="text-gray-600">
+                  <p className="text-white">
                     Commencez la conversation !
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <p className="text-white/50 text-sm mt-1">
                     Envoyez un premier message à {conversationData.match.user.firstname}
                   </p>
                 </div>
@@ -525,7 +531,7 @@ export default function MessagesPage() {
                       <div key={message.id}>
                         {showDate && (
                           <div className="flex justify-center my-4">
-                            <span className="px-3 py-1 bg-gray-200 rounded-full text-xs text-gray-600">
+                            <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/60">
                               {formatDate(message.sent_at)}
                             </span>
                           </div>
@@ -537,13 +543,13 @@ export default function MessagesPage() {
                             className={`max-w-[75%] px-4 py-2 rounded-2xl ${
                               isMine
                                 ? "bg-[#1271FF] text-white rounded-br-md"
-                                : "bg-white text-[#303030] rounded-bl-md shadow-sm"
+                                : "bg-[#252525] text-white rounded-bl-md"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{message.content}</p>
                             <p
                               className={`text-xs mt-1 ${
-                                isMine ? "text-white/70" : "text-gray-400"
+                                isMine ? "text-white/70" : "text-white/40"
                               }`}
                             >
                               {formatTime(message.sent_at)}
@@ -561,31 +567,31 @@ export default function MessagesPage() {
             {/* Typing indicator */}
             {typingUsers.length > 0 && (
               <div className="px-4 py-2">
-                <div className="inline-flex items-center gap-1.5 bg-gray-200 rounded-2xl px-4 py-3">
-                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
-                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
-                  <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
+                <div className="inline-flex items-center gap-1.5 bg-[#252525] rounded-2xl px-4 py-3">
+                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
                 </div>
               </div>
             )}
 
             {/* Input */}
-            <div className="flex-shrink-0 bg-white border-t p-4">
+            <div className="flex-shrink-0 bg-[#252525] border-t border-white/10 p-4">
               {isArchived ? (
-                <div className="bg-red-50 rounded-xl px-4 py-3 text-center">
-                  <p className="text-red-600 text-sm">
+                <div className="bg-red-500/20 rounded-xl px-4 py-3 text-center">
+                  <p className="text-red-400 text-sm">
                     Vous avez été retiré de cet événement par l'organisateur
                   </p>
                 </div>
               ) : isOtherUserBlocked ? (
-                <div className="bg-gray-100 rounded-xl px-4 py-3 text-center">
-                  <p className="text-gray-600 text-sm">
+                <div className="bg-white/10 rounded-xl px-4 py-3 text-center">
+                  <p className="text-white/60 text-sm">
                     Cet utilisateur a été retiré de l'événement
                   </p>
                 </div>
               ) : isEventExpired ? (
-                <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
-                  <p className="text-orange-600 text-sm">
+                <div className="bg-orange-500/20 rounded-xl px-4 py-3 text-center">
+                  <p className="text-orange-400 text-sm">
                     La période de disponibilité de cet événement est terminée
                   </p>
                 </div>
@@ -602,7 +608,7 @@ export default function MessagesPage() {
                     onBlur={() => sendTyping(false)}
                     placeholder="Écrivez un message..."
                     maxLength={500}
-                    className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030]"
+                    className="flex-1 px-4 py-3 bg-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-white placeholder-white/40"
                   />
                   <button
                     onClick={handleSendMessage}
@@ -710,12 +716,12 @@ export default function MessagesPage() {
 
       {/* Profile Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/70"
             onClick={() => setShowProfileModal(false)}
           />
-          <div className="relative bg-white rounded-2xl max-w-md mx-4 w-full max-h-[90vh] overflow-hidden">
+          <div className="relative bg-[#303030] rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             {/* Close button */}
             <button
               onClick={() => setShowProfileModal(false)}
@@ -731,7 +737,7 @@ export default function MessagesPage() {
             ) : profileData ? (
               <div className="flex flex-col">
                 {/* Photo carousel */}
-                <div className="relative aspect-[3/4] bg-gray-200">
+                <div className="relative aspect-[3/4] max-h-[50vh] bg-[#252525]">
                   {profileData.photos && profileData.photos.length > 0 ? (
                     <>
                       <img
@@ -793,7 +799,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Profile info */}
-                <div className="p-4 overflow-y-auto max-h-[40vh]">
+                <div className="p-4">
                   {profileData.profil_info && Object.keys(profileData.profil_info).length > 0 ? (
                     <div className="space-y-3">
                       {Object.entries(profileData.profil_info).map(([key, value]) => {
@@ -810,13 +816,13 @@ export default function MessagesPage() {
                         // Handle arrays (like interests)
                         if (Array.isArray(value)) {
                           return (
-                            <div key={key} className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                              <p className="text-sm font-semibold text-[#303030] mb-2">{formatLabel(key)}</p>
+                            <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10">
+                              <p className="text-sm font-semibold text-white mb-2">{formatLabel(key)}</p>
                               <div className="flex flex-wrap gap-2">
                                 {value.map((item, idx) => (
                                   <span
                                     key={idx}
-                                    className="px-3 py-1.5 bg-[#1271FF]/10 text-[#1271FF] rounded-full text-sm font-medium"
+                                    className="px-3 py-1.5 bg-[#1271FF]/20 text-[#1271FF] rounded-full text-sm font-medium"
                                   >
                                     {String(item)}
                                   </span>
@@ -828,15 +834,15 @@ export default function MessagesPage() {
 
                         // Handle regular values
                         return (
-                          <div key={key} className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                            <p className="text-sm font-semibold text-[#303030] mb-1">{formatLabel(key)}</p>
-                            <p className="text-gray-600">{String(value)}</p>
+                          <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10 overflow-hidden">
+                            <p className="text-sm font-semibold text-white mb-1">{formatLabel(key)}</p>
+                            <p className="text-white/70 whitespace-pre-wrap break-words">{String(value)}</p>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-center py-4">
+                    <p className="text-white/50 text-center py-4">
                       Aucune information de profil disponible
                     </p>
                   )}

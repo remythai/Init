@@ -5,6 +5,7 @@ import { OrgaModel } from '../models/orga.model.js';
 import { TokenModel } from '../models/token.model.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
+import { getOrgaLogoUrl, deleteOrgaLogo } from '../config/multer.config.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -157,5 +158,31 @@ export const OrgaController = {
     await TokenModel.deleteAllForUser(req.user.id, 'orga');
     await OrgaModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
+  },
+
+  async uploadLogo(req, res) {
+    if (!req.file) {
+      throw new ValidationError('Aucun fichier uploadé');
+    }
+
+    const orgaId = req.user.id;
+    const logoPath = getOrgaLogoUrl(orgaId, req.file.filename);
+
+    // Update logo_path in database
+    const orga = await OrgaModel.update(orgaId, { logo_path: logoPath });
+
+    return success(res, { logo_path: orga.logo_path }, 'Logo uploadé avec succès');
+  },
+
+  async deleteLogo(req, res) {
+    const orgaId = req.user.id;
+
+    // Delete file from disk
+    deleteOrgaLogo(orgaId);
+
+    // Set logo_path to null in database
+    await OrgaModel.update(orgaId, { logo_path: null });
+
+    return success(res, null, 'Logo supprimé avec succès');
   }
 };

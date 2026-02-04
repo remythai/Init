@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
 import { authService } from "../services/auth.service";
 
 type UserType = "user" | "organizer";
@@ -17,6 +18,8 @@ export default function AuthPage() {
   // Form fields
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -200,10 +203,10 @@ export default function AuthPage() {
             alt="Init Logo"
             width={200}
             height={80}
-            className="h-20 w-auto"
+            className="h-12 md:h-20 w-auto"
           />
         </Link>
-        <p className="text-white/70 font-roboto text-sm">Là où tout commence</p>
+        <p className="text-white/70 font-roboto text-xs md:text-sm">Là où tout commence</p>
       </div>
 
       {/* Card */}
@@ -320,14 +323,23 @@ export default function AuthPage() {
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Mot de passe *
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -353,14 +365,23 @@ export default function AuthPage() {
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Mot de passe *
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -441,27 +462,45 @@ export default function AuthPage() {
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Mot de passe * (min. 8 caractères)
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Confirmer le mot de passe *
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -518,34 +557,53 @@ export default function AuthPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
                   rows={3}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none break-words"
+                  style={{ wordBreak: 'break-word' }}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Mot de passe * (min. 8 caractères)
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#303030] mb-2">
                   Confirmer le mot de passe *
                 </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -562,6 +620,7 @@ export default function AuthPage() {
                 className="mt-1 w-4 h-4 text-[#1271FF] bg-white border-gray-300 rounded focus:ring-[#1271FF] focus:ring-2 cursor-pointer"
               />
               <label htmlFor="acceptCGU" className="text-sm text-[#303030] cursor-pointer">
+                <span className="text-red-500">*</span>{" "}
                 J'accepte les{" "}
                 <Link href="/legal/cgu" className="text-[#1271FF] hover:underline" target="_blank">
                   Conditions Générales d'Utilisation
@@ -569,8 +628,7 @@ export default function AuthPage() {
                 et la{" "}
                 <Link href="/legal/confidentialite" className="text-[#1271FF] hover:underline" target="_blank">
                   Politique de confidentialité
-                </Link>{" "}
-                *
+                </Link>
               </label>
             </div>
           )}

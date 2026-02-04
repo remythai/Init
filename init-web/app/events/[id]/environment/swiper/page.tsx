@@ -498,7 +498,7 @@ export default function SwiperPage() {
                       transition: dragState?.isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    <div className="w-full h-full bg-white rounded-[20px] shadow-lg overflow-hidden">
+                    <div className="w-full h-full bg-white rounded-[32px] shadow-lg overflow-hidden">
                       <div
                         className="w-full h-full bg-cover bg-center"
                         style={{ backgroundImage: `url(${getProfileImage(nextProfile)})` }}
@@ -554,7 +554,7 @@ export default function SwiperPage() {
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                 >
-                  <div className="w-full h-full bg-white rounded-[20px] shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-white rounded-[32px] shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(currentProfile, currentImageIndex)})` }}
@@ -665,7 +665,7 @@ export default function SwiperPage() {
                     transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
-                  <div className="w-full h-full bg-white rounded-[20px] shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-white rounded-[32px] shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(profiles[exitingCard.index], currentImageIndex)})` }}
@@ -857,9 +857,9 @@ export default function SwiperPage() {
 
                       // Handle regular values
                       return (
-                        <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200">
+                        <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200 overflow-hidden">
                           <p className="text-sm font-semibold text-[#303030] mb-1">{formatFieldLabel(key)}</p>
-                          <p className="text-[#4B5563]">{String(value)}</p>
+                          <p className="text-[#4B5563] whitespace-pre-wrap break-words">{String(value)}</p>
                         </div>
                       );
                     })}
@@ -951,7 +951,8 @@ export default function SwiperPage() {
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   placeholder="Decrivez la situation pour aider l'organisateur..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32"
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32 break-words"
+                  style={{ wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3">
                   <button

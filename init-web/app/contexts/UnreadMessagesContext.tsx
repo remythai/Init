@@ -33,6 +33,10 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       const token = authService.getToken();
       if (!token) return;
 
+      // Only load for users, not orgas
+      const userType = authService.getUserType();
+      if (userType !== 'user') return;
+
       const conversations = await matchService.getAllConversations();
 
       const newUnreadMatchIds = new Set<number>();
@@ -80,6 +84,10 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = authService.getToken();
     if (!token) return;
+
+    // Only for users, not orgas
+    const userType = authService.getUserType();
+    if (userType !== 'user') return;
 
     // Connect to socket
     const socket = socketService.connect(token);
