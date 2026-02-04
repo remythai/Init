@@ -9,6 +9,7 @@ import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '.
 import { success, created } from '../utils/responses.js';
 import { validateCustomFields, validateCustomData } from '../utils/customFieldsSchema.js';
 import { emitUserJoinedEvent } from '../socket/emitters.js';
+import { getEventBannerUrl, deleteEventBanner } from '../config/multer.config.js';
 
 import bcrypt from 'bcrypt';
 
@@ -104,7 +105,7 @@ export const EventController = {
 
     const eventsWithCount = await Promise.all(
       events.map(async (event) => {
-        const { id, name, location, event_date, max_participants, start_at, end_at, app_start_at, app_end_at, theme, description } = event;
+        const { id, name, location, event_date, max_participants, start_at, end_at, app_start_at, app_end_at, theme, description, banner_path, orga_logo } = event;
 
         return {
           id,
@@ -120,6 +121,9 @@ export const EventController = {
           // App availability dates (required)
           app_start_at,
           app_end_at,
+          // Images
+          banner_path,
+          orga_logo,
           participant_count: await EventModel.countParticipants(event.id)
         };
       })
@@ -568,6 +572,129 @@ export const EventController = {
         has_whitelist: event.has_whitelist
       },
       statistics
+    });
+  },
+
+  async uploadBanner(req, res) {
+    if (!req.file) {
+      throw new ValidationError('Aucun fichier uploadé');
+    }
+
+    const eventId = parseInt(req.params.id);
+    const orgaId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== orgaId) {
+      throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
+    }
+
+    const bannerPath = getEventBannerUrl(eventId, req.file.filename);
+
+    // Update banner_path in database
+    const updatedEvent = await EventModel.update(eventId, { banner_path: bannerPath });
+
+    return success(res, { banner_path: updatedEvent.banner_path }, 'Bannière uploadée avec succès');
+  },
+
+  async deleteBanner(req, res) {
+    const eventId = parseInt(req.params.id);
+    const orgaId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    if (event.orga_id !== orgaId) {
+      throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
+    }
+
+    // Delete file from disk
+    deleteEventBanner(eventId);
+
+    // Set banner_path to null in database
+    await EventModel.update(eventId, { banner_path: null });
+
+    return success(res, null, 'Bannière supprimée avec succès');
+  },
+
+  /**
+   * GET /api/events/:id/check-eligibility
+   * Check if user can register to event (whitelist, blocked, full, etc.)
+   * This should be called BEFORE showing the registration form
+   */
+  async checkEligibility(req, res) {
+    const eventId = parseInt(req.params.id);
+    const userId = req.user.id;
+
+    const event = await EventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    // Check if already registered
+    const existing = await RegistrationModel.findByUserAndEvent(userId, eventId);
+    if (existing) {
+      return success(res, {
+        eligible: false,
+        reason: 'already_registered',
+        message: 'Vous êtes déjà inscrit à cet événement'
+      });
+    }
+
+    // Check if event is public
+    if (!event.is_public) {
+      return success(res, {
+        eligible: false,
+        reason: 'not_public',
+        message: 'Cet événement n\'est pas public'
+      });
+    }
+
+    // Check if user is blocked
+    const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
+    if (isBlocked) {
+      return success(res, {
+        eligible: false,
+        reason: 'blocked',
+        message: 'Vous n\'êtes plus autorisé à vous inscrire à cet événement'
+      });
+    }
+
+    // Check whitelist if enabled
+    if (event.has_whitelist) {
+      const user = await UserModel.findById(userId);
+      const isWhitelisted = await WhitelistModel.isWhitelisted(eventId, user.tel);
+      if (!isWhitelisted) {
+        return success(res, {
+          eligible: false,
+          reason: 'not_whitelisted',
+          message: 'Vous n\'êtes pas sur la liste des participants autorisés pour cet événement'
+        });
+      }
+    }
+
+    // Check if event is full
+    if (event.max_participants) {
+      const currentCount = await EventModel.countParticipants(eventId);
+      if (currentCount >= event.max_participants) {
+        return success(res, {
+          eligible: false,
+          reason: 'full',
+          message: 'L\'événement a atteint le nombre maximum de participants'
+        });
+      }
+    }
+
+    // User is eligible
+    return success(res, {
+      eligible: true,
+      requires_password: event.has_password_access,
+      custom_fields: event.custom_fields || []
     });
   }
 };

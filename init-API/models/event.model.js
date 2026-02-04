@@ -31,7 +31,7 @@ export const EventModel = {
 
   async findById(id) {
     const result = await pool.query(
-      `SELECT e.*, o.nom as orga_nom, o.mail as orga_mail 
+      `SELECT e.*, o.nom as orga_nom, o.mail as orga_mail, o.logo_path as orga_logo
        FROM events e
        JOIN orga o ON e.orga_id = o.id
        WHERE e.id = $1`,
@@ -42,7 +42,10 @@ export const EventModel = {
 
   async findByOrgaId(orgaId) {
     const result = await pool.query(
-      `SELECT * FROM events WHERE orga_id = $1 ORDER BY start_at DESC`,
+      `SELECT e.*, o.logo_path as orga_logo
+       FROM events e
+       JOIN orga o ON e.orga_id = o.id
+       WHERE e.orga_id = $1 ORDER BY e.start_at DESC`,
       [orgaId]
     );
     return result.rows;
@@ -99,7 +102,9 @@ export const EventModel = {
         e.theme,
         e.description,
         e.custom_fields,
+        e.banner_path,
         o.nom as orga_name,
+        o.logo_path as orga_logo,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         ${userId ? `EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $1) as is_registered` : 'false as is_registered'},
         ${userId ? `EXISTS(SELECT 1 FROM event_blocked_users WHERE event_id = e.id AND user_id = $1) as is_blocked` : 'false as is_blocked'}
@@ -158,7 +163,9 @@ export const EventModel = {
         e.app_end_at,
         e.theme,
         e.description,
+        e.banner_path,
         o.nom as orga_name,
+        o.logo_path as orga_logo,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         true as is_registered,
         uer.profil_info,

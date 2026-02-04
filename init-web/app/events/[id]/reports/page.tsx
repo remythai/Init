@@ -208,7 +208,7 @@ export default function ReportsPage() {
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
           <Link
@@ -494,7 +494,8 @@ export default function ReportsPage() {
                       value={orgaNotes}
                       onChange={(e) => setOrgaNotes(e.target.value)}
                       placeholder="Ajoutez des notes sur ce signalement..."
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] resize-none h-24"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] resize-none h-24 break-words"
+                      style={{ wordBreak: 'break-word' }}
                     />
                   </div>
                 </div>

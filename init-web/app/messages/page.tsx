@@ -4,13 +4,12 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { MessageCircle, Send, ArrowLeft, MoreVertical, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, MoreVertical, ChevronDown, ChevronUp, User, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { authService } from "../services/auth.service";
-import { matchService, Conversation, Message, Photo } from "../services/match.service";
+import { matchService, Conversation, Message, Photo, MatchUserProfile } from "../services/match.service";
 
 import { useRealTimeMessages } from "../hooks/useRealTimeMessages";
 import { SocketConversationUpdate } from "../services/socket.service";
-import BottomNavigation from "../components/BottomNavigation";
 import { useUnreadMessagesContext } from "../contexts/UnreadMessagesContext";
 
 interface EventConversations {
@@ -56,6 +55,10 @@ function GeneralMessagesContent() {
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
   const [isArchived, setIsArchived] = useState(false);
   const [isEventExpired, setIsEventExpired] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState<MatchUserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profilePhotoIndex, setProfilePhotoIndex] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<number | null>(null);
@@ -283,6 +286,36 @@ function GeneralMessagesContent() {
     alert("Signalement envoye. Notre equipe va l'examiner.");
   };
 
+  const handleOpenProfile = async () => {
+    if (!selectedMatchId || isArchived) return;
+
+    setLoadingProfile(true);
+    setShowProfileModal(true);
+    setProfilePhotoIndex(0);
+
+    try {
+      const profile = await matchService.getMatchProfile(selectedMatchId);
+      setProfileData(profile);
+    } catch (err: unknown) {
+      console.error("Error loading profile:", err);
+      setShowProfileModal(false);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const calculateAge = (birthday?: string): number | null => {
+    if (!birthday) return null;
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const toggleEventExpanded = (eventId: number) => {
     setExpandedEvents((prev) => {
       const newSet = new Set(prev);
@@ -339,32 +372,63 @@ function GeneralMessagesContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center pb-20">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des messages...</p>
-        </div>
-        <BottomNavigation userType="user" />
+      <div className="h-screen bg-[#303030] flex flex-col overflow-hidden">
+        <header className="flex-shrink-0 bg-[#303030] border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
+            <Link href="/">
+              <Image
+                src="/initLogoGray.png"
+                alt="Init Logo"
+                width={200}
+                height={80}
+                className="h-8 md:h-12 w-auto"
+              />
+            </Link>
+            <h1 className="font-poppins text-base md:text-lg font-semibold text-white">Messages</h1>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement des messages...</p>
+          </div>
+        </main>
+        <nav className="flex-shrink-0 bg-[#252525] border-t border-white/10">
+          <div className="max-w-lg mx-auto flex">
+            <Link href="/profile" className="flex-1 flex flex-col items-center py-3 text-white/50 hover:text-white/70 transition-colors">
+              <User className="w-6 h-6" />
+              <span className="text-xs mt-1">Profil</span>
+            </Link>
+            <Link href="/events" className="flex-1 flex flex-col items-center py-3 text-white/50 hover:text-white/70 transition-colors">
+              <Calendar className="w-6 h-6" />
+              <span className="text-xs mt-1">Événements</span>
+            </Link>
+            <Link href="/messages" className="flex-1 flex flex-col items-center py-3 text-white transition-colors">
+              <MessageCircle className="w-6 h-6 text-[#1271FF]" />
+              <span className="text-xs mt-1">Messages</span>
+            </Link>
+          </div>
+        </nav>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+    <div className="h-screen bg-[#303030] flex flex-col overflow-hidden">
+      {/* Header - hidden on mobile when conversation is selected */}
+      <header className={`flex-shrink-0 bg-[#303030] border-b border-white/10 z-40 ${selectedMatchId ? "hidden md:block" : ""}`}>
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/initLogoGray.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-12 md:h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
           <div className="flex items-center gap-2">
-            <h1 className="font-poppins text-lg font-semibold text-white">Messages</h1>
+            <h1 className="font-poppins text-base md:text-lg font-semibold text-white">Messages</h1>
             {getTotalUnreadCount() > 0 && (
               <span className="bg-[#1271FF] text-white text-xs font-bold px-2 py-1 rounded-full">
                 {getTotalUnreadCount()}
@@ -375,14 +439,14 @@ function GeneralMessagesContent() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pt-20 pb-20">
-        <div className="h-[calc(100vh-10rem)] flex">
+      <main className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full flex">
           {/* Left Panel - Conversations List */}
-          <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-white border-r border-gray-200 ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
+          <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-[#252525] border-r border-white/10 ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
             {/* Header */}
-            <div className="flex-shrink-0 p-4 border-b border-gray-100">
-              <h2 className="font-poppins text-xl font-bold text-[#303030]">Conversations</h2>
-              <p className="text-gray-500 text-sm mt-1">
+            <div className="flex-shrink-0 p-4 border-b border-white/10">
+              <h2 className="font-poppins text-xl font-bold text-white">Conversations</h2>
+              <p className="text-white/50 text-sm mt-1">
                 {getTotalConversationsCount()} conversation{getTotalConversationsCount() !== 1 ? "s" : ""}
               </p>
             </div>
@@ -401,11 +465,11 @@ function GeneralMessagesContent() {
                 </div>
               ) : getTotalConversationsCount() === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-10 h-10 text-gray-400" />
+                  <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4">
+                    <MessageCircle className="w-10 h-10 text-white/40" />
                   </div>
-                  <h2 className="text-[#303030] font-semibold mb-2">Pas encore de matchs</h2>
-                  <p className="text-gray-500 text-sm">
+                  <h2 className="text-white font-semibold mb-2">Pas encore de matchs</h2>
+                  <p className="text-white/50 text-sm">
                     Inscrivez-vous a des evenements et commencez a swiper !
                   </p>
                   <Link
@@ -418,30 +482,30 @@ function GeneralMessagesContent() {
               ) : (
                 <div>
                   {eventConversations.map((eventGroup) => (
-                    <div key={eventGroup.event.id} className="border-b border-gray-100">
+                    <div key={eventGroup.event.id} className="border-b border-white/10">
                       {/* Event Header */}
                       <button
                         onClick={() => toggleEventExpanded(eventGroup.event.id)}
-                        className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                        className="w-full px-4 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[#303030] text-sm">
+                          <span className="font-semibold text-white text-sm">
                             {eventGroup.event.name}
                           </span>
-                          <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                          <span className="text-xs text-white/70 bg-white/20 px-2 py-0.5 rounded-full">
                             {eventGroup.conversations.length}
                           </span>
                         </div>
                         {expandedEvents.has(eventGroup.event.id) ? (
-                          <ChevronUp className="w-4 h-4 text-gray-500" />
+                          <ChevronUp className="w-4 h-4 text-white/50" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                          <ChevronDown className="w-4 h-4 text-white/50" />
                         )}
                       </button>
 
                       {/* Conversations */}
                       {expandedEvents.has(eventGroup.event.id) && (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-white/5">
                           {eventGroup.conversations.map((conv) => (
                             <button
                               key={conv.match_id}
@@ -450,8 +514,8 @@ function GeneralMessagesContent() {
                                 setIsArchived(conv.is_archived || false);
                                 setIsEventExpired(conv.is_event_expired || false);
                               }}
-                              className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left ${
-                                selectedMatchId === conv.match_id ? "bg-blue-50" : ""
+                              className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left ${
+                                selectedMatchId === conv.match_id ? "bg-[#1271FF]/20" : ""
                               } ${conv.is_archived ? "opacity-60" : ""}`}
                             >
                               <div className="relative">
@@ -461,23 +525,23 @@ function GeneralMessagesContent() {
                                   className="w-12 h-12 rounded-full object-cover"
                                 />
                                 {conv.unread_count > 0 && (
-                                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-white flex items-center justify-center text-xs text-white font-medium">
+                                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-[#252525] flex items-center justify-center text-xs text-white font-medium">
                                     {conv.unread_count}
                                   </span>
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
-                                  <h3 className="font-semibold text-[#303030]">
+                                  <h3 className="font-semibold text-white">
                                     {conv.user.firstname} {conv.user.lastname?.charAt(0)}.
                                   </h3>
                                   {conv.last_message && (
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-white/40">
                                       {formatTime(conv.last_message.sent_at)}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-500 truncate">
+                                <p className="text-sm text-white/50 truncate">
                                   {conv.last_message
                                     ? conv.last_message.is_mine
                                       ? `Vous: ${conv.last_message.content}`
@@ -497,39 +561,45 @@ function GeneralMessagesContent() {
           </div>
 
           {/* Right Panel - Conversation */}
-          <div className={`flex-1 flex flex-col bg-[#F5F5F5] ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
+          <div className={`flex-1 flex flex-col bg-[#3a3a3a] ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
             {selectedMatchId && conversationData ? (
               <div className="h-full flex flex-col">
                 {/* Conversation Header */}
-                <div className="flex-shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+                <div className="flex-shrink-0 bg-[#252525] border-b border-white/10 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSelectedMatchId(null)}
-                      className="md:hidden text-gray-600 hover:text-gray-800 p-1"
+                      className="md:hidden text-white/60 hover:text-white p-1"
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <img
-                      src={getProfileImage(
-                        conversationData.match.user.photos,
-                        conversationData.match.user.firstname,
-                        conversationData.match.user.lastname
-                      )}
-                      alt={conversationData.match.user.firstname}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <h2 className="font-semibold text-[#303030]">
-                        {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
-                      </h2>
-                      <p className="text-xs text-gray-500">
-                        {conversationData.match.event_name}
-                      </p>
-                    </div>
+                    <button
+                      onClick={handleOpenProfile}
+                      disabled={isArchived}
+                      className={`flex items-center gap-3 ${!isArchived ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'} transition-opacity`}
+                    >
+                      <img
+                        src={getProfileImage(
+                          conversationData.match.user.photos,
+                          conversationData.match.user.firstname,
+                          conversationData.match.user.lastname
+                        )}
+                        alt={conversationData.match.user.firstname}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div className="text-left">
+                        <h2 className="font-semibold text-white">
+                          {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
+                        </h2>
+                        <p className="text-xs text-white/50">
+                          {conversationData.match.event_name}
+                        </p>
+                      </div>
+                    </button>
                   </div>
                   <button
                     onClick={() => setShowReportModal(true)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    className="p-2 text-white/40 hover:text-white rounded-lg hover:bg-white/10"
                   >
                     <MoreVertical className="w-5 h-5" />
                   </button>
@@ -543,13 +613,13 @@ function GeneralMessagesContent() {
                     </div>
                   ) : conversationData.messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <MessageCircle className="w-8 h-8 text-gray-400" />
+                      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
+                        <MessageCircle className="w-8 h-8 text-white/40" />
                       </div>
-                      <p className="text-gray-600">
+                      <p className="text-white">
                         Commencez la conversation !
                       </p>
-                      <p className="text-gray-400 text-sm mt-1">
+                      <p className="text-white/50 text-sm mt-1">
                         Envoyez un premier message a {conversationData.match.user.firstname}
                       </p>
                     </div>
@@ -566,7 +636,7 @@ function GeneralMessagesContent() {
                           <div key={message.id}>
                             {showDate && (
                               <div className="flex justify-center my-4">
-                                <span className="px-3 py-1 bg-gray-200 rounded-full text-xs text-gray-600">
+                                <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/60">
                                   {formatDate(message.sent_at)}
                                 </span>
                               </div>
@@ -578,13 +648,13 @@ function GeneralMessagesContent() {
                                 className={`max-w-[75%] px-4 py-2 rounded-2xl ${
                                   isMine
                                     ? "bg-[#1271FF] text-white rounded-br-md"
-                                    : "bg-white text-[#303030] rounded-bl-md shadow-sm"
+                                    : "bg-[#252525] text-white rounded-bl-md"
                                 }`}
                               >
                                 <p className="whitespace-pre-wrap break-words">{message.content}</p>
                                 <p
                                   className={`text-xs mt-1 ${
-                                    isMine ? "text-white/70" : "text-gray-400"
+                                    isMine ? "text-white/70" : "text-white/40"
                                   }`}
                                 >
                                   {formatTime(message.sent_at)}
@@ -602,25 +672,25 @@ function GeneralMessagesContent() {
                 {/* Typing indicator */}
                 {typingUsers.length > 0 && (
                   <div className="px-4 py-2">
-                    <div className="inline-flex items-center gap-1.5 bg-gray-200 rounded-2xl px-4 py-3">
-                      <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
-                      <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
-                      <span className="typing-dot w-2 h-2 bg-gray-500 rounded-full"></span>
+                    <div className="inline-flex items-center gap-1.5 bg-[#252525] rounded-2xl px-4 py-3">
+                      <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
+                      <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
+                      <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
                     </div>
                   </div>
                 )}
 
                 {/* Input */}
-                <div className="flex-shrink-0 bg-white border-t p-4">
+                <div className="flex-shrink-0 bg-[#252525] border-t border-white/10 p-4">
                   {isArchived ? (
-                    <div className="bg-red-50 rounded-xl px-4 py-3 text-center">
-                      <p className="text-red-600 text-sm">
+                    <div className="bg-red-500/20 rounded-xl px-4 py-3 text-center">
+                      <p className="text-red-400 text-sm">
                         Vous avez ete retire de cet evenement par l'organisateur
                       </p>
                     </div>
                   ) : isEventExpired ? (
-                    <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
-                      <p className="text-orange-600 text-sm">
+                    <div className="bg-orange-500/20 rounded-xl px-4 py-3 text-center">
+                      <p className="text-orange-400 text-sm">
                         La periode de disponibilite de cet evenement est terminee
                       </p>
                     </div>
@@ -637,7 +707,7 @@ function GeneralMessagesContent() {
                         onBlur={() => sendTyping(false)}
                         placeholder="Ecrivez un message..."
                         maxLength={500}
-                        className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030]"
+                        className="flex-1 px-4 py-3 bg-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-white placeholder-white/40"
                       />
                       <button
                         onClick={handleSendMessage}
@@ -654,11 +724,11 @@ function GeneralMessagesContent() {
               // Empty state (Desktop)
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MessageCircle className="w-12 h-12 text-gray-300" />
+                  <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="w-12 h-12 text-white/30" />
                   </div>
-                  <h2 className="text-gray-500 font-medium mb-1">Selectionnez une conversation</h2>
-                  <p className="text-gray-400 text-sm">
+                  <h2 className="text-white/70 font-medium mb-1">Selectionnez une conversation</h2>
+                  <p className="text-white/40 text-sm">
                     Choisissez un match pour commencer a discuter
                   </p>
                 </div>
@@ -668,8 +738,39 @@ function GeneralMessagesContent() {
         </div>
       </main>
 
-      {/* Bottom Navigation */}
-      <BottomNavigation userType="user" />
+      {/* Bottom Navigation - hidden on mobile when conversation is selected */}
+      <nav className={`flex-shrink-0 bg-[#252525] border-t border-white/10 ${selectedMatchId ? "hidden md:block" : ""}`}>
+        <div className="max-w-lg mx-auto flex">
+          <Link
+            href="/profile"
+            className="flex-1 flex flex-col items-center py-3 text-white/50 hover:text-white/70 transition-colors"
+          >
+            <User className="w-6 h-6" />
+            <span className="text-xs mt-1">Profil</span>
+            <span className="text-[10px] text-white/40">Général</span>
+          </Link>
+          <Link
+            href="/events"
+            className="flex-1 flex flex-col items-center py-3 text-white/50 hover:text-white/70 transition-colors"
+          >
+            <Calendar className="w-6 h-6" />
+            <span className="text-xs mt-1">Événements</span>
+          </Link>
+          <Link
+            href="/messages"
+            className="flex-1 flex flex-col items-center py-3 text-white transition-colors"
+          >
+            <div className="relative">
+              <MessageCircle className="w-6 h-6 text-[#1271FF]" />
+              {getTotalUnreadCount() > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#1271FF] rounded-full" />
+              )}
+            </div>
+            <span className="text-xs mt-1">Messages</span>
+            <span className="text-[10px] text-white/40">Général</span>
+          </Link>
+        </div>
+      </nav>
 
       {/* Report Modal */}
       {showReportModal && (
@@ -678,39 +779,174 @@ function GeneralMessagesContent() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowReportModal(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+          <div className="relative bg-[#303030] rounded-2xl p-6 max-w-sm mx-4 w-full">
+            <h3 className="font-semibold text-lg text-white mb-2">
               Signaler l'utilisateur
             </h3>
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-white/60 text-sm mb-4">
               Pour quelle raison souhaitez-vous signaler cet utilisateur ?
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowReportModal(false)}
-                className="w-full py-3 rounded-xl text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                className="w-full py-3 rounded-xl text-white font-medium hover:bg-white/10 transition-colors"
               >
                 Annuler
               </button>
               <button
                 onClick={() => handleReport("inappropriate")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
+                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-[#1271FF]/10 transition-colors"
               >
                 Comportement inapproprie
               </button>
               <button
                 onClick={() => handleReport("harassment")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
+                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-[#1271FF]/10 transition-colors"
               >
                 Harcelement
               </button>
               <button
                 onClick={() => handleReport("spam")}
-                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-blue-50 transition-colors"
+                className="w-full py-3 rounded-xl text-[#1271FF] font-medium hover:bg-[#1271FF]/10 transition-colors"
               >
                 Spam
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowProfileModal(false)}
+          />
+          <div className="relative bg-[#303030] rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Close button */}
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {loadingProfile ? (
+              <div className="h-96 flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : profileData ? (
+              <div className="flex flex-col">
+                {/* Photo carousel */}
+                <div className="relative aspect-[3/4] max-h-[50vh] bg-[#252525]">
+                  {profileData.photos && profileData.photos.length > 0 ? (
+                    <>
+                      <img
+                        src={getProfileImage([profileData.photos[profilePhotoIndex]], profileData.firstname, profileData.lastname)}
+                        alt={profileData.firstname}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Photo indicators */}
+                      {profileData.photos.length > 1 && (
+                        <div className="absolute top-3 left-0 right-0 flex justify-center gap-1.5 px-4">
+                          {profileData.photos.map((_, idx) => (
+                            <div
+                              key={idx}
+                              className={`h-1 flex-1 rounded-full ${idx === profilePhotoIndex ? 'bg-white' : 'bg-white/40'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {/* Navigation buttons */}
+                      {profileData.photos.length > 1 && (
+                        <>
+                          {profilePhotoIndex > 0 && (
+                            <button
+                              onClick={() => setProfilePhotoIndex(prev => prev - 1)}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                            >
+                              <ChevronLeft className="w-6 h-6" />
+                            </button>
+                          )}
+                          {profilePhotoIndex < profileData.photos.length - 1 && (
+                            <button
+                              onClick={() => setProfilePhotoIndex(prev => prev + 1)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                            >
+                              <ChevronRight className="w-6 h-6" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={getProfileImage(undefined, profileData.firstname, profileData.lastname)}
+                        alt={profileData.firstname}
+                        className="w-32 h-32 rounded-full"
+                      />
+                    </div>
+                  )}
+                  {/* Name overlay at bottom of photo */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                    <h2 className="text-white text-2xl font-bold">
+                      {profileData.firstname} {profileData.lastname?.charAt(0)}.
+                      {calculateAge(profileData.birthday) && (
+                        <span className="font-normal">, {calculateAge(profileData.birthday)}</span>
+                      )}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Profile info */}
+                <div className="p-4">
+                  {profileData.profil_info && Object.keys(profileData.profil_info).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(profileData.profil_info).map(([key, value]) => {
+                        if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+                        const formatLabel = (fieldId: string): string => {
+                          return fieldId
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, (c) => c.toUpperCase());
+                        };
+
+                        if (Array.isArray(value)) {
+                          return (
+                            <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10">
+                              <p className="text-sm font-semibold text-white mb-2">{formatLabel(key)}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {value.map((item, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-3 py-1.5 bg-[#1271FF]/20 text-[#1271FF] rounded-full text-sm font-medium"
+                                  >
+                                    {String(item)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10 overflow-hidden">
+                            <p className="text-sm font-semibold text-white mb-1">{formatLabel(key)}</p>
+                            <p className="text-white/70 whitespace-pre-wrap break-words">{String(value)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-white/50 text-center py-4">
+                      Aucune information de profil disponible
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
@@ -721,12 +957,35 @@ function GeneralMessagesContent() {
 // Loading fallback for Suspense
 function MessagesLoading() {
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center pb-20">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600">Chargement des messages...</p>
-      </div>
-      <BottomNavigation userType="user" />
+    <div className="h-screen bg-[#303030] flex flex-col overflow-hidden">
+      <header className="flex-shrink-0 bg-[#303030] border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
+          <div className="h-8 md:h-12 w-24 bg-white/10 rounded animate-pulse"></div>
+          <div className="h-6 w-20 bg-white/10 rounded animate-pulse"></div>
+        </div>
+      </header>
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des messages...</p>
+        </div>
+      </main>
+      <nav className="flex-shrink-0 bg-[#252525] border-t border-white/10">
+        <div className="max-w-lg mx-auto flex">
+          <div className="flex-1 flex flex-col items-center py-3 text-white/50">
+            <User className="w-6 h-6" />
+            <span className="text-xs mt-1">Profil</span>
+          </div>
+          <div className="flex-1 flex flex-col items-center py-3 text-white/50">
+            <Calendar className="w-6 h-6" />
+            <span className="text-xs mt-1">Événements</span>
+          </div>
+          <div className="flex-1 flex flex-col items-center py-3 text-white">
+            <MessageCircle className="w-6 h-6 text-[#1271FF]" />
+            <span className="text-xs mt-1">Messages</span>
+          </div>
+        </div>
+      </nav>
     </div>
   );
 }

@@ -18,6 +18,9 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "Init - Gestion d'événements",
   description: "Découvrez et gérez vos événements facilement",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
