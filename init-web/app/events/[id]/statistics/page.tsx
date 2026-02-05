@@ -18,6 +18,9 @@ import {
   Send,
   BarChart3,
   RefreshCw,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import {
   PieChart,
@@ -44,6 +47,7 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     const initPage = async () => {
@@ -95,6 +99,77 @@ export default function StatisticsPage() {
     setRefreshing(false);
   };
 
+  const exportToCSV = () => {
+    if (!stats) return;
+
+    const date = new Date().toLocaleDateString("fr-FR");
+    const rows: string[][] = [];
+
+    // Header
+    rows.push(["Statistiques de l'événement", eventName]);
+    rows.push(["Date d'export", date]);
+    rows.push([]);
+
+    // Participants
+    rows.push(["=== PARTICIPANTS ==="]);
+    rows.push(["Total participants", stats.participants.total.toString()]);
+    rows.push(["Utilisateurs actifs", stats.participants.active.toString()]);
+    rows.push(["Taux d'engagement", `${stats.participants.engagement_rate}%`]);
+    rows.push([]);
+
+    // Whitelist (if enabled)
+    if (hasWhitelist) {
+      rows.push(["=== WHITELIST ==="]);
+      rows.push(["Total whitelist", stats.whitelist.total.toString()]);
+      rows.push(["Inscrits", stats.whitelist.registered.toString()]);
+      rows.push(["En attente", stats.whitelist.pending.toString()]);
+      rows.push(["Taux de conversion", `${stats.whitelist.conversion_rate}%`]);
+      rows.push([]);
+    }
+
+    // Swipes
+    rows.push(["=== ACTIVITE DE SWIPE ==="]);
+    rows.push(["Total swipes", stats.swipes.total.toString()]);
+    rows.push(["Likes", stats.swipes.likes.toString()]);
+    rows.push(["Passes", stats.swipes.passes.toString()]);
+    rows.push(["Taux de like", `${stats.swipes.like_rate}%`]);
+    rows.push(["Utilisateurs ayant swipé", stats.swipes.users_who_swiped.toString()]);
+    rows.push([]);
+
+    // Matchs
+    rows.push(["=== MATCHS ==="]);
+    rows.push(["Total matchs", stats.matching.total_matches.toString()]);
+    rows.push(["Matchs par utilisateur (moyenne)", stats.matching.average_matches_per_user.toString()]);
+    rows.push(["Taux de réciprocité", `${stats.matching.reciprocity_rate}%`]);
+    rows.push([]);
+
+    // Messages
+    rows.push(["=== MESSAGES ==="]);
+    rows.push(["Total messages", stats.messages.total.toString()]);
+    rows.push(["Utilisateurs ayant envoyé un message", stats.messages.users_who_sent.toString()]);
+    rows.push(["Conversations actives", stats.messages.conversations_active.toString()]);
+    rows.push(["Messages par conversation (moyenne)", stats.messages.average_per_conversation.toString()]);
+
+    // Convert to CSV
+    const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `statistiques_${eventName.replace(/[^a-z0-9]/gi, "_")}_${date.replace(/\//g, "-")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const exportToPDF = () => {
+    setShowExportMenu(false);
+    // Small delay to ensure menu is closed before print dialog opens
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
@@ -107,9 +182,35 @@ export default function StatisticsPage() {
   }
 
   return (
+    <>
+      {/* Print styles */}
+      <style jsx global>{`
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          header {
+            display: none !important;
+          }
+          main {
+            padding-top: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .bg-gradient-to-br {
+            background: #1271FF !important;
+          }
+          @page {
+            size: A4;
+            margin: 1cm;
+          }
+        }
+      `}</style>
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10 print:static print:bg-white print:border-b-2 print:border-gray-200">
         <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
@@ -130,11 +231,36 @@ export default function StatisticsPage() {
         </div>
       </header>
 
+      {/* Print-only header */}
+      <div className="hidden print:block mb-6 border-b-2 border-[#1271FF] pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <Image
+            src="/initLogoGray.png"
+            alt="Init Logo"
+            width={120}
+            height={48}
+            className="h-10 w-auto"
+          />
+          <p className="text-sm text-gray-500">
+            Exporté le {new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <BarChart3 className="w-8 h-8 text-[#1271FF]" />
+          <div>
+            <h1 className="text-2xl font-bold text-[#303030]">Statistiques</h1>
+            {eventName && (
+              <p className="text-lg text-[#303030]">{eventName}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <main className="pt-28 pb-8 px-4 md:px-8">
+      <main className="pt-28 pb-8 px-4 md:px-8 print:pt-0 print:px-0">
         <div className="max-w-5xl mx-auto">
           {/* Title */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 print:hidden">
             <div>
               <h1 className="font-poppins text-2xl font-bold text-[#303030] flex items-center gap-3">
                 <BarChart3 className="w-8 h-8 text-[#1271FF]" />
@@ -144,14 +270,57 @@ export default function StatisticsPage() {
                 <p className="text-gray-600 mt-1">{eventName}</p>
               )}
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-[#303030] rounded-full shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-              Actualiser
-            </button>
+            <div className="flex items-center gap-2 no-print">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#303030] rounded-full shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Actualiser</span>
+              </button>
+
+              {/* Export dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1271FF] text-white rounded-full shadow-sm hover:bg-[#0d5dd8] transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Exporter</span>
+                </button>
+                {showExportMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowExportMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                      <button
+                        onClick={exportToCSV}
+                        className="w-full px-4 py-2 text-left text-[#303030] hover:bg-gray-50 flex items-center gap-3"
+                      >
+                        <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="font-medium">Excel / CSV</p>
+                          <p className="text-xs text-gray-500">Tableur</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={exportToPDF}
+                        className="w-full px-4 py-2 text-left text-[#303030] hover:bg-gray-50 flex items-center gap-3"
+                      >
+                        <FileText className="w-5 h-5 text-red-600" />
+                        <div>
+                          <p className="font-medium">PDF</p>
+                          <p className="text-xs text-gray-500">Rapport visuel</p>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -562,6 +731,7 @@ export default function StatisticsPage() {
         </div>
       </main>
     </div>
+    </>
   );
 }
 
