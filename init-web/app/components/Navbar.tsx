@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,11 +8,7 @@ import { authService } from "../services/auth.service";
 
 export default function Navbar() {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    setIsAuthenticated(authService.isAuthenticated());
-  }, []);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
 
   const handleLogout = async () => {
     await authService.logout();

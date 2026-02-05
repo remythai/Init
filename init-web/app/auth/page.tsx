@@ -510,7 +510,7 @@ export default function AuthPage() {
             <>
               <div>
                 <label className="block text-sm font-medium text-[#303030] mb-2">
-                  Nom de l'organisation *
+                  Nom de l&apos;organisation *
                 </label>
                 <input
                   type="text"
@@ -621,9 +621,9 @@ export default function AuthPage() {
               />
               <label htmlFor="acceptCGU" className="text-sm text-[#303030] cursor-pointer">
                 <span className="text-red-500">*</span>{" "}
-                J'accepte les{" "}
+                J&apos;accepte les{" "}
                 <Link href="/legal/cgu" className="text-[#1271FF] hover:underline" target="_blank">
-                  Conditions Générales d'Utilisation
+                  Conditions Générales d&apos;Utilisation
                 </Link>{" "}
                 et la{" "}
                 <Link href="/legal/confidentialite" className="text-[#1271FF] hover:underline" target="_blank">
@@ -667,7 +667,7 @@ export default function AuthPage() {
         href="/"
         className="mt-6 text-white/60 hover:text-white text-sm transition-colors"
       >
-        Retour à l'accueil
+        Retour à l&apos;accueil
       </Link>
     </div>
   );

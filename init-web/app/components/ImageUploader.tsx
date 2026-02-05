@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, X, Loader2, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { Upload, Loader2, Trash2 } from "lucide-react";
 
 interface ImageUploaderProps {
   currentImage?: string | null;
@@ -109,10 +110,12 @@ export default function ImageUploader({
       <div className={`relative ${aspectRatioClasses[aspectRatio]} bg-gray-100 rounded-xl overflow-hidden border-2 border-dashed border-gray-300`}>
         {displayImage ? (
           <>
-            <img
+            <Image
               src={displayImage}
               alt={label}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized={displayImage.startsWith("data:")}
             />
             {uploading && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -181,7 +184,7 @@ export default function ImageUploader({
           />
           <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
             <h3 className="font-semibold text-lg text-[#303030] mb-2">
-              Supprimer l'image
+              Supprimer l&apos;image
             </h3>
             <p className="text-gray-600 text-sm mb-6">
               Etes-vous sur de vouloir supprimer cette image ?

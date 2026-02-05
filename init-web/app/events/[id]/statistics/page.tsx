@@ -19,6 +19,17 @@ import {
   BarChart3,
   RefreshCw,
 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import { authService } from "../../../services/auth.service";
 import { eventService, EventStatistics } from "../../../services/event.service";
 
@@ -173,12 +184,59 @@ export default function StatisticsPage() {
                   />
                   <StatCard
                     icon={<TrendingUp className="w-6 h-6" />}
-                    label="Taux d'engagement"
+                    label="Taux d&apos;engagement"
                     value={`${stats.participants.engagement_rate}%`}
                     color="purple"
                     progress={stats.participants.engagement_rate}
                   />
                 </div>
+                {/* Engagement Chart */}
+                {stats.participants.total > 0 && (
+                  <div className="mt-4 bg-white rounded-xl p-6 shadow-sm">
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+                      <div className="w-40 h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: "Actifs", value: stats.participants.active },
+                                { name: "Inactifs", value: stats.participants.total - stats.participants.active },
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={60}
+                              paddingAngle={2}
+                              dataKey="value"
+                            >
+                              <Cell fill="#22c55e" />
+                              <Cell fill="#d1d5db" />
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) => [value ?? 0, ""]}
+                              contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center md:text-left">
+                        <p className="text-sm font-semibold text-[#303030] mb-3">Répartition de l&apos;engagement</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                            <span className="text-sm text-[#303030]">Actifs</span>
+                            <span className="font-semibold text-[#303030]">{stats.participants.active} ({stats.participants.engagement_rate}%)</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="w-3 h-3 rounded-full bg-gray-300"></span>
+                            <span className="text-sm text-[#303030]">Inactifs</span>
+                            <span className="font-semibold text-[#303030]">{stats.participants.total - stats.participants.active} ({100 - stats.participants.engagement_rate}%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Section: Whitelist (if enabled) */}
@@ -215,6 +273,53 @@ export default function StatisticsPage() {
                       progress={stats.whitelist.conversion_rate}
                     />
                   </div>
+                  {/* Whitelist Conversion Chart */}
+                  {stats.whitelist.total > 0 && (
+                    <div className="mt-4 bg-white rounded-xl p-6 shadow-sm">
+                      <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+                        <div className="w-40 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: "Inscrits", value: stats.whitelist.registered },
+                                  { name: "En attente", value: stats.whitelist.pending },
+                                ]}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={60}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                <Cell fill="#22c55e" />
+                                <Cell fill="#f97316" />
+                              </Pie>
+                              <Tooltip
+                                formatter={(value) => [value ?? 0, ""]}
+                                contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="text-center md:text-left">
+                          <p className="text-sm font-semibold text-[#303030] mb-3">Conversion des invitations</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                              <span className="text-sm text-[#303030]">Inscrits</span>
+                              <span className="font-semibold text-[#303030]">{stats.whitelist.registered} ({stats.whitelist.conversion_rate}%)</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                              <span className="text-sm text-[#303030]">En attente</span>
+                              <span className="font-semibold text-[#303030]">{stats.whitelist.pending} ({100 - stats.whitelist.conversion_rate}%)</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -315,6 +420,22 @@ export default function StatisticsPage() {
                     progress={stats.matching.reciprocity_rate}
                   />
                 </div>
+                {/* Reciprocity Gauge */}
+                {stats.swipes.likes > 0 && (
+                  <div className="mt-4 bg-white rounded-xl p-6 shadow-sm">
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+                      <div className="flex-shrink-0">
+                        <GaugeChart value={stats.matching.reciprocity_rate} color="#ec4899" />
+                      </div>
+                      <div className="text-center md:text-left">
+                        <p className="text-sm font-semibold text-[#303030] mb-1">Taux de réciprocité</p>
+                        <p className="text-xs text-gray-500 mb-3">Proportion de likes ayant abouti à un match</p>
+                        <p className="text-2xl font-bold text-pink-500">{stats.matching.total_matches} matchs</p>
+                        <p className="text-sm text-[#303030]">sur {stats.swipes.likes} likes envoyés</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Section: Messages */}
@@ -355,9 +476,68 @@ export default function StatisticsPage() {
                 </div>
               </section>
 
+              {/* Section: Parcours utilisateur */}
+              <section>
+                <h2 className="text-lg font-semibold text-[#303030] mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-[#1271FF]" />
+                  Parcours utilisateur
+                </h2>
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <p className="text-[#303030] text-sm mb-4">Progression des utilisateurs à travers les différentes étapes</p>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          {
+                            name: "Participants",
+                            value: stats.participants.total,
+                          },
+                          {
+                            name: "Actifs",
+                            value: stats.participants.active,
+                          },
+                          {
+                            name: "Ont swipé",
+                            value: stats.swipes.users_who_swiped,
+                          },
+                          {
+                            name: "Avec un match",
+                            value: Math.min(stats.matching.total_matches * 2, stats.participants.total),
+                          },
+                          {
+                            name: "Ont écrit",
+                            value: stats.messages.users_who_sent,
+                          },
+                        ]}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                      >
+                        <XAxis type="number" stroke="#303030" />
+                        <YAxis type="category" dataKey="name" width={100} stroke="#303030" />
+                        <Tooltip
+                          formatter={(value) => [value ?? 0, "Utilisateurs"]}
+                          contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {[
+                            { fill: "#1271FF" },
+                            { fill: "#22c55e" },
+                            { fill: "#8b5cf6" },
+                            { fill: "#ec4899" },
+                            { fill: "#f97316" },
+                          ].map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </section>
+
               {/* Summary Card */}
               <section className="bg-gradient-to-br from-[#1271FF] to-[#0d5dd8] rounded-2xl p-6 text-white">
-                <h2 className="text-lg font-semibold mb-4">Résumé de l'événement</h2>
+                <h2 className="text-lg font-semibold mb-4">Résumé de l&apos;événement</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div className="text-center">
                     <p className="text-3xl font-bold">{stats.participants.total}</p>
@@ -381,6 +561,60 @@ export default function StatisticsPage() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+// Gauge Chart Component
+interface GaugeChartProps {
+  value: number;
+  color: string;
+}
+
+function GaugeChart({ value, color }: GaugeChartProps) {
+  const radius = 80;
+  const strokeWidth = 12;
+  const normalizedValue = Math.min(Math.max(value, 0), 100);
+
+  // Semi-circle calculations
+  const circumference = Math.PI * radius;
+  const offset = circumference - (normalizedValue / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="200" height="120" viewBox="0 0 200 120">
+        {/* Background arc */}
+        <path
+          d={`M 20 100 A ${radius} ${radius} 0 0 1 180 100`}
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+        />
+        {/* Progress arc */}
+        <path
+          d={`M 20 100 A ${radius} ${radius} 0 0 1 180 100`}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.5s ease" }}
+        />
+        {/* Center text */}
+        <text
+          x="100"
+          y="90"
+          textAnchor="middle"
+          className="text-3xl font-bold"
+          fill="#303030"
+          fontSize="32"
+          fontWeight="bold"
+        >
+          {normalizedValue}%
+        </text>
+      </svg>
     </div>
   );
 }
