@@ -243,12 +243,16 @@ export const EventModel = {
       pool.query(`
         SELECT
           COUNT(*) as total_matches,
-          COUNT(DISTINCT user1_id) + COUNT(DISTINCT user2_id) as users_with_matches
+          (SELECT COUNT(DISTINCT user_id) FROM (
+            SELECT user1_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+            UNION
+            SELECT user2_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+          ) u) as users_with_matches
         FROM matches
         WHERE event_id = $1 AND is_archived = false
       `, [eventId]),
 
-      // Message stats
+      // Message stats (only from active matches)
       pool.query(`
         SELECT
           COUNT(*) as total_messages,
@@ -256,18 +260,22 @@ export const EventModel = {
           COUNT(DISTINCT ma.id) as conversations_with_messages
         FROM messages m
         JOIN matches ma ON m.match_id = ma.id
-        WHERE ma.event_id = $1
+        WHERE ma.event_id = $1 AND ma.is_archived = false
       `, [eventId]),
 
-      // Likes stats (swipes)
+      // Likes stats (swipes) - excluding blocked users
       pool.query(`
         SELECT
           COUNT(*) as total_swipes,
           COUNT(*) FILTER (WHERE is_like = true) as likes,
           COUNT(*) FILTER (WHERE is_like = false) as passes,
           COUNT(DISTINCT liker_id) as users_who_swiped
-        FROM likes
-        WHERE event_id = $1
+        FROM likes l
+        WHERE l.event_id = $1
+          AND NOT EXISTS (
+            SELECT 1 FROM event_blocked_users ebu
+            WHERE ebu.event_id = $1 AND ebu.user_id = l.liker_id
+          )
       `, [eventId]),
 
       // Active users (who did something: swiped or sent message) - only current participants, excluding blocked
@@ -279,7 +287,7 @@ export const EventModel = {
           SELECT m.sender_id as user_id
           FROM messages m
           JOIN matches ma ON m.match_id = ma.id
-          WHERE ma.event_id = $1
+          WHERE ma.event_id = $1 AND ma.is_archived = false
         ) as active
         WHERE EXISTS (
           SELECT 1 FROM user_event_rel uer
@@ -348,10 +356,10 @@ export const EventModel = {
       JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
       LEFT JOIN user_matches um ON um.user_id = u.id
       LEFT JOIN user_message_stats ums ON ums.user_id = u.id
-      WHERE um.match_count > 0 OR ums.median_messages > 0
-      AND NOT EXISTS (
-        SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
-      )
+      WHERE (um.match_count > 0 OR ums.median_messages > 0)
+        AND NOT EXISTS (
+          SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
+        )
       ORDER BY um.match_count DESC NULLS LAST
     `, [eventId]);
 
