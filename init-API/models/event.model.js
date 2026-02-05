@@ -270,7 +270,7 @@ export const EventModel = {
         WHERE event_id = $1
       `, [eventId]),
 
-      // Active users (who did something: swiped or sent message)
+      // Active users (who did something: swiped or sent message) - only current participants, excluding blocked
       pool.query(`
         SELECT COUNT(DISTINCT user_id) as active_users
         FROM (
@@ -281,6 +281,14 @@ export const EventModel = {
           JOIN matches ma ON m.match_id = ma.id
           WHERE ma.event_id = $1
         ) as active
+        WHERE EXISTS (
+          SELECT 1 FROM user_event_rel uer
+          WHERE uer.event_id = $1 AND uer.user_id = active.user_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM event_blocked_users ebu
+          WHERE ebu.event_id = $1 AND ebu.user_id = active.user_id
+        )
       `, [eventId])
     ]);
 
