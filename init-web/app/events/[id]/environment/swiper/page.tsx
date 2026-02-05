@@ -12,6 +12,9 @@ import { SocketUserJoined, SocketMatch } from "../../../../services/socket.servi
 
 
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
+const PROFILES_TO_FETCH = 20; // Number of profiles to fetch at once
+const RELOAD_THRESHOLD = 5; // Fetch more profiles when this many remain
+const PRELOAD_AHEAD = 3; // Number of profiles to preload images for
 
 // Convert field ID (slug) to readable label
 const formatFieldLabel = (fieldId: string): string => {
@@ -30,6 +33,7 @@ export default function SwiperPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [isEventExpired, setIsEventExpired] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -39,6 +43,12 @@ export default function SwiperPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [swiping, setSwiping] = useState(false);
   const [newUserNotification, setNewUserNotification] = useState<SocketUserJoined | null>(null);
+  const [noMoreProfiles, setNoMoreProfiles] = useState(false); // True when API returns empty
+
+  // Track seen user IDs to avoid duplicates when fetching more
+  const seenUserIds = useRef<Set<number>>(new Set());
+  // Track preloaded image URLs to avoid re-preloading
+  const preloadedImages = useRef<Set<string>>(new Set());
 
   // Report state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -71,6 +81,9 @@ export default function SwiperPage() {
       lastname: data.user.lastname,
       photos: data.user.photos,
     };
+
+    // Add to seen set to avoid duplicates
+    seenUserIds.current.add(data.user.id);
 
     setProfiles((prev) => {
       if (prev.some((p) => p.user_id === data.user.id)) {
@@ -137,8 +150,17 @@ export default function SwiperPage() {
       setError("");
       setIsEventExpired(false);
       setIsBlocked(false);
-      const data = await matchService.getProfilesToSwipe(eventId, 20);
+      setNoMoreProfiles(false);
+      const data = await matchService.getProfilesToSwipe(eventId, PROFILES_TO_FETCH);
+
+      // Track seen user IDs
+      seenUserIds.current.clear();
+      data.forEach(p => seenUserIds.current.add(p.user_id));
+
       setProfiles(data);
+      if (data.length === 0) {
+        setNoMoreProfiles(true);
+      }
     } catch (err: unknown) {
       if (err instanceof ApiError && err.code === 'EVENT_EXPIRED') {
         setIsEventExpired(true);
@@ -152,6 +174,75 @@ export default function SwiperPage() {
       setLoading(false);
     }
   };
+
+  // Load more profiles when approaching the end
+  const loadMoreProfiles = useCallback(async () => {
+    if (loadingMore || noMoreProfiles || isEventExpired || isBlocked) return;
+
+    try {
+      setLoadingMore(true);
+      const data = await matchService.getProfilesToSwipe(eventId, PROFILES_TO_FETCH);
+
+      // Filter out profiles we've already seen
+      const newProfiles = data.filter(p => !seenUserIds.current.has(p.user_id));
+
+      if (newProfiles.length === 0) {
+        // API returned profiles but we've seen them all, or API is empty
+        if (data.length === 0) {
+          setNoMoreProfiles(true);
+        }
+        return;
+      }
+
+      // Add new user IDs to seen set
+      newProfiles.forEach(p => seenUserIds.current.add(p.user_id));
+
+      // Append new profiles
+      setProfiles(prev => [...prev, ...newProfiles]);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'EVENT_EXPIRED') {
+        setIsEventExpired(true);
+      }
+      // Silently fail for loading more - user can still swipe existing profiles
+      console.error('Error loading more profiles:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [eventId, loadingMore, noMoreProfiles, isEventExpired, isBlocked]);
+
+  // Auto-load more profiles when approaching the end
+  useEffect(() => {
+    const remainingProfiles = profiles.length - currentIndex;
+    if (remainingProfiles <= RELOAD_THRESHOLD && remainingProfiles > 0) {
+      loadMoreProfiles();
+    }
+  }, [currentIndex, profiles.length, loadMoreProfiles]);
+
+  // Preload images for current and upcoming profiles
+  useEffect(() => {
+    const preloadImage = (url: string) => {
+      if (preloadedImages.current.has(url)) return;
+      preloadedImages.current.add(url);
+
+      const img = new Image();
+      img.src = url;
+    };
+
+    // Preload images for current profile + next PRELOAD_AHEAD profiles
+    for (let i = 0; i <= PRELOAD_AHEAD; i++) {
+      const profile = profiles[currentIndex + i];
+      if (!profile) continue;
+
+      // Preload all photos of this profile
+      if (profile.photos && profile.photos.length > 0) {
+        profile.photos.forEach(photo => {
+          if (photo.file_path) {
+            preloadImage(photo.file_path);
+          }
+        });
+      }
+    }
+  }, [currentIndex, profiles]);
 
   const currentProfile = profiles[currentIndex];
 
@@ -722,19 +813,28 @@ export default function SwiperPage() {
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-8">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
-                <Heart className="w-10 h-10 text-[#303030]" />
-              </div>
-              <h2 className="text-xl font-semibold text-[#303030] mb-2">
-                Plus de profils disponibles
-              </h2>
-              <p className="text-[#6B7280] mb-6">Revenez plus tard !</p>
-              <Link
-                href={`/events/${eventId}`}
-                className="bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
-              >
-                Retour à l'événement
-              </Link>
+              {loadingMore ? (
+                <>
+                  <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-[#303030]">Chargement de nouveaux profils...</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
+                    <Heart className="w-10 h-10 text-[#303030]" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-[#303030] mb-2">
+                    Plus de profils disponibles
+                  </h2>
+                  <p className="text-[#6B7280] mb-6">Revenez plus tard !</p>
+                  <Link
+                    href={`/events/${eventId}`}
+                    className="bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+                  >
+                    Retour à l'événement
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>

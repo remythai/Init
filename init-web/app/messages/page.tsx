@@ -317,6 +317,16 @@ function GeneralMessagesContent() {
     try {
       const profile = await matchService.getMatchProfile(selectedMatchId);
       setProfileData(profile);
+
+      // Preload all profile photos
+      if (profile.photos && profile.photos.length > 0) {
+        profile.photos.forEach((photo) => {
+          if (photo.file_path) {
+            const img = new window.Image();
+            img.src = photo.file_path;
+          }
+        });
+      }
     } catch (err: unknown) {
       console.error("Error loading profile:", err);
       setShowProfileModal(false);
