@@ -1,5 +1,12 @@
 "use client";
 
+// ============================================================
+// BETA FEATURE FLAG: Mettre à false pour désactiver les leaderboards
+// À supprimer complètement après la beta
+// ============================================================
+const SHOW_LEADERBOARDS = true;
+// ============================================================
+
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -21,6 +28,11 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Trophy,
+  Medal,
+  Crown,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import {
   PieChart,
@@ -34,7 +46,7 @@ import {
   Tooltip,
 } from "recharts";
 import { authService } from "../../../services/auth.service";
-import { eventService, EventStatistics } from "../../../services/event.service";
+import { eventService, EventStatistics, LeaderboardUser } from "../../../services/event.service";
 
 export default function StatisticsPage() {
   const router = useRouter();
@@ -726,6 +738,68 @@ export default function StatisticsPage() {
                   </div>
                 </div>
               </section>
+
+              {/* Leaderboards - Beta Feature (hidden from PDF export) */}
+              {SHOW_LEADERBOARDS && stats.leaderboards && (stats.leaderboards.matches.length > 0 || stats.leaderboards.messages.length > 0) && (
+                <section className="no-print mt-12">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl">
+                      <Trophy className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-[#303030] flex items-center gap-2">
+                        Leaderboards
+                        <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-medium">
+                          BETA
+                        </span>
+                      </h2>
+                      <p className="text-sm text-gray-500">Les champions de l&apos;événement</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Matches Leaderboard */}
+                    {stats.leaderboards.matches.length > 0 && (
+                      <LeaderboardCard
+                        title="Top Matchs"
+                        subtitle="Les plus populaires"
+                        icon={<Heart className="w-5 h-5" />}
+                        gradient="from-pink-500 to-rose-500"
+                        users={stats.leaderboards.matches}
+                        valueKey="match_count"
+                        valueLabel="matchs"
+                      />
+                    )}
+
+                    {/* Messages Leaderboard */}
+                    {stats.leaderboards.messages.length > 0 && (
+                      <LeaderboardCard
+                        title="Top Messages"
+                        subtitle="Les plus bavards"
+                        icon={<MessageSquare className="w-5 h-5" />}
+                        gradient="from-blue-500 to-cyan-500"
+                        users={stats.leaderboards.messages}
+                        valueKey="median_messages"
+                        valueLabel="msg/conv"
+                      />
+                    )}
+
+                    {/* Combined Leaderboard */}
+                    {stats.leaderboards.combined.length > 0 && (
+                      <LeaderboardCard
+                        title="Top Global"
+                        subtitle="Les stars de l'event"
+                        icon={<Sparkles className="w-5 h-5" />}
+                        gradient="from-amber-500 to-orange-500"
+                        users={stats.leaderboards.combined}
+                        valueKey="combined_score"
+                        valueLabel="pts"
+                        showDetails
+                      />
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </div>
@@ -799,6 +873,94 @@ interface StatCardProps {
   progress?: number;
   large?: boolean;
 }
+
+// ============================================================
+// BETA FEATURE: Leaderboards - À supprimer après la beta
+// Pour retirer: supprimer ce composant et la section "Leaderboards"
+// dans le JSX (rechercher "Leaderboards - Beta Feature")
+// ============================================================
+interface LeaderboardCardProps {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  gradient: string;
+  users: LeaderboardUser[];
+  valueKey: "match_count" | "median_messages" | "combined_score";
+  valueLabel: string;
+  showDetails?: boolean;
+}
+
+function LeaderboardCard({ title, subtitle, icon, gradient, users, valueKey, valueLabel, showDetails }: LeaderboardCardProps) {
+  const getMedalIcon = (rank: number) => {
+    if (rank === 0) return <Crown className="w-5 h-5 text-amber-400" />;
+    if (rank === 1) return <Medal className="w-5 h-5 text-gray-400" />;
+    if (rank === 2) return <Medal className="w-5 h-5 text-amber-700" />;
+    return <span className="w-5 h-5 flex items-center justify-center text-xs text-gray-400 font-bold">{rank + 1}</span>;
+  };
+
+  const getRankBg = (rank: number) => {
+    if (rank === 0) return "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200";
+    if (rank === 1) return "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200";
+    if (rank === 2) return "bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200";
+    return "bg-white border-gray-100";
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className={`bg-gradient-to-r ${gradient} p-4 text-white`}>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+            {icon}
+          </div>
+          <div>
+            <h3 className="font-bold text-lg">{title}</h3>
+            <p className="text-white/80 text-sm">{subtitle}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* User List */}
+      <div className="p-3 space-y-2">
+        {users.slice(0, 5).map((user, index) => (
+          <div
+            key={user.id}
+            className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${getRankBg(index)}`}
+          >
+            <div className="flex-shrink-0 w-8 flex items-center justify-center">
+              {getMedalIcon(index)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-[#303030] truncate">
+                {user.firstname} {user.lastname.charAt(0)}.
+              </p>
+              {showDetails && user.match_count !== undefined && user.median_messages !== undefined && (
+                <p className="text-xs text-gray-500">
+                  {user.match_count} matchs • {user.median_messages} msg/conv
+                </p>
+              )}
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <span className={`font-bold text-lg bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>
+                {user[valueKey]}
+              </span>
+              <p className="text-xs text-gray-400">{valueLabel}</p>
+            </div>
+          </div>
+        ))}
+
+        {users.length === 0 && (
+          <div className="text-center py-6 text-gray-400">
+            <p>Pas encore de données</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+// ============================================================
+// FIN BETA FEATURE: Leaderboards
+// ============================================================
 
 function StatCard({ icon, label, value, subtitle, color, progress, large }: StatCardProps) {
   const colorClasses = {

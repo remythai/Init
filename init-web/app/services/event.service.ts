@@ -496,6 +496,16 @@ export interface BlockedUser {
   tel: string;
 }
 
+export interface LeaderboardUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  match_count?: number;
+  median_messages?: number;
+  conversation_count?: number;
+  combined_score?: number;
+}
+
 export interface EventStatistics {
   participants: {
     total: number;
@@ -526,6 +536,11 @@ export interface EventStatistics {
     users_who_sent: number;
     conversations_active: number;
     average_per_conversation: number;
+  };
+  leaderboards?: {
+    matches: LeaderboardUser[];
+    messages: LeaderboardUser[];
+    combined: LeaderboardUser[];
   };
 }
 
