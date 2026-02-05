@@ -306,6 +306,115 @@ export const EventModel = {
     const totalMessages = parseInt(messages.total_messages || 0);
     const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
 
+    // Get leaderboards data
+    const [matchLeaderboard, messageLeaderboard] = await Promise.all([
+      // Top users by match count
+      pool.query(`
+        SELECT
+          u.id,
+          u.firstname,
+          u.lastname,
+          COUNT(*) as match_count
+        FROM users u
+        JOIN (
+          SELECT user1_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+          UNION ALL
+          SELECT user2_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+        ) m ON u.id = m.user_id
+        WHERE EXISTS (
+          SELECT 1 FROM user_event_rel uer WHERE uer.event_id = $1 AND uer.user_id = u.id
+        )
+        GROUP BY u.id, u.firstname, u.lastname
+        ORDER BY match_count DESC
+        LIMIT 10
+      `, [eventId]),
+
+      // Top users by median messages sent per conversation
+      pool.query(`
+        WITH user_conversation_stats AS (
+          SELECT
+            m.sender_id as user_id,
+            ma.id as match_id,
+            COUNT(*) as msg_count
+          FROM messages m
+          JOIN matches ma ON m.match_id = ma.id
+          WHERE ma.event_id = $1
+          GROUP BY m.sender_id, ma.id
+        ),
+        user_median_messages AS (
+          SELECT
+            user_id,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages,
+            COUNT(DISTINCT match_id) as conversation_count
+          FROM user_conversation_stats
+          GROUP BY user_id
+          HAVING COUNT(DISTINCT match_id) >= 1
+        )
+        SELECT
+          u.id,
+          u.firstname,
+          u.lastname,
+          umm.median_messages,
+          umm.conversation_count
+        FROM user_median_messages umm
+        JOIN users u ON u.id = umm.user_id
+        WHERE EXISTS (
+          SELECT 1 FROM user_event_rel uer WHERE uer.event_id = $1 AND uer.user_id = u.id
+        )
+        ORDER BY umm.median_messages DESC, umm.conversation_count DESC
+        LIMIT 10
+      `, [eventId])
+    ]);
+
+    // Create combined leaderboard (normalize both scores and combine)
+    const matchUsers = matchLeaderboard.rows;
+    const messageUsers = messageLeaderboard.rows;
+
+    // Calculate max values for normalization
+    const maxMatches = matchUsers.length > 0 ? parseInt(matchUsers[0].match_count) : 1;
+    const maxMessages = messageUsers.length > 0 ? parseFloat(messageUsers[0].median_messages) : 1;
+
+    // Create a map of all users with their scores
+    const combinedMap = new Map();
+
+    matchUsers.forEach(user => {
+      const normalizedMatchScore = (parseInt(user.match_count) / maxMatches) * 50;
+      combinedMap.set(user.id, {
+        id: user.id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        match_count: parseInt(user.match_count),
+        median_messages: 0,
+        combined_score: normalizedMatchScore
+      });
+    });
+
+    messageUsers.forEach(user => {
+      const normalizedMessageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
+      if (combinedMap.has(user.id)) {
+        const existing = combinedMap.get(user.id);
+        existing.median_messages = parseFloat(user.median_messages);
+        existing.combined_score += normalizedMessageScore;
+      } else {
+        combinedMap.set(user.id, {
+          id: user.id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          match_count: 0,
+          median_messages: parseFloat(user.median_messages),
+          combined_score: normalizedMessageScore
+        });
+      }
+    });
+
+    const combinedLeaderboard = Array.from(combinedMap.values())
+      .sort((a, b) => b.combined_score - a.combined_score)
+      .slice(0, 10)
+      .map(user => ({
+        ...user,
+        combined_score: Math.round(user.combined_score)
+      }));
+
     return {
       participants: {
         total: participants,
@@ -339,6 +448,22 @@ export const EventModel = {
         users_who_sent: parseInt(messages.users_who_sent || 0),
         conversations_active: conversationsWithMessages,
         average_per_conversation: totalMatches > 0 ? Math.round((totalMessages / totalMatches) * 10) / 10 : 0
+      },
+      leaderboards: {
+        matches: matchUsers.map(u => ({
+          id: u.id,
+          firstname: u.firstname,
+          lastname: u.lastname,
+          match_count: parseInt(u.match_count)
+        })),
+        messages: messageUsers.map(u => ({
+          id: u.id,
+          firstname: u.firstname,
+          lastname: u.lastname,
+          median_messages: parseFloat(u.median_messages),
+          conversation_count: parseInt(u.conversation_count)
+        })),
+        combined: combinedLeaderboard
       }
     };
   }
