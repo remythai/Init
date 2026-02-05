@@ -556,7 +556,7 @@ export default function MessagesPage() {
                                 : "bg-[#252525] text-white rounded-bl-md"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                            <p className="whitespace-pre-wrap break-all">{message.content}</p>
                             <p
                               className={`text-xs mt-1 ${
                                 isMine ? "text-white/70" : "text-white/40"
@@ -606,24 +606,35 @@ export default function MessagesPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3">
-                  <input
-                    type="text"
+                <div className="flex gap-3 items-end">
+                  <textarea
                     value={newMessage}
                     onChange={(e) => {
                       setNewMessage(e.target.value);
                       sendTyping(e.target.value.length > 0);
+                      // Auto-resize
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
                     }}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                    onKeyDown={(e) => {
+                      // On desktop (non-touch), Enter sends and Shift+Enter creates new line
+                      const isMobile = window.matchMedia('(pointer: coarse)').matches;
+                      if (e.key === "Enter" && !e.shiftKey && !isMobile) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
                     onBlur={() => sendTyping(false)}
                     placeholder="Écrivez un message..."
                     maxLength={500}
-                    className="flex-1 px-4 py-3 bg-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-white placeholder-white/40"
+                    rows={1}
+                    className="flex-1 px-4 py-3 bg-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-white placeholder-white/40 resize-none overflow-hidden"
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sending}
-                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#0d5dd8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#0d5dd8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <Send className="w-5 h-5" />
                   </button>
