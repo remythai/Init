@@ -306,114 +306,88 @@ export const EventModel = {
     const totalMessages = parseInt(messages.total_messages || 0);
     const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
 
-    // Get leaderboards data
-    const [matchLeaderboard, messageLeaderboard] = await Promise.all([
-      // Top users by match count
-      pool.query(`
+    // Get leaderboards data - single query for combined stats
+    const leaderboardResult = await pool.query(`
+      WITH user_matches AS (
         SELECT
-          u.id,
-          u.firstname,
-          u.lastname,
+          user_id,
           COUNT(*) as match_count
-        FROM users u
-        JOIN (
+        FROM (
           SELECT user1_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
           UNION ALL
           SELECT user2_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
-        ) m ON u.id = m.user_id
-        WHERE EXISTS (
-          SELECT 1 FROM user_event_rel uer WHERE uer.event_id = $1 AND uer.user_id = u.id
-        )
-        GROUP BY u.id, u.firstname, u.lastname
-        ORDER BY match_count DESC
-        LIMIT 10
-      `, [eventId]),
-
-      // Top users by median messages sent per conversation
-      pool.query(`
-        WITH user_conversation_stats AS (
-          SELECT
-            m.sender_id as user_id,
-            ma.id as match_id,
-            COUNT(*) as msg_count
-          FROM messages m
-          JOIN matches ma ON m.match_id = ma.id
-          WHERE ma.event_id = $1
-          GROUP BY m.sender_id, ma.id
-        ),
-        user_median_messages AS (
-          SELECT
-            user_id,
-            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages,
-            COUNT(DISTINCT match_id) as conversation_count
-          FROM user_conversation_stats
-          GROUP BY user_id
-          HAVING COUNT(DISTINCT match_id) >= 1
-        )
+        ) m
+        GROUP BY user_id
+      ),
+      user_conversation_stats AS (
         SELECT
-          u.id,
-          u.firstname,
-          u.lastname,
-          umm.median_messages,
-          umm.conversation_count
-        FROM user_median_messages umm
-        JOIN users u ON u.id = umm.user_id
-        WHERE EXISTS (
-          SELECT 1 FROM user_event_rel uer WHERE uer.event_id = $1 AND uer.user_id = u.id
-        )
-        ORDER BY umm.median_messages DESC, umm.conversation_count DESC
-        LIMIT 10
-      `, [eventId])
-    ]);
+          msg.sender_id as user_id,
+          ma.id as match_id,
+          COUNT(*) as msg_count
+        FROM messages msg
+        JOIN matches ma ON msg.match_id = ma.id
+        WHERE ma.event_id = $1 AND ma.is_archived = false
+        GROUP BY msg.sender_id, ma.id
+      ),
+      user_message_stats AS (
+        SELECT
+          user_id,
+          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages,
+          COUNT(DISTINCT match_id) as conversation_count
+        FROM user_conversation_stats
+        GROUP BY user_id
+      )
+      SELECT
+        u.id,
+        u.firstname,
+        u.lastname,
+        COALESCE(um.match_count, 0) as match_count,
+        COALESCE(ums.median_messages, 0) as median_messages,
+        COALESCE(ums.conversation_count, 0) as conversation_count
+      FROM users u
+      JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
+      LEFT JOIN user_matches um ON um.user_id = u.id
+      LEFT JOIN user_message_stats ums ON ums.user_id = u.id
+      WHERE um.match_count > 0 OR ums.median_messages > 0
+      AND NOT EXISTS (
+        SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
+      )
+      ORDER BY um.match_count DESC NULLS LAST
+    `, [eventId]);
 
-    // Create combined leaderboard (normalize both scores and combine)
-    const matchUsers = matchLeaderboard.rows;
-    const messageUsers = messageLeaderboard.rows;
+    const allUsers = leaderboardResult.rows;
 
-    // Calculate max values for normalization
+    // Create separate leaderboards from the combined data
+    const matchUsers = allUsers
+      .filter(u => parseInt(u.match_count) > 0)
+      .sort((a, b) => parseInt(b.match_count) - parseInt(a.match_count))
+      .slice(0, 10);
+
+    const messageUsers = allUsers
+      .filter(u => parseFloat(u.median_messages) > 0)
+      .sort((a, b) => parseFloat(b.median_messages) - parseFloat(a.median_messages))
+      .slice(0, 10);
+
+    // Combined leaderboard: users who have BOTH matches AND messages
     const maxMatches = matchUsers.length > 0 ? parseInt(matchUsers[0].match_count) : 1;
     const maxMessages = messageUsers.length > 0 ? parseFloat(messageUsers[0].median_messages) : 1;
 
-    // Create a map of all users with their scores
-    const combinedMap = new Map();
-
-    matchUsers.forEach(user => {
-      const normalizedMatchScore = (parseInt(user.match_count) / maxMatches) * 50;
-      combinedMap.set(user.id, {
-        id: user.id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        match_count: parseInt(user.match_count),
-        median_messages: 0,
-        combined_score: normalizedMatchScore
-      });
-    });
-
-    messageUsers.forEach(user => {
-      const normalizedMessageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
-      if (combinedMap.has(user.id)) {
-        const existing = combinedMap.get(user.id);
-        existing.median_messages = parseFloat(user.median_messages);
-        existing.combined_score += normalizedMessageScore;
-      } else {
-        combinedMap.set(user.id, {
+    const combinedLeaderboard = allUsers
+      .filter(u => parseInt(u.match_count) > 0 && parseFloat(u.median_messages) > 0)
+      .map(user => {
+        const matchScore = (parseInt(user.match_count) / maxMatches) * 50;
+        const messageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
+        return {
           id: user.id,
           firstname: user.firstname,
           lastname: user.lastname,
-          match_count: 0,
+          match_count: parseInt(user.match_count),
           median_messages: parseFloat(user.median_messages),
-          combined_score: normalizedMessageScore
-        });
-      }
-    });
-
-    const combinedLeaderboard = Array.from(combinedMap.values())
+          combined_score: Math.round(matchScore + messageScore)
+        };
+      })
       .sort((a, b) => b.combined_score - a.combined_score)
-      .slice(0, 10)
-      .map(user => ({
-        ...user,
-        combined_score: Math.round(user.combined_score)
-      }));
+      .slice(0, 10);
 
     return {
       participants: {
