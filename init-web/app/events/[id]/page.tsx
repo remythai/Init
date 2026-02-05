@@ -15,6 +15,7 @@ import {
   getFieldId,
   getFieldPlaceholder,
 } from "../../services/event.service";
+import { reportService } from "../../services/report.service";
 import PhotoManager from "../../components/PhotoManager";
 
 export default function EventDetailPage() {
@@ -36,6 +37,7 @@ export default function EventDetailPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [eligibilityError, setEligibilityError] = useState("");
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Refs for dynamic height calculation
   const headerRef = useRef<HTMLElement>(null);
@@ -113,6 +115,16 @@ export default function EventDetailPage() {
       }
 
       setEvent(transformEventResponse(eventData));
+
+      // Load pending reports count for orga
+      if (type === "orga") {
+        try {
+          const reportsData = await reportService.getReports(eventId, "pending");
+          setPendingReportsCount(reportsData.stats.pending);
+        } catch {
+          // Silent fail - reports count is not critical
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
       setError(message);
@@ -742,10 +754,15 @@ export default function EventDetailPage() {
               </Link>
               <Link
                 href={`/events/${eventId}/reports`}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors border border-red-200"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors border border-red-200 relative"
               >
                 <Flag className="w-5 h-5" />
                 Signalements
+                {pendingReportsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                    {pendingReportsCount > 99 ? "99+" : pendingReportsCount}
+                  </span>
+                )}
               </Link>
             </div>
           ) : event.isBlocked ? (
