@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Users, MessageCircle, User, ArrowLeft } from "lucide-react";
@@ -13,9 +13,13 @@ export default function EnvironmentLayout({
 }) {
   const params = useParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const eventId = params.id as string;
   const { hasUnreadForEvent } = useUnreadMessagesContext();
   const hasUnreadMessages = hasUnreadForEvent(eventId);
+
+  // Check if viewing a conversation on messages page (hide nav on mobile)
+  const isInConversation = pathname.includes("/messages") && searchParams.get("match");
 
   const tabs = [
     {
@@ -43,21 +47,21 @@ export default function EnvironmentLayout({
 
   return (
     <div className="h-screen bg-[#303030] flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+      {/* Header - hidden on mobile when in conversation */}
+      <header className={`flex-shrink-0 bg-[#303030] border-b border-white/10 ${isInConversation ? "hidden md:block" : ""}`}>
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/initLogoGray.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-12 md:h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
           <Link
             href={`/events/${eventId}`}
-            className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2"
+            className="text-white/70 hover:text-white text-xs md:text-sm transition-colors flex items-center gap-1 md:gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden md:inline">Retour à l'événement</span>
@@ -71,8 +75,8 @@ export default function EnvironmentLayout({
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="flex-shrink-0 bg-[#252525] border-t border-white/10">
+      {/* Bottom Navigation - hidden on mobile when in conversation */}
+      <nav className={`flex-shrink-0 bg-[#252525] border-t border-white/10 ${isInConversation ? "hidden md:block" : ""}`}>
         <div className="max-w-lg mx-auto flex">
           {tabs.map((tab) => (
             <Link

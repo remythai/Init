@@ -171,6 +171,7 @@ export const MatchModel = {
 
   /**
    * Get all matches for a user (all events)
+   * Photos: prioritizes event-specific photos, falls back to general photos
    */
   async getAllMatches(userId) {
     const result = await pool.query(
@@ -183,8 +184,17 @@ export const MatchModel = {
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
-           FROM photos p WHERE p.user_id = u.id),
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+            FROM photos p
+            WHERE p.user_id = u.id
+              AND (
+                p.event_id = m.event_id
+                OR (p.event_id IS NULL AND NOT EXISTS (
+                  SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = m.event_id
+                ))
+              )
+          ),
           '[]'::json
         ) as photos
       FROM matches m
@@ -218,15 +228,43 @@ export const MatchModel = {
 
   /**
    * Get user basic info (for match response)
+   * If eventId is provided, prioritizes event-specific photos
    */
-  async getUserBasicInfo(userId) {
+  async getUserBasicInfo(userId, eventId = null) {
+    if (eventId) {
+      const result = await pool.query(
+        `SELECT
+          u.id,
+          u.firstname,
+          u.lastname,
+          COALESCE(
+            (
+              SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
+              FROM photos p
+              WHERE p.user_id = u.id
+                AND (
+                  p.event_id = $2
+                  OR (p.event_id IS NULL AND NOT EXISTS (
+                    SELECT 1 FROM photos p2 WHERE p2.user_id = u.id AND p2.event_id = $2
+                  ))
+                )
+            ),
+            '[]'::json
+          ) as photos
+        FROM users u
+        WHERE u.id = $1`,
+        [userId, eventId]
+      );
+      return result.rows[0];
+    }
+
     const result = await pool.query(
       `SELECT
         u.id,
         u.firstname,
         u.lastname,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path))
+          (SELECT json_agg(json_build_object('id', p.id, 'file_path', p.file_path) ORDER BY p.is_primary DESC, p.display_order ASC)
            FROM photos p WHERE p.user_id = u.id),
           '[]'::json
         ) as photos

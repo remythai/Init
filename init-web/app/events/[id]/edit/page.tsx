@@ -7,6 +7,9 @@ import Image from "next/image";
 import { ArrowLeft, MapPin, Plus, Edit2, Trash2, X } from "lucide-react";
 import { authService } from "../../../services/auth.service";
 import { eventService, EventResponse, CustomField, getFieldId } from "../../../services/event.service";
+import ImageUploader from "../../../components/ImageUploader";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 interface AddressSuggestion {
   place_id: number;
@@ -64,6 +67,7 @@ export default function EditEventPage() {
     options: [],
   });
   const [newOption, setNewOption] = useState("");
+  const [bannerPath, setBannerPath] = useState<string | null>(null);
 
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -155,6 +159,9 @@ export default function EditEventPage() {
       if (eventData.custom_fields) {
         setCustomFields(eventData.custom_fields);
       }
+      if (eventData.banner_path) {
+        setBannerPath(eventData.banner_path);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
       setError(message);
@@ -166,17 +173,16 @@ export default function EditEventPage() {
   const searchAddress = async (query: string) => {
     setLoadingSuggestions(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        query
-      )}&limit=5&countrycodes=fr&addressdetails=1`;
-
-      const response = await fetch(url, {
-        headers: { "User-Agent": "EventApp/1.0" },
-      });
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
       const data = await response.json();
 
-      setAddressSuggestions(data);
-      setShowSuggestions(data.length > 0);
+      if (Array.isArray(data)) {
+        setAddressSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } else {
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      }
     } catch (error) {
       console.error("Erreur recherche adresse:", error);
       setAddressSuggestions([]);
@@ -395,19 +401,19 @@ export default function EditEventPage() {
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/initLogoGray.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
           <Link
             href={`/events/${eventId}`}
-            className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2"
+            className="text-white/70 hover:text-white text-xs md:text-sm transition-colors flex items-center gap-1 md:gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour
@@ -437,11 +443,15 @@ export default function EditEventPage() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, 100) })}
                 placeholder="Ex: Soiree Networking"
+                maxLength={100}
                 disabled={saving}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
               />
+              <p className={`text-xs mt-1 text-right ${formData.name.length >= 90 ? 'text-orange-500' : 'text-gray-400'}`}>
+                {formData.name.length}/100
+              </p>
             </div>
 
             {/* Theme */}
@@ -475,12 +485,37 @@ export default function EditEventPage() {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 1000) })}
                 placeholder="Decrivez votre evenement..."
                 rows={4}
+                maxLength={1000}
                 disabled={saving}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100 break-words hyphens-auto"
+                style={{ wordBreak: 'break-word' }}
               />
+              <p className={`text-xs mt-1 text-right ${formData.description.length >= 900 ? 'text-orange-500' : 'text-gray-400'}`}>
+                {formData.description.length}/1000
+              </p>
+            </div>
+
+            {/* Banner Image */}
+            <div className="pt-4 border-t">
+              <ImageUploader
+                currentImage={bannerPath ? `${API_URL}${bannerPath}` : undefined}
+                onUpload={async (file) => {
+                  const newBannerPath = await eventService.uploadEventBanner(eventId, file);
+                  setBannerPath(newBannerPath);
+                }}
+                onDelete={async () => {
+                  await eventService.deleteEventBanner(eventId);
+                  setBannerPath(null);
+                }}
+                aspectRatio="banner"
+                label="Banniere de l'evenement"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Cette image sera affichee sur la carte et la page de l'evenement. Si aucune image n'est definie, une image par defaut basee sur le theme sera utilisee.
+              </p>
             </div>
 
             {/* App Availability Dates (Required) */}

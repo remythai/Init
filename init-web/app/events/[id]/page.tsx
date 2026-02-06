@@ -15,6 +15,7 @@ import {
   getFieldId,
   getFieldPlaceholder,
 } from "../../services/event.service";
+import { reportService } from "../../services/report.service";
 import PhotoManager from "../../components/PhotoManager";
 
 export default function EventDetailPage() {
@@ -32,9 +33,11 @@ export default function EventDetailPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-  const [registrationStep, setRegistrationStep] = useState<"profile" | "photos">("profile");
   const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [eligibilityError, setEligibilityError] = useState("");
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Refs for dynamic height calculation
   const headerRef = useRef<HTMLElement>(null);
@@ -112,6 +115,16 @@ export default function EventDetailPage() {
       }
 
       setEvent(transformEventResponse(eventData));
+
+      // Load pending reports count for orga
+      if (type === "orga") {
+        try {
+          const reportsData = await reportService.getReports(eventId, "pending");
+          setPendingReportsCount(reportsData.stats.pending);
+        } catch {
+          // Silent fail - reports count is not critical
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors du chargement";
       setError(message);
@@ -209,11 +222,12 @@ export default function EventDetailPage() {
     setRegistering(true);
 
     try {
-      await eventService.registerToEvent(event.id, { profil_info: profile });
+      await eventService.registerToEvent(String(event.id), { profil_info: profile });
       setProfilInfo({});
       setFieldErrors({});
-      // Passer à l'étape photos au lieu de fermer
-      setRegistrationStep("photos");
+      setShowRegistrationModal(false);
+      setSuccessMessage("Vous etes maintenant inscrit a cet evenement !");
+      setTimeout(() => setSuccessMessage(""), 3000);
       await loadEvent(userType);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors de l'inscription";
@@ -223,17 +237,28 @@ export default function EventDetailPage() {
     }
   };
 
-  const finishRegistration = () => {
-    setShowRegistrationModal(false);
-    setRegistrationStep("profile");
-    setSuccessMessage("Vous etes maintenant inscrit a cet evenement !");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  };
-
-  const handleRegisterClick = () => {
+  const handleRegisterClick = async () => {
     if (!event) return;
-    setRegistrationStep("profile");
-    setShowRegistrationModal(true);
+
+    setCheckingEligibility(true);
+    setEligibilityError("");
+
+    try {
+      const eligibility = await eventService.checkEligibility(String(event.id));
+
+      if (!eligibility.eligible) {
+        setEligibilityError(eligibility.message || "Vous n'êtes pas autorisé à vous inscrire");
+        return;
+      }
+
+      // User is eligible, show registration modal
+      setShowRegistrationModal(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur lors de la vérification";
+      setEligibilityError(message);
+    } finally {
+      setCheckingEligibility(false);
+    }
   };
 
   const handleConfirmProfile = () => {
@@ -252,6 +277,8 @@ export default function EventDetailPage() {
       case "email":
       case "phone":
       case "number":
+        const textMaxLength = field.type === "text" ? 150 : undefined;
+        const textValue = profilInfo[fieldId] !== undefined ? String(profilInfo[fieldId]) : "";
         return (
           <div key={fieldId} className="mb-4">
             <label className="block text-base font-semibold text-[#303030] mb-2">
@@ -264,19 +291,29 @@ export default function EventDetailPage() {
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
               placeholder={getFieldPlaceholder(field)}
-              value={profilInfo[fieldId] !== undefined ? String(profilInfo[fieldId]) : ""}
+              value={textValue}
+              maxLength={textMaxLength}
               onChange={(e) =>
                 setProfilInfo((prev) => ({
                   ...prev,
-                  [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                  [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : (textMaxLength ? e.target.value.slice(0, textMaxLength) : e.target.value),
                 }))
               }
             />
-            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+            <div className="flex justify-between mt-1">
+              {errorText ? <p className="text-red-500 text-sm">{errorText}</p> : <span />}
+              {field.type === "text" && (
+                <p className={`text-xs ${textValue.length >= 140 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {textValue.length}/150
+                </p>
+              )}
+            </div>
           </div>
         );
 
       case "textarea":
+        const textareaValue = (profilInfo[fieldId] as string) || "";
+        const textareaMaxLength = 500;
         return (
           <div key={fieldId} className="mb-4">
             <label className="block text-base font-semibold text-[#303030] mb-2">
@@ -284,19 +321,26 @@ export default function EventDetailPage() {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
-              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] ${
+              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] break-words hyphens-auto ${
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
+              style={{ wordBreak: 'break-word' }}
               placeholder={getFieldPlaceholder(field)}
-              value={(profilInfo[fieldId] as string) || ""}
+              value={textareaValue}
+              maxLength={textareaMaxLength}
               onChange={(e) =>
                 setProfilInfo((prev) => ({
                   ...prev,
-                  [fieldId]: e.target.value,
+                  [fieldId]: e.target.value.slice(0, textareaMaxLength),
                 }))
               }
             />
-            {errorText && <p className="text-red-500 text-sm mt-1">{errorText}</p>}
+            <div className="flex justify-between mt-1">
+              {errorText ? <p className="text-red-500 text-sm">{errorText}</p> : <span />}
+              <p className={`text-xs ${textareaValue.length >= 450 ? 'text-orange-500' : 'text-gray-400'}`}>
+                {textareaValue.length}/500
+              </p>
+            </div>
           </div>
         );
 
@@ -626,7 +670,7 @@ export default function EventDetailPage() {
               <h2 className="font-semibold text-lg text-[#303030] mb-3">
                 A propos de l'evenement
               </h2>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words hyphens-auto">
                 {event.description}
               </p>
             </div>
@@ -638,11 +682,19 @@ export default function EventDetailPage() {
                   Organisateur
                 </h2>
                 <div className="flex items-center gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-[#1271FF] flex items-center justify-center">
-                    <span className="font-semibold text-xl text-white">
-                      {event.orgaName.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                  {event.orgaLogo ? (
+                    <img
+                      src={event.orgaLogo}
+                      alt={event.orgaName}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-[#1271FF] flex items-center justify-center">
+                      <span className="font-semibold text-xl text-white">
+                        {event.orgaName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <p className="font-semibold text-[#303030]">{event.orgaName}</p>
                     <p className="text-xs text-gray-600">Organisateur</p>
@@ -702,10 +754,15 @@ export default function EventDetailPage() {
               </Link>
               <Link
                 href={`/events/${eventId}/reports`}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors border border-red-200"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors border border-red-200 relative"
               >
                 <Flag className="w-5 h-5" />
                 Signalements
+                {pendingReportsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                    {pendingReportsCount > 99 ? "99+" : pendingReportsCount}
+                  </span>
+                )}
               </Link>
             </div>
           ) : event.isBlocked ? (
@@ -748,17 +805,26 @@ export default function EventDetailPage() {
             </div>
           ) : (
             /* User not registered */
-            <button
-              onClick={handleRegisterClick}
-              disabled={registering || event.participants >= event.maxParticipants}
-              className="w-full py-4 rounded-xl bg-[#303030] text-white font-semibold hover:bg-[#404040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {registering
-                ? "Inscription..."
-                : event.participants >= event.maxParticipants
-                ? "Complet"
-                : "Participer a cet evenement"}
-            </button>
+            <div className="space-y-3">
+              {eligibilityError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                  <p className="text-red-600 text-sm">{eligibilityError}</p>
+                </div>
+              )}
+              <button
+                onClick={handleRegisterClick}
+                disabled={registering || checkingEligibility || event.participants >= event.maxParticipants}
+                className="w-full py-4 rounded-xl bg-[#303030] text-white font-semibold hover:bg-[#404040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checkingEligibility
+                  ? "Verification..."
+                  : registering
+                  ? "Inscription..."
+                  : event.participants >= event.maxParticipants
+                  ? "Complet"
+                  : "Participer a cet evenement"}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -841,91 +907,73 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* Registration Modal */}
+      {/* Registration Modal - Combined photos + info */}
       {showRegistrationModal && event && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => !registering && registrationStep === "profile" && setShowRegistrationModal(false)}
+            onClick={() => !registering && setShowRegistrationModal(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-md mx-4 w-full max-h-[80vh] flex flex-col">
-            {registrationStep === "profile" ? (
-              <>
-                <h3 className="font-semibold text-lg text-[#303030] mb-2">
-                  {event.customFields && event.customFields.length > 0
-                    ? "Informations pour l'inscription"
-                    : "Confirmer l'inscription"}
-                </h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  {event.customFields && event.customFields.length > 0
-                    ? "Veuillez remplir les informations demandees par l'organisateur."
-                    : "Vous allez vous inscrire a cet evenement."}
-                </p>
+          <div className="relative bg-white rounded-2xl p-6 max-w-lg mx-4 w-full max-h-[85vh] flex flex-col">
+            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+              Inscription a l'evenement
+            </h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Completez votre profil pour cet evenement.
+            </p>
 
-                {event.customFields && event.customFields.length > 0 && (
-                  <div className="overflow-y-auto flex-1 pr-2">
-                    {event.customFields.map((field) => renderCustomField(field))}
-                  </div>
-                )}
-
-                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={() => {
-                      setShowRegistrationModal(false);
-                      setFieldErrors({});
-                    }}
-                    disabled={registering}
-                    className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleConfirmProfile}
-                    disabled={registering}
-                    className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
-                  >
-                    {registering ? "Inscription..." : "Continuer"}
-                  </button>
+            <div className="overflow-y-auto flex-1 px-1 -mx-1 space-y-6">
+              {/* Photos Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Camera className="w-5 h-5 text-[#303030]" />
+                  <h4 className="font-semibold text-[#303030]">Vos photos</h4>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <Check className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-lg text-[#303030]">
-                    Inscription reussie !
-                  </h3>
-                </div>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-600 text-sm mb-3">
                   Ajoutez des photos pour que les autres participants puissent vous decouvrir.
                 </p>
+                <PhotoManager
+                  eventId={eventId}
+                  showCopyFromGeneral={true}
+                  maxPhotos={6}
+                />
+              </div>
 
-                <div className="overflow-y-auto flex-1 pr-2">
-                  <PhotoManager
-                    eventId={eventId}
-                    showCopyFromGeneral={true}
-                    maxPhotos={6}
-                  />
+              {/* Custom Fields Section */}
+              {event.customFields && event.customFields.length > 0 && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Edit2 className="w-5 h-5 text-[#303030]" />
+                    <h4 className="font-semibold text-[#303030]">Informations demandees</h4>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-4">
+                    L'organisateur demande les informations suivantes.
+                  </p>
+                  {event.customFields.map((field) => renderCustomField(field))}
                 </div>
+              )}
+            </div>
 
-                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={finishRegistration}
-                    className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    Plus tard
-                  </button>
-                  <button
-                    onClick={finishRegistration}
-                    className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors"
-                  >
-                    Terminer
-                  </button>
-                </div>
-              </>
-            )}
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setShowRegistrationModal(false);
+                  setFieldErrors({});
+                  setProfilInfo({});
+                }}
+                disabled={registering}
+                className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmProfile}
+                disabled={registering}
+                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
+              >
+                {registering ? "Inscription..." : "S'inscrire"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -35,29 +35,49 @@ export function isValidPhone(phone) {
 export const WhitelistModel = {
   /**
    * Add a phone to whitelist
+   * If allowReactivate is true, will reactivate a previously removed phone
    */
-  async addPhone(eventId, phone, source = 'manual') {
+  async addPhone(eventId, phone, source = 'manual', allowReactivate = true) {
     const normalizedPhone = normalizePhone(phone);
 
+    // First check if the phone exists and its current status
+    const existing = await pool.query(
+      `SELECT status FROM event_whitelist WHERE event_id = $1 AND phone = $2`,
+      [eventId, normalizedPhone]
+    );
+    const wasRemoved = existing.rows.length > 0 && existing.rows[0].status === 'removed';
+
+    // If allowReactivate is true (manual add), reactivate removed phones
+    // If false (bulk import), skip removed phones to prevent accidental reactivation
     const result = await pool.query(
       `INSERT INTO event_whitelist (event_id, phone, source, status)
        VALUES ($1, $2, $3, 'active')
        ON CONFLICT (event_id, phone) DO UPDATE
        SET status = CASE
+         WHEN event_whitelist.status = 'removed' AND $4 = true THEN 'active'
          WHEN event_whitelist.status = 'removed' THEN event_whitelist.status
          ELSE 'active'
        END,
+       removed_at = CASE
+         WHEN event_whitelist.status = 'removed' AND $4 = true THEN NULL
+         ELSE event_whitelist.removed_at
+       END,
        source = CASE
-         WHEN event_whitelist.status = 'removed' THEN event_whitelist.source
+         WHEN event_whitelist.status = 'removed' AND $4 = false THEN event_whitelist.source
          ELSE EXCLUDED.source
        END,
        updated_at = CURRENT_TIMESTAMP
        RETURNING *,
-         (xmax = 0) as is_new,
-         (status = 'removed') as was_removed`,
-      [eventId, normalizedPhone, source]
+         (xmax = 0) as is_new`,
+      [eventId, normalizedPhone, source, allowReactivate]
     );
-    return result.rows[0];
+
+    const entry = result.rows[0];
+    // Determine the outcome based on pre-check and result
+    entry.was_removed = wasRemoved && !allowReactivate;
+    entry.was_reactivated = wasRemoved && allowReactivate && entry.status === 'active';
+
+    return entry;
   },
 
   /**
@@ -82,7 +102,8 @@ export const WhitelistModel = {
       }
 
       try {
-        const result = await this.addPhone(eventId, phone, source);
+        // Pass allowReactivate = false for bulk imports to prevent accidental reactivation
+        const result = await this.addPhone(eventId, phone, source, false);
         if (result.is_new) {
           stats.added++;
         } else if (result.was_removed) {

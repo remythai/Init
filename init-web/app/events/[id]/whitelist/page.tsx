@@ -345,19 +345,19 @@ export default function WhitelistPage() {
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/initLogoGray.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-16 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </Link>
           <Link
             href={`/events/${eventId}`}
-            className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2"
+            className="text-white/70 hover:text-white text-xs md:text-sm transition-colors flex items-center gap-1 md:gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour
