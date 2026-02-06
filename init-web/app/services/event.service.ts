@@ -25,6 +25,8 @@ export interface EventResponse {
   cooldown?: string;
   custom_fields?: CustomField[];
   orga_name?: string;
+  orga_logo?: string;
+  banner_path?: string;
 }
 
 export interface CustomField {
@@ -95,7 +97,9 @@ export interface Event {
   isBlocked?: boolean;
   customFields?: CustomField[];
   orgaName?: string;
+  orgaLogo?: string;
   hasWhitelist?: boolean;
+  bannerPath?: string;
 }
 
 class EventService {
@@ -185,6 +189,26 @@ class EventService {
 
     const data = await response.json();
     return data.data;
+  }
+
+  async checkEligibility(eventId: string): Promise<{
+    eligible: boolean;
+    reason?: string;
+    message?: string;
+    requires_password?: boolean;
+    custom_fields?: CustomField[];
+  }> {
+    const response = await authService.authenticatedFetch(
+      `/api/events/${eventId}/check-eligibility`
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || "Erreur lors de la vérification");
+    }
+
+    const result = await response.json();
+    return result.data;
   }
 
   async registerToEvent(eventId: string, data?: { profil_info?: unknown; access_password?: string }) {
@@ -421,6 +445,43 @@ class EventService {
     const data = await response.json();
     return data.data.statistics;
   }
+
+  async uploadEventBanner(eventId: string, file: File): Promise<string> {
+    const token = authService.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    const formData = new FormData();
+    formData.append('banner', file);
+
+    const response = await fetch(`${API_URL}/api/events/${eventId}/banner`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de l\'upload de la bannière');
+    }
+
+    const data = await response.json();
+    return data.data.banner_path;
+  }
+
+  async deleteEventBanner(eventId: string): Promise<void> {
+    const response = await authService.authenticatedFetch(`/api/events/${eventId}/banner`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de la suppression de la bannière');
+    }
+  }
 }
 
 export interface BlockedUser {
@@ -433,6 +494,15 @@ export interface BlockedUser {
   lastname: string;
   mail: string;
   tel: string;
+}
+
+export interface LeaderboardUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  match_count?: number;
+  median_messages?: number;
+  combined_score?: number;
 }
 
 export interface EventStatistics {
@@ -465,6 +535,11 @@ export interface EventStatistics {
     users_who_sent: number;
     conversations_active: number;
     average_per_conversation: number;
+  };
+  leaderboards?: {
+    matches: LeaderboardUser[];
+    messages: LeaderboardUser[];
+    combined: LeaderboardUser[];
   };
 }
 
@@ -548,6 +623,16 @@ export function transformEventResponse(event: EventResponse): Event {
   const theme = event.theme || inferTheme(event.name, event.description);
   const hasPhysicalEvent = !!(event.start_at || event.location);
 
+  // Use custom banner if available, otherwise fall back to theme-based image
+  const image = event.banner_path
+    ? `${API_URL}${event.banner_path}`
+    : getDefaultImage(theme);
+
+  // Build orga logo URL if available
+  const orgaLogo = event.orga_logo
+    ? `${API_URL}${event.orga_logo}`
+    : undefined;
+
   return {
     id: String(event.id),
     name: event.name,
@@ -567,13 +652,15 @@ export function transformEventResponse(event: EventResponse): Event {
       ? parseInt(event.participant_count, 10)
       : event.participant_count || 0,
     maxParticipants: event.max_participants || 50,
-    image: getDefaultImage(theme),
+    image,
     description: event.description,
     isRegistered: event.is_registered,
     isBlocked: event.is_blocked,
     customFields: event.custom_fields,
     orgaName: event.orga_name,
+    orgaLogo,
     hasWhitelist: event.has_whitelist,
+    bannerPath: event.banner_path,
   };
 }
 

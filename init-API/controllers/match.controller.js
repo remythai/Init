@@ -113,8 +113,9 @@ export const MatchController = {
     if (mutualLike) {
       // Create match
       const match = await MatchModel.createMatch(userId, targetUserId, eventId);
-      const matchedUser = await MatchModel.getUserBasicInfo(targetUserId);
-      const currentUser = await MatchModel.getUserBasicInfo(userId);
+      // Get user info with event-specific photos
+      const matchedUser = await MatchModel.getUserBasicInfo(targetUserId, eventId);
+      const currentUser = await MatchModel.getUserBasicInfo(userId, eventId);
       const event = await EventModel.findById(eventId);
 
       // Emit match notification to both users via Socket.io
@@ -445,7 +446,14 @@ export const MatchController = {
         photos: []
       };
     } else {
-      otherUser = await MatchModel.getUserBasicInfo(otherUserId);
+      // Use getMatchUserProfile to get event-specific photos
+      const profile = await MatchModel.getMatchUserProfile(otherUserId, match.event_id);
+      otherUser = {
+        id: profile.user_id,
+        firstname: profile.firstname,
+        lastname: profile.lastname,
+        photos: profile.photos
+      };
     }
 
     return success(res, {

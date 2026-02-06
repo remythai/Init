@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 // Base upload directory
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
+const ORGA_DIR = path.join(UPLOAD_DIR, 'orga');
+const EVENTS_DIR = path.join(UPLOAD_DIR, 'events');
 
 // Ensure directories exist
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -16,6 +18,12 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 if (!fs.existsSync(PHOTOS_DIR)) {
   fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+}
+if (!fs.existsSync(ORGA_DIR)) {
+  fs.mkdirSync(ORGA_DIR, { recursive: true });
+}
+if (!fs.existsSync(EVENTS_DIR)) {
+  fs.mkdirSync(EVENTS_DIR, { recursive: true });
 }
 
 // Allowed MIME types
@@ -102,4 +110,110 @@ export const deletePhotoFile = (filePath) => {
   return false;
 };
 
-export { UPLOAD_DIR, PHOTOS_DIR };
+// ============ ORGA LOGO UPLOAD ============
+
+// Storage for orga logos
+const orgaLogoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const orgaId = req.user?.id;
+    if (!orgaId) {
+      return cb(new Error('Orga ID required'), null);
+    }
+
+    const orgaDir = path.join(ORGA_DIR, String(orgaId));
+    if (!fs.existsSync(orgaDir)) {
+      fs.mkdirSync(orgaDir, { recursive: true });
+    }
+
+    cb(null, orgaDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `logo${ext}`);
+  }
+});
+
+// Multer instance for orga logo upload
+export const orgaLogoUpload = multer({
+  storage: orgaLogoStorage,
+  fileFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+    files: 1
+  }
+});
+
+// Helper to get orga logo URL
+export const getOrgaLogoUrl = (orgaId, filename) => {
+  return `/uploads/orga/${orgaId}/${filename}`;
+};
+
+// Helper to delete orga logo
+export const deleteOrgaLogo = (orgaId) => {
+  const orgaDir = path.join(ORGA_DIR, String(orgaId));
+  if (fs.existsSync(orgaDir)) {
+    const files = fs.readdirSync(orgaDir);
+    for (const file of files) {
+      if (file.startsWith('logo')) {
+        fs.unlinkSync(path.join(orgaDir, file));
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+// ============ EVENT BANNER UPLOAD ============
+
+// Storage for event banners
+const eventBannerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const eventId = req.params.id;
+    if (!eventId) {
+      return cb(new Error('Event ID required'), null);
+    }
+
+    const eventDir = path.join(EVENTS_DIR, String(eventId));
+    if (!fs.existsSync(eventDir)) {
+      fs.mkdirSync(eventDir, { recursive: true });
+    }
+
+    cb(null, eventDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `banner${ext}`);
+  }
+});
+
+// Multer instance for event banner upload
+export const eventBannerUpload = multer({
+  storage: eventBannerStorage,
+  fileFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+    files: 1
+  }
+});
+
+// Helper to get event banner URL
+export const getEventBannerUrl = (eventId, filename) => {
+  return `/uploads/events/${eventId}/${filename}`;
+};
+
+// Helper to delete event banner
+export const deleteEventBanner = (eventId) => {
+  const eventDir = path.join(EVENTS_DIR, String(eventId));
+  if (fs.existsSync(eventDir)) {
+    const files = fs.readdirSync(eventDir);
+    for (const file of files) {
+      if (file.startsWith('banner')) {
+        fs.unlinkSync(path.join(eventDir, file));
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+export { UPLOAD_DIR, PHOTOS_DIR, ORGA_DIR, EVENTS_DIR };

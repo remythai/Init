@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { EventController } from '../controllers/event.controller.js';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
+import { eventBannerUpload } from '../config/multer.config.js';
 
 const router = Router();
 
@@ -83,6 +84,22 @@ router.get(
   asyncHandler(EventController.getStatistics)
 );
 
+// Banner routes
+router.post(
+  '/:id/banner',
+  authMiddleware,
+  requireRole('orga'),
+  eventBannerUpload.single('banner'),
+  asyncHandler(EventController.uploadBanner)
+);
+
+router.delete(
+  '/:id/banner',
+  authMiddleware,
+  requireRole('orga'),
+  asyncHandler(EventController.deleteBanner)
+);
+
 // Routes for Users only
 
 router.post(
@@ -104,6 +121,13 @@ router.delete(
   authMiddleware,
   requireRole('user'),
   asyncHandler(EventController.unregister)
+);
+
+router.get(
+  '/:id/check-eligibility',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(EventController.checkEligibility)
 );
 
 router.get(

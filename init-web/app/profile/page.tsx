@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Edit2, Save, X, Camera, ArrowLeft } from "lucide-react";
+import { Edit2, Save, X, Camera, ArrowLeft, Upload, Loader2 } from "lucide-react";
 import { authService, User, Orga } from "../services/auth.service";
 import { Photo, photoService } from "../services/photo.service";
 import BottomNavigation from "../components/BottomNavigation";
 import PhotoManager from "../components/PhotoManager";
+import ImageUploader from "../components/ImageUploader";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 type UserProfile = User;
 type OrgaProfile = Orga;
@@ -34,7 +37,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadProfile();
-    loadPrimaryPhoto();
   }, []);
 
   const loadPrimaryPhoto = async () => {
@@ -64,6 +66,11 @@ export default function ProfilePage() {
       }
 
       setProfileType(validatedType);
+
+      // Only load photos for users (not orgas)
+      if (validatedType === 'user') {
+        loadPrimaryPhoto();
+      }
 
       const profileData = await authService.getCurrentProfile();
       if (!profileData) {
@@ -211,31 +218,31 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
       <header className="bg-[#303030] text-white">
-        <div className="max-w-4xl mx-auto px-4 md:px-8 py-4">
-          <div className="flex items-center justify-between mb-6">
-            <Link href="/events" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span>Retour</span>
+        <div className="max-w-4xl mx-auto px-3 md:px-8 py-3 md:py-4">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <Link href="/events" className="flex items-center gap-1 md:gap-2 text-white/70 hover:text-white transition-colors">
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-sm md:text-base">Retour</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="text-white/70 hover:text-white text-sm transition-colors"
+              className="text-white/70 hover:text-white text-xs md:text-sm transition-colors"
             >
               Deconnexion
             </button>
           </div>
 
           <div className="flex items-center justify-between">
-            <h1 className="font-poppins text-xl font-semibold">
+            <h1 className="font-poppins text-lg md:text-xl font-semibold">
               {profileType === 'user' ? "Mon Profil" : "Profil de l'Organisation"}
             </h1>
 
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-sm md:text-base"
               >
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
                 <span>Modifier</span>
               </button>
             ) : (
@@ -243,34 +250,40 @@ export default function ProfilePage() {
                 <button
                   onClick={handleCancel}
                   disabled={saving}
-                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-1.5 md:p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-white text-[#303030] px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 md:gap-2 bg-white text-[#303030] px-3 md:px-4 py-1.5 md:py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm md:text-base"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>{saving ? "Enregistrement..." : "Enregistrer"}</span>
+                  <Save className="w-3 h-3 md:w-4 md:h-4" />
+                  <span>{saving ? "..." : "Enregistrer"}</span>
                 </button>
               </div>
             )}
           </div>
 
           {/* Avatar */}
-          <div className="flex justify-center py-8">
+          <div className="flex justify-center py-6 md:py-8">
             <div className="relative">
-              {primaryPhoto ? (
+              {profileType === 'orga' && isOrgaProfile(profile) && profile.logo_path ? (
+                <img
+                  src={`${API_URL}${profile.logo_path}`}
+                  alt={getDisplayName()}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-white/20"
+                />
+              ) : primaryPhoto ? (
                 <img
                   src={photoService.getPhotoUrl(primaryPhoto.file_path)}
                   alt={getDisplayName()}
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white/20"
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-white/20"
                 />
               ) : (
-                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-4xl font-bold text-[#303030]">
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full flex items-center justify-center">
+                  <span className="text-3xl md:text-4xl font-bold text-[#303030]">
                     {getAvatarInitial()}
                   </span>
                 </div>
@@ -281,7 +294,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 md:px-8 -mt-8 pb-24">
+      <main className="max-w-4xl mx-auto px-3 md:px-8 -mt-8 pb-24">
         {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -392,6 +405,29 @@ export default function ProfilePage() {
         {/* Orga Profile */}
         {profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile) && (
           <>
+            {/* Logo Upload Section */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
+              <h3 className="font-semibold text-lg text-[#303030] mb-4">Logo de l'organisation</h3>
+              <ImageUploader
+                currentImage={profile.logo_path ? `${API_URL}${profile.logo_path}` : undefined}
+                onUpload={async (file) => {
+                  const logoPath = await authService.uploadOrgaLogo(file);
+                  setProfile({ ...profile, logo_path: logoPath });
+                  setEditedProfile({ ...editedProfile, logo_path: logoPath });
+                }}
+                onDelete={async () => {
+                  await authService.deleteOrgaLogo();
+                  setProfile({ ...profile, logo_path: undefined });
+                  setEditedProfile({ ...editedProfile, logo_path: undefined });
+                }}
+                aspectRatio="square"
+                label="Logo"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Ce logo sera affiche sur votre profil et sur les evenements que vous creez.
+              </p>
+            </div>
+
             <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
               <div className="mb-6">
                 <label className="block text-xs text-gray-600 mb-1">Nom de l'organisation</label>
@@ -456,7 +492,8 @@ export default function ProfilePage() {
                     disabled={saving}
                     rows={4}
                     placeholder="Description de l'organisation..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none break-words hyphens-auto"
+                    style={{ wordBreak: 'break-word' }}
                   />
                 ) : (
                   <p className="font-semibold text-[#303030]">{profile.description || "Aucune description"}</p>

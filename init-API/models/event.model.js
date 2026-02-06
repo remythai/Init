@@ -31,7 +31,7 @@ export const EventModel = {
 
   async findById(id) {
     const result = await pool.query(
-      `SELECT e.*, o.nom as orga_nom, o.mail as orga_mail 
+      `SELECT e.*, o.nom as orga_nom, o.mail as orga_mail, o.logo_path as orga_logo
        FROM events e
        JOIN orga o ON e.orga_id = o.id
        WHERE e.id = $1`,
@@ -42,7 +42,10 @@ export const EventModel = {
 
   async findByOrgaId(orgaId) {
     const result = await pool.query(
-      `SELECT * FROM events WHERE orga_id = $1 ORDER BY start_at DESC`,
+      `SELECT e.*, o.logo_path as orga_logo
+       FROM events e
+       JOIN orga o ON e.orga_id = o.id
+       WHERE e.orga_id = $1 ORDER BY e.start_at DESC`,
       [orgaId]
     );
     return result.rows;
@@ -99,7 +102,9 @@ export const EventModel = {
         e.theme,
         e.description,
         e.custom_fields,
+        e.banner_path,
         o.nom as orga_name,
+        o.logo_path as orga_logo,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         ${userId ? `EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $1) as is_registered` : 'false as is_registered'},
         ${userId ? `EXISTS(SELECT 1 FROM event_blocked_users WHERE event_id = e.id AND user_id = $1) as is_blocked` : 'false as is_blocked'}
@@ -158,7 +163,9 @@ export const EventModel = {
         e.app_end_at,
         e.theme,
         e.description,
+        e.banner_path,
         o.nom as orga_name,
+        o.logo_path as orga_logo,
         (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
         true as is_registered,
         uer.profil_info,
@@ -236,12 +243,16 @@ export const EventModel = {
       pool.query(`
         SELECT
           COUNT(*) as total_matches,
-          COUNT(DISTINCT user1_id) + COUNT(DISTINCT user2_id) as users_with_matches
+          (SELECT COUNT(DISTINCT user_id) FROM (
+            SELECT user1_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+            UNION
+            SELECT user2_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+          ) u) as users_with_matches
         FROM matches
         WHERE event_id = $1 AND is_archived = false
       `, [eventId]),
 
-      // Message stats
+      // Message stats (only from active matches)
       pool.query(`
         SELECT
           COUNT(*) as total_messages,
@@ -249,21 +260,25 @@ export const EventModel = {
           COUNT(DISTINCT ma.id) as conversations_with_messages
         FROM messages m
         JOIN matches ma ON m.match_id = ma.id
-        WHERE ma.event_id = $1
+        WHERE ma.event_id = $1 AND ma.is_archived = false
       `, [eventId]),
 
-      // Likes stats (swipes)
+      // Likes stats (swipes) - excluding blocked users
       pool.query(`
         SELECT
           COUNT(*) as total_swipes,
           COUNT(*) FILTER (WHERE is_like = true) as likes,
           COUNT(*) FILTER (WHERE is_like = false) as passes,
           COUNT(DISTINCT liker_id) as users_who_swiped
-        FROM likes
-        WHERE event_id = $1
+        FROM likes l
+        WHERE l.event_id = $1
+          AND NOT EXISTS (
+            SELECT 1 FROM event_blocked_users ebu
+            WHERE ebu.event_id = $1 AND ebu.user_id = l.liker_id
+          )
       `, [eventId]),
 
-      // Active users (who did something: swiped or sent message)
+      // Active users (who did something: swiped or sent message) - only current participants, excluding blocked
       pool.query(`
         SELECT COUNT(DISTINCT user_id) as active_users
         FROM (
@@ -272,8 +287,16 @@ export const EventModel = {
           SELECT m.sender_id as user_id
           FROM messages m
           JOIN matches ma ON m.match_id = ma.id
-          WHERE ma.event_id = $1
+          WHERE ma.event_id = $1 AND ma.is_archived = false
         ) as active
+        WHERE EXISTS (
+          SELECT 1 FROM user_event_rel uer
+          WHERE uer.event_id = $1 AND uer.user_id = active.user_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM event_blocked_users ebu
+          WHERE ebu.event_id = $1 AND ebu.user_id = active.user_id
+        )
       `, [eventId])
     ]);
 
@@ -290,6 +313,93 @@ export const EventModel = {
     const totalSwipes = parseInt(likes.total_swipes || 0);
     const totalMessages = parseInt(messages.total_messages || 0);
     const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
+
+    // Get leaderboards data - single query for combined stats
+    // Median is calculated over ALL matches (0 if no messages sent in a match)
+    const leaderboardResult = await pool.query(`
+      WITH user_all_matches AS (
+        -- All matches for each user
+        SELECT user_id, match_id
+        FROM (
+          SELECT user1_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
+          UNION ALL
+          SELECT user2_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
+        ) m
+      ),
+      message_counts_per_match AS (
+        -- Count messages per sender per match
+        SELECT sender_id, match_id, COUNT(*) as msg_count
+        FROM messages
+        GROUP BY sender_id, match_id
+      ),
+      user_match_message_counts AS (
+        -- For each (user, match), get message count (0 if none sent)
+        SELECT
+          uam.user_id,
+          uam.match_id,
+          COALESCE(mc.msg_count, 0) as msg_count
+        FROM user_all_matches uam
+        LEFT JOIN message_counts_per_match mc
+          ON mc.sender_id = uam.user_id AND mc.match_id = uam.match_id
+      ),
+      user_stats AS (
+        -- Calculate match count and median messages per user
+        SELECT
+          user_id,
+          COUNT(*) as match_count,
+          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages
+        FROM user_match_message_counts
+        GROUP BY user_id
+      )
+      SELECT
+        u.id,
+        u.firstname,
+        u.lastname,
+        COALESCE(us.match_count, 0) as match_count,
+        COALESCE(us.median_messages, 0) as median_messages
+      FROM users u
+      JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
+      LEFT JOIN user_stats us ON us.user_id = u.id
+      WHERE us.match_count > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
+        )
+      ORDER BY us.match_count DESC NULLS LAST
+    `, [eventId]);
+
+    const allUsers = leaderboardResult.rows;
+
+    // Create separate leaderboards from the combined data
+    const matchUsers = allUsers
+      .filter(u => parseInt(u.match_count) > 0)
+      .sort((a, b) => parseInt(b.match_count) - parseInt(a.match_count))
+      .slice(0, 10);
+
+    const messageUsers = allUsers
+      .filter(u => parseFloat(u.median_messages) > 0)
+      .sort((a, b) => parseFloat(b.median_messages) - parseFloat(a.median_messages))
+      .slice(0, 10);
+
+    // Combined leaderboard: users who have BOTH matches AND messages
+    const maxMatches = matchUsers.length > 0 ? parseInt(matchUsers[0].match_count) : 1;
+    const maxMessages = messageUsers.length > 0 ? parseFloat(messageUsers[0].median_messages) : 1;
+
+    const combinedLeaderboard = allUsers
+      .filter(u => parseInt(u.match_count) > 0 && parseFloat(u.median_messages) > 0)
+      .map(user => {
+        const matchScore = (parseInt(user.match_count) / maxMatches) * 50;
+        const messageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
+        return {
+          id: user.id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          match_count: parseInt(user.match_count),
+          median_messages: parseFloat(user.median_messages),
+          combined_score: Math.round(matchScore + messageScore)
+        };
+      })
+      .sort((a, b) => b.combined_score - a.combined_score)
+      .slice(0, 10);
 
     return {
       participants: {
@@ -324,6 +434,22 @@ export const EventModel = {
         users_who_sent: parseInt(messages.users_who_sent || 0),
         conversations_active: conversationsWithMessages,
         average_per_conversation: totalMatches > 0 ? Math.round((totalMessages / totalMatches) * 10) / 10 : 0
+      },
+      leaderboards: {
+        matches: matchUsers.map(u => ({
+          id: u.id,
+          firstname: u.firstname,
+          lastname: u.lastname,
+          match_count: parseInt(u.match_count)
+        })),
+        messages: messageUsers.map(u => ({
+          id: u.id,
+          firstname: u.firstname,
+          lastname: u.lastname,
+          median_messages: parseFloat(u.median_messages),
+          match_count: parseInt(u.match_count)
+        })),
+        combined: combinedLeaderboard
       }
     };
   }

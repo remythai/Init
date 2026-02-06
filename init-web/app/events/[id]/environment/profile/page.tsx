@@ -311,31 +311,46 @@ export default function ProfilePage() {
                       {field.required && <span className="text-red-400 ml-1">*</span>}
                     </label>
                     {(field.type === "text" || field.type === "email" || field.type === "phone" || field.type === "number") && (
-                      <input
-                        type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                        placeholder={getFieldPlaceholder(field)}
-                        value={editedProfilInfo[fieldId] !== undefined ? String(editedProfilInfo[fieldId]) : ""}
-                        onChange={(e) =>
-                          setEditedProfilInfo((prev) => ({
-                            ...prev,
-                            [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
-                          }))
-                        }
-                      />
+                      <>
+                        <input
+                          type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                          placeholder={getFieldPlaceholder(field)}
+                          value={editedProfilInfo[fieldId] !== undefined ? String(editedProfilInfo[fieldId]) : ""}
+                          maxLength={field.type === "text" ? 150 : undefined}
+                          onChange={(e) =>
+                            setEditedProfilInfo((prev) => ({
+                              ...prev,
+                              [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : (field.type === "text" ? e.target.value.slice(0, 150) : e.target.value),
+                            }))
+                          }
+                        />
+                        {field.type === "text" && (
+                          <p className={`text-xs mt-1 text-right ${String(editedProfilInfo[fieldId] || "").length >= 140 ? 'text-orange-400' : 'text-white/40'}`}>
+                            {String(editedProfilInfo[fieldId] || "").length}/150
+                          </p>
+                        )}
+                      </>
                     )}
                     {field.type === "textarea" && (
-                      <textarea
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px]"
-                        placeholder={getFieldPlaceholder(field)}
-                        value={(editedProfilInfo[fieldId] as string) || ""}
-                        onChange={(e) =>
-                          setEditedProfilInfo((prev) => ({
-                            ...prev,
-                            [fieldId]: e.target.value,
-                          }))
-                        }
-                      />
+                      <>
+                        <textarea
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words hyphens-auto"
+                          style={{ wordBreak: 'break-word' }}
+                          placeholder={getFieldPlaceholder(field)}
+                          value={(editedProfilInfo[fieldId] as string) || ""}
+                          maxLength={500}
+                          onChange={(e) =>
+                            setEditedProfilInfo((prev) => ({
+                              ...prev,
+                              [fieldId]: e.target.value.slice(0, 500),
+                            }))
+                          }
+                        />
+                        <p className={`text-xs mt-1 text-right ${((editedProfilInfo[fieldId] as string) || "").length >= 450 ? 'text-orange-400' : 'text-white/40'}`}>
+                          {((editedProfilInfo[fieldId] as string) || "").length}/500
+                        </p>
+                      </>
                     )}
                     {field.type === "date" && (
                       <input
@@ -441,9 +456,9 @@ export default function ProfilePage() {
                   const value = profilInfo[fieldId];
                   if (value === undefined || value === null || value === "") return null;
                   return (
-                    <div key={fieldId}>
+                    <div key={fieldId} className="overflow-hidden">
                       <p className="text-white/60 text-sm">{field.label}</p>
-                      <p className="text-white">{getFieldDisplayValue(field, value)}</p>
+                      <p className="text-white whitespace-pre-wrap break-words hyphens-auto">{getFieldDisplayValue(field, value)}</p>
                     </div>
                   );
                 })}

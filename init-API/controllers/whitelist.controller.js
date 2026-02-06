@@ -253,17 +253,16 @@ export const WhitelistController = {
       throw new ForbiddenError('Accès non autorisé');
     }
 
-    const entry = await WhitelistModel.addPhone(eventId, phone, 'manual');
+    // Manual add allows reactivation of removed phones
+    const entry = await WhitelistModel.addPhone(eventId, phone, 'manual', true);
 
-    if (entry.was_removed) {
+    if (entry.was_reactivated) {
       return success(res, {
-        message: 'Ce numéro a été précédemment supprimé. Utilisez /reactivate pour le réactiver.',
-        entry: {
-          phone: entry.phone,
-          status: entry.status,
-          removed_at: entry.removed_at
-        }
-      }, 'Numéro déjà supprimé');
+        id: entry.id,
+        phone: entry.phone,
+        status: entry.status,
+        reactivated: true
+      }, 'Numéro réactivé');
     }
 
     if (!entry.is_new) {
