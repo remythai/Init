@@ -557,7 +557,7 @@ export default function AuthPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
                   rows={3}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none break-words"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none break-words hyphens-auto"
                   style={{ wordBreak: 'break-word' }}
                 />
               </div>

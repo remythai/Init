@@ -321,7 +321,7 @@ export default function EventDetailPage() {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
-              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] break-words ${
+              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] break-words hyphens-auto ${
                 errorText ? "border-red-500" : "border-gray-200"
               }`}
               style={{ wordBreak: 'break-word' }}
@@ -670,7 +670,7 @@ export default function EventDetailPage() {
               <h2 className="font-semibold text-lg text-[#303030] mb-3">
                 A propos de l'evenement
               </h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
+              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words hyphens-auto">
                 {event.description}
               </p>
             </div>

@@ -335,7 +335,7 @@ export default function ProfilePage() {
                     {field.type === "textarea" && (
                       <>
                         <textarea
-                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words"
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words hyphens-auto"
                           style={{ wordBreak: 'break-word' }}
                           placeholder={getFieldPlaceholder(field)}
                           value={(editedProfilInfo[fieldId] as string) || ""}
@@ -458,7 +458,7 @@ export default function ProfilePage() {
                   return (
                     <div key={fieldId} className="overflow-hidden">
                       <p className="text-white/60 text-sm">{field.label}</p>
-                      <p className="text-white whitespace-pre-wrap break-words">{getFieldDisplayValue(field, value)}</p>
+                      <p className="text-white whitespace-pre-wrap break-words hyphens-auto">{getFieldDisplayValue(field, value)}</p>
                     </div>
                   );
                 })}

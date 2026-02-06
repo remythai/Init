@@ -682,7 +682,7 @@ function GeneralMessagesContent() {
                                     : "bg-[#252525] text-white rounded-bl-md"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap break-all">{message.content}</p>
+                                <p className="whitespace-pre-wrap break-words hyphens-auto">{message.content}</p>
                                 <p
                                   className={`text-xs mt-1 ${
                                     isMine ? "text-white/70" : "text-white/40"
@@ -976,7 +976,7 @@ function GeneralMessagesContent() {
                         return (
                           <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10 overflow-hidden">
                             <p className="text-sm font-semibold text-white mb-1">{formatLabel(key)}</p>
-                            <p className="text-white/70 whitespace-pre-wrap break-words">{String(value)}</p>
+                            <p className="text-white/70 whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                           </div>
                         );
                       })}

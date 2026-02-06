@@ -565,7 +565,7 @@ export default function ParticipantsPage() {
                     {Object.entries(selectedParticipant.profil_info || {}).map(([key, value]) => (
                       <div key={key} className="overflow-hidden">
                         <p className="text-sm text-gray-500">{getFieldLabel(key)}</p>
-                        <p className="text-[#303030] whitespace-pre-wrap break-words">{formatProfilValue(value)}</p>
+                        <p className="text-[#303030] whitespace-pre-wrap break-words hyphens-auto">{formatProfilValue(value)}</p>
                       </div>
                     ))}
                   </div>

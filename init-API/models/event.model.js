@@ -315,52 +315,56 @@ export const EventModel = {
     const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
 
     // Get leaderboards data - single query for combined stats
+    // Median is calculated over ALL matches (0 if no messages sent in a match)
     const leaderboardResult = await pool.query(`
-      WITH user_matches AS (
-        SELECT
-          user_id,
-          COUNT(*) as match_count
+      WITH user_all_matches AS (
+        -- All matches for each user
+        SELECT user_id, match_id
         FROM (
-          SELECT user1_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+          SELECT user1_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
           UNION ALL
-          SELECT user2_id as user_id FROM matches WHERE event_id = $1 AND is_archived = false
+          SELECT user2_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
         ) m
-        GROUP BY user_id
       ),
-      user_conversation_stats AS (
+      message_counts_per_match AS (
+        -- Count messages per sender per match
+        SELECT sender_id, match_id, COUNT(*) as msg_count
+        FROM messages
+        GROUP BY sender_id, match_id
+      ),
+      user_match_message_counts AS (
+        -- For each (user, match), get message count (0 if none sent)
         SELECT
-          msg.sender_id as user_id,
-          ma.id as match_id,
-          COUNT(*) as msg_count
-        FROM messages msg
-        JOIN matches ma ON msg.match_id = ma.id
-        WHERE ma.event_id = $1 AND ma.is_archived = false
-        GROUP BY msg.sender_id, ma.id
+          uam.user_id,
+          uam.match_id,
+          COALESCE(mc.msg_count, 0) as msg_count
+        FROM user_all_matches uam
+        LEFT JOIN message_counts_per_match mc
+          ON mc.sender_id = uam.user_id AND mc.match_id = uam.match_id
       ),
-      user_message_stats AS (
+      user_stats AS (
+        -- Calculate match count and median messages per user
         SELECT
           user_id,
-          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages,
-          COUNT(DISTINCT match_id) as conversation_count
-        FROM user_conversation_stats
+          COUNT(*) as match_count,
+          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages
+        FROM user_match_message_counts
         GROUP BY user_id
       )
       SELECT
         u.id,
         u.firstname,
         u.lastname,
-        COALESCE(um.match_count, 0) as match_count,
-        COALESCE(ums.median_messages, 0) as median_messages,
-        COALESCE(ums.conversation_count, 0) as conversation_count
+        COALESCE(us.match_count, 0) as match_count,
+        COALESCE(us.median_messages, 0) as median_messages
       FROM users u
       JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
-      LEFT JOIN user_matches um ON um.user_id = u.id
-      LEFT JOIN user_message_stats ums ON ums.user_id = u.id
-      WHERE (um.match_count > 0 OR ums.median_messages > 0)
+      LEFT JOIN user_stats us ON us.user_id = u.id
+      WHERE us.match_count > 0
         AND NOT EXISTS (
           SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
         )
-      ORDER BY um.match_count DESC NULLS LAST
+      ORDER BY us.match_count DESC NULLS LAST
     `, [eventId]);
 
     const allUsers = leaderboardResult.rows;
@@ -443,7 +447,7 @@ export const EventModel = {
           firstname: u.firstname,
           lastname: u.lastname,
           median_messages: parseFloat(u.median_messages),
-          conversation_count: parseInt(u.conversation_count)
+          match_count: parseInt(u.match_count)
         })),
         combined: combinedLeaderboard
       }

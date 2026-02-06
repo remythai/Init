@@ -959,7 +959,7 @@ export default function SwiperPage() {
                       return (
                         <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200 overflow-hidden">
                           <p className="text-sm font-semibold text-[#303030] mb-1">{formatFieldLabel(key)}</p>
-                          <p className="text-[#4B5563] whitespace-pre-wrap break-words">{String(value)}</p>
+                          <p className="text-[#4B5563] whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                         </div>
                       );
                     })}
@@ -1051,7 +1051,7 @@ export default function SwiperPage() {
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   placeholder="Decrivez la situation pour aider l'organisateur..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32 break-words"
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32 break-words hyphens-auto"
                   style={{ wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3">

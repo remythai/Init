@@ -490,7 +490,7 @@ export default function EditEventPage() {
                 rows={4}
                 maxLength={1000}
                 disabled={saving}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100 break-words"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100 break-words hyphens-auto"
                 style={{ wordBreak: 'break-word' }}
               />
               <p className={`text-xs mt-1 text-right ${formData.description.length >= 900 ? 'text-orange-500' : 'text-gray-400'}`}>
