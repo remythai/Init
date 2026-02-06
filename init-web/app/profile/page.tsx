@@ -492,7 +492,7 @@ export default function ProfilePage() {
                     disabled={saving}
                     rows={4}
                     placeholder="Description de l'organisation..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none break-words"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 resize-none break-words hyphens-auto"
                     style={{ wordBreak: 'break-word' }}
                   />
                 ) : (

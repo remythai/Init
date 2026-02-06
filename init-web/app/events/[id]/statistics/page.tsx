@@ -936,7 +936,7 @@ function LeaderboardCard({ title, subtitle, icon, gradient, users, valueKey, val
               </p>
               {showDetails && user.match_count !== undefined && user.median_messages !== undefined && (
                 <p className="text-xs text-gray-500">
-                  {user.match_count} matchs • {user.median_messages} msg/conv
+                  {user.match_count} matchs • {user.median_messages} msg/match
                 </p>
               )}
             </div>
@@ -944,7 +944,11 @@ function LeaderboardCard({ title, subtitle, icon, gradient, users, valueKey, val
               <span className={`font-bold text-lg bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>
                 {user[valueKey]}
               </span>
-              <p className="text-xs text-gray-400">{valueLabel}</p>
+              <p className="text-xs text-gray-400">
+                {valueKey === "median_messages" && user.match_count
+                  ? `msg/${user.match_count} matchs`
+                  : valueLabel}
+              </p>
             </div>
           </div>
         ))}

@@ -502,7 +502,6 @@ export interface LeaderboardUser {
   lastname: string;
   match_count?: number;
   median_messages?: number;
-  conversation_count?: number;
   combined_score?: number;
 }
 

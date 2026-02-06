@@ -494,7 +494,7 @@ export default function ReportsPage() {
                       value={orgaNotes}
                       onChange={(e) => setOrgaNotes(e.target.value)}
                       placeholder="Ajoutez des notes sur ce signalement..."
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] resize-none h-24 break-words"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] resize-none h-24 break-words hyphens-auto"
                       style={{ wordBreak: 'break-word' }}
                     />
                   </div>
