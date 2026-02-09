@@ -18,3 +18,4 @@ jobs:
           script: |
             cd /home/deploy/Init
             git pull origin main
+            docker compose up -d --build
