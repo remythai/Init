@@ -3,6 +3,7 @@ import { UserController } from '../controllers/user.controller.js';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
 import { validate } from '../middleware/validation.middleware.js';
+import { authLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
@@ -39,7 +40,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register', validate('userRegister'), asyncHandler(UserController.register));
+router.post('/register', registerLimiter, validate('userRegister'), asyncHandler(UserController.register));
 
 /**
  * @swagger
@@ -69,7 +70,7 @@ router.post('/register', validate('userRegister'), asyncHandler(UserController.r
  *             example:
  *               error: 'Identifiants incorrects'
  */
-router.post('/login', validate('userLogin'), asyncHandler(UserController.login));
+router.post('/login', authLimiter, validate('userLogin'), asyncHandler(UserController.login));
 
 /**
  * @swagger
@@ -107,7 +108,7 @@ router.post('/login', validate('userLogin'), asyncHandler(UserController.login))
  *       401:
  *         description: Refresh token invalide ou expiré
  */
-router.post('/refresh', asyncHandler(UserController.refreshToken));
+router.post('/refresh', authLimiter, asyncHandler(UserController.refreshToken));
 
 /**
  * @swagger

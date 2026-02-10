@@ -3,9 +3,11 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OrgaModel } from '../models/orga.model.js';
 import { TokenModel } from '../models/token.model.js';
+import { normalizePhone } from '../utils/phone.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
-import { getOrgaLogoUrl, deleteOrgaLogo } from '../config/multer.config.js';
+import { getOrgaLogoUrl, deleteOrgaLogo, deleteOrgaDir, deleteEventDir } from '../config/multer.config.js';
+import { EventModel } from '../models/event.model.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -13,30 +15,10 @@ export const OrgaController = {
   async register(req, res) {
     const { name, mail, description, tel, password } = req.body;
 
-    if (!name || !mail || !password) {
-      throw new ValidationError('name, email et mot de passe sont requis');
-    }
-
     // Beta: restrict organizer registration to allowed emails only
     const allowedOrgaEmails = ['mtech.bdx1@gmail.com'];
     if (!allowedOrgaEmails.includes(mail.toLowerCase())) {
       throw new ValidationError('Cette adresse email n\'est pas autorisée à créer un compte organisateur');
-    }
-
-    if (password.length < 8) {
-      throw new ValidationError('Le mot de passe doit contenir au moins 8 caractères');
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(mail)) {
-      throw new ValidationError('Format d\'email invalide');
-    }
-
-    if (tel) {
-      const telRegex = /^[0-9+\s()-]{10,20}$/;
-      if (!telRegex.test(tel)) {
-        throw new ValidationError('Format de téléphone invalide');
-      }
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -45,7 +27,7 @@ export const OrgaController = {
       name,
       mail,
       description,
-      tel,
+      tel: normalizePhone(tel),
       password_hash
     });
 
@@ -110,7 +92,7 @@ export const OrgaController = {
     if (nom) updates.nom = nom;
     if (description !== undefined) updates.description = description;
     if (mail) updates.mail = mail;
-    if (tel) updates.tel = tel;
+    if (tel) updates.tel = normalizePhone(tel);
 
     if (Object.keys(updates).length === 0) {
       throw new ValidationError('Aucune donnée à mettre à jour');
@@ -155,6 +137,11 @@ export const OrgaController = {
   },
 
   async deleteAccount(req, res) {
+    const events = await EventModel.findByOrgaId(req.user.id);
+    for (const event of events) {
+      deleteEventDir(event.id);
+    }
+    deleteOrgaDir(req.user.id);
     await TokenModel.deleteAllForUser(req.user.id, 'orga');
     await OrgaModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
@@ -168,7 +155,6 @@ export const OrgaController = {
     const orgaId = req.user.id;
     const logoPath = getOrgaLogoUrl(orgaId, req.file.filename);
 
-    // Update logo_path in database
     const orga = await OrgaModel.update(orgaId, { logo_path: logoPath });
 
     return success(res, { logo_path: orga.logo_path }, 'Logo uploadé avec succès');
@@ -177,10 +163,7 @@ export const OrgaController = {
   async deleteLogo(req, res) {
     const orgaId = req.user.id;
 
-    // Delete file from disk
     deleteOrgaLogo(orgaId);
-
-    // Set logo_path to null in database
     await OrgaModel.update(orgaId, { logo_path: null });
 
     return success(res, null, 'Logo supprimé avec succès');

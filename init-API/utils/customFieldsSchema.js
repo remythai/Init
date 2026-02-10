@@ -1,6 +1,5 @@
 import { ValidationError } from './errors.js';
 
-// Types de champs supportés
 export const FIELD_TYPES = {
   TEXT: 'text',           // Texte court
   TEXTAREA: 'textarea',   // Texte long
