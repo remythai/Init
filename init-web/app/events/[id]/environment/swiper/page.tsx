@@ -676,9 +676,7 @@ export default function SwiperPage() {
                               e.stopPropagation();
                               if (!dragState?.isDragging) handlePreviousImage();
                             }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"
+                            className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
                             aria-label="Image precedente"
                           />
                           <button
@@ -686,9 +684,7 @@ export default function SwiperPage() {
                               e.stopPropagation();
                               if (!dragState?.isDragging) handleNextImage();
                             }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            className="absolute right-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"
+                            className="absolute right-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
                             aria-label="Image suivante"
                           />
                         </>
