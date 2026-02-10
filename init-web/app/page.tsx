@@ -1,7 +1,9 @@
 import { Heart, Users, Briefcase, ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import HeroThread from "./components/HeroThread";
 
 export default function Home() {
   return (
@@ -9,33 +11,73 @@ export default function Home() {
       <Navbar />
 
       {/* Hero - Full Height */}
-      <section className="min-h-screen flex items-center justify-center px-4 md:px-12 pt-20 md:pt-24">
-        <div className="max-w-[900px] w-full text-center">
-          <div className="space-y-6 md:space-y-8">
-            <div>
-              <span className="text-xs md:text-sm font-poppins tracking-widest text-[#1271FF] uppercase">
-                Rencontres authentiques
-              </span>
+      <section className="h-screen flex items-center px-4 md:px-12 pt-20 md:pt-24 overflow-hidden relative">
+        <div className="max-w-[1800px] w-full mx-auto flex flex-col md:flex-row items-center gap-10 md:gap-16">
+          {/* Text - Left */}
+          <div className="md:w-[40%] md:flex-shrink-0 text-center md:text-left relative z-10">
+            <div className="space-y-6 md:space-y-8">
+              <div>
+                <span className="text-xs md:text-sm font-poppins tracking-widest text-[#1271FF] uppercase">
+                  Rencontres authentiques
+                </span>
+              </div>
+              <h1 className="font-poppins text-4xl md:text-6xl lg:text-[5rem] leading-[0.95] font-bold text-white">
+                Des événements.<br />
+                Des personnes.<br />
+                Des connexions.
+              </h1>
+              <p className="font-roboto text-base md:text-xl text-white/60 max-w-xl leading-relaxed px-4 md:px-0">
+                Init réinvente la rencontre en créant des moments réels autour d'événements qui vous ressemblent.
+              </p>
+              <div className="flex justify-center md:justify-start pt-2 md:pt-4">
+                <Link
+                  href="/auth"
+                  className="bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 md:px-8 py-4 md:py-6 rounded-full text-base md:text-lg group flex items-center transition-colors"
+                >
+                  S'inscrire gratuitement
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
             </div>
-            <h1 className="font-poppins text-4xl md:text-6xl lg:text-[5rem] leading-[0.95] font-bold text-white">
-              Des événements.<br />
-              Des personnes.<br />
-              Des connexions.
-            </h1>
-            <p className="font-roboto text-base md:text-xl text-white/60 max-w-xl mx-auto leading-relaxed px-4 md:px-0">
-              Init réinvente la rencontre en créant des moments réels autour d'événements qui vous ressemblent.
-            </p>
-            <div className="flex justify-center pt-2 md:pt-4">
-              <Link
-                href="/auth"
-                className="bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 md:px-8 py-4 md:py-6 rounded-full text-base md:text-lg group flex items-center transition-colors"
-              >
-                S'inscrire gratuitement
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
+          </div>
+
+          {/* Images - Right */}
+          <div className="flex-1 flex items-center justify-center gap-6 md:gap-8 min-w-0 max-h-[60vh] relative z-10">
+            <div className="flex flex-col gap-6 md:gap-8 w-[36%]">
+              <div className="hero-img-top hero-img-delay-1">
+                <Image
+                  src="/profile1.png"
+                  alt="Profil 1"
+                  width={810}
+                  height={1080}
+                  className="w-full h-auto"
+                />
+              </div>
+              <div className="hero-img-bottom hero-img-delay-2 ml-6 md:ml-10">
+                <Image
+                  src="/profile2.png"
+                  alt="Profil 2"
+                  width={810}
+                  height={1080}
+                  className="w-full h-auto"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-6 md:gap-8 mt-12 w-[36%]">
+              <div className="hero-img-right hero-img-delay-3">
+                <Image
+                  src="/profile3.png"
+                  alt="Profil 3"
+                  width={810}
+                  height={1080}
+                  className="w-full h-auto"
+                />
+              </div>
             </div>
           </div>
         </div>
+
+        <HeroThread />
       </section>
 
       {/* Three types - Minimal cards */}
