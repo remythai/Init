@@ -42,7 +42,7 @@ export default function HeroParallax() {
       />
       <div className="absolute inset-0 bg-black/20" />
 
-      <h1 className="font-poppins text-3xl md:text-4xl lg:text-5xl leading-[1.3] font-semibold text-white relative z-10 px-28 md:px-52 pb-44 md:pb-52">
+      <h1 className="font-poppins text-3xl md:text-4xl lg:text-5xl leading-[1.3] font-semibold text-white relative z-10 px-6 md:px-52 pb-32 md:pb-52">
         Là où tout commence
         <motion.span
           id="hero-dot"
