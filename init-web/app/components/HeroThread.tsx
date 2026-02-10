@@ -27,11 +27,11 @@ export default function HeroThread() {
           pathLength: {
             duration: 1.5,
             ease: "easeInOut",
-            delay: 0.6,
+            delay: 0,
           },
           opacity: {
             duration: 0.2,
-            delay: 0.6,
+            delay: 0,
           },
         }}
       />
