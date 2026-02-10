@@ -116,6 +116,20 @@ body {
 }
 
 
+/* Hero infinite vertical scroll */
+@keyframes hero-scroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.hero-scroll-infinite {
+  animation: hero-scroll 12s linear infinite;
+}
+
 /* Safe area for devices with notches */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
