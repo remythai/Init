@@ -1,5 +1,5 @@
 // components/CreateEventDialog.tsx
-import { eventService } from "@/services/event.service";
+import { CustomField, eventService } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from 'expo-location';
 import { useEffect, useState } from "react";
@@ -17,15 +17,6 @@ import {
 import MapView, { Marker, Region } from "react-native-maps";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { CustomFieldsBuilder } from "./CustomEventBuilder";
-
-interface CustomField {
-  id: string;
-  label: string;
-  type: 'text' | 'textarea' | 'number' | 'email' | 'phone' | 'date' | 'checkbox' | 'radio' | 'select' | 'multiselect';
-  required: boolean;
-  placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
-}
 
 interface CreateEventDialogProps {
   onEventCreated: () => void;
@@ -50,23 +41,21 @@ interface AddressSuggestion {
 export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
-  const [showCustomFieldForm, setShowCustomFieldForm] = useState(false);
-  const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
-  const [currentField, setCurrentField] = useState<CustomField>({
-    id: '',
-    label: '',
-    type: 'text',
-    required: false,
-    options: [],
-  });
 
-  const [isStartDateVisible, setStartDateVisible] = useState(false);
-  const [isEndDateVisible, setEndDateVisible] = useState(false);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  // Date pickers states
+  const [isAppStartDateVisible, setAppStartDateVisible] = useState(false);
+  const [isAppEndDateVisible, setAppEndDateVisible] = useState(false);
+  const [isPhysicalStartDateVisible, setPhysicalStartDateVisible] = useState(false);
+  const [isPhysicalEndDateVisible, setPhysicalEndDateVisible] = useState(false);
 
+  const [appStartDate, setAppStartDate] = useState<Date | null>(null);
+  const [appEndDate, setAppEndDate] = useState<Date | null>(null);
+  const [physicalStartDate, setPhysicalStartDate] = useState<Date | null>(null);
+  const [physicalEndDate, setPhysicalEndDate] = useState<Date | null>(null);
+
+  // Location states
   const [locationInput, setLocationInput] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -99,24 +88,10 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     access_password: "",
     cooldown: "",
     theme: "Professionnel",
+    has_physical_event: false,
   });
 
   const [error, setError] = useState("");
-
-  const fieldTypes = [
-    { value: 'text', label: 'Texte court' },
-    { value: 'textarea', label: 'Texte long' },
-    { value: 'number', label: 'Nombre' },
-    { value: 'email', label: 'Email' },
-    { value: 'phone', label: 'Téléphone' },
-    { value: 'date', label: 'Date' },
-    { value: 'checkbox', label: 'Case à cocher' },
-    { value: 'select', label: 'Menu déroulant' },
-    { value: 'radio', label: 'Choix unique' },
-    { value: 'multiselect', label: 'Choix multiples' },
-  ];
-
-  const [newOption, setNewOption] = useState({ value: '', label: '' });
 
   useEffect(() => {
     if (locationInput.length > 2) {
@@ -138,7 +113,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         query
       )}&limit=5&countrycodes=fr&addressdetails=1`;
       console.log('URL:', url);
-      
+
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'EventApp/1.0',
@@ -146,7 +121,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       });
       const data = await response.json();
       console.log('Résultats:', data);
-      
+
       setAddressSuggestions(data);
       setShowSuggestions(data.length > 0);
     } catch (error) {
@@ -160,15 +135,15 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 
   const selectAddress = (suggestion: AddressSuggestion) => {
     let shortAddress = '';
-    
+
     if (suggestion.address) {
       const addr = suggestion.address;
-      const street = addr.house_number && addr.road 
-        ? `${addr.house_number} ${addr.road}` 
+      const street = addr.house_number && addr.road
+        ? `${addr.house_number} ${addr.road}`
         : addr.road || '';
       const postcode = addr.postcode || '';
       const city = addr.city || addr.town || addr.village || addr.municipality || '';
-      
+
       if (street && postcode && city) {
         shortAddress = `${street}, ${postcode} ${city}`;
       } else if (street && city) {
@@ -183,9 +158,9 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       const parts = suggestion.display_name.split(', ');
       shortAddress = parts.slice(0, 3).join(', ');
     }
-    
+
     console.log('Adresse courte:', shortAddress);
-    
+
     setLocationInput(shortAddress);
     setSelectedLocation({
       latitude: parseFloat(suggestion.lat),
@@ -279,29 +254,41 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       return "La description est requise";
     }
 
-    if (!locationInput.trim()) {
-      return "Le lieu est requis";
-    }
-
     const maxParticipants = parseInt(formData.max_participants);
     if (isNaN(maxParticipants) || maxParticipants < 1) {
       return "Le nombre de participants doit être supérieur à 0";
     }
 
-    if (!startDate) {
-      return "La date de début est requise";
+    // App availability dates are required
+    if (!appStartDate) {
+      return "La date de début de disponibilité de l'app est requise";
     }
 
-    if (!endDate) {
-      return "La date de fin est requise";
+    if (!appEndDate) {
+      return "La date de fin de disponibilité de l'app est requise";
     }
 
-    if (endDate <= startDate) {
-      return "La date de fin doit être après la date de début";
+    if (appEndDate <= appStartDate) {
+      return "La date de fin de l'app doit être après la date de début";
     }
 
-    if (startDate < new Date()) {
-      return "La date de début ne peut pas être dans le passé";
+    // Physical event validation (optional)
+    if (formData.has_physical_event) {
+      if (!locationInput.trim()) {
+        return "Le lieu est requis pour un événement physique";
+      }
+
+      if (!physicalStartDate) {
+        return "La date de début de l'événement physique est requise";
+      }
+
+      if (!physicalEndDate) {
+        return "La date de fin de l'événement physique est requise";
+      }
+
+      if (physicalEndDate <= physicalStartDate) {
+        return "La date de fin de l'événement physique doit être après la date de début";
+      }
     }
 
     if (formData.has_password_access && !formData.access_password.trim()) {
@@ -315,88 +302,6 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     return null;
   };
 
-  const handleAddOption = () => {
-    if (!newOption.value.trim() || !newOption.label.trim()) {
-      Alert.alert("Erreur", "La valeur et le label sont requis");
-      return;
-    }
-
-    setCurrentField({
-      ...currentField,
-      options: [...(currentField.options || []), { ...newOption }],
-    });
-    setNewOption({ value: '', label: '' });
-  };
-
-  const handleRemoveOption = (index: number) => {
-    const updatedOptions = currentField.options?.filter((_, i) => i !== index) || [];
-    setCurrentField({ ...currentField, options: updatedOptions });
-  };
-
-  const handleSaveCustomField = () => {
-    if (!currentField.id.trim()) {
-      Alert.alert("Erreur", "L'ID du champ est requis");
-      return;
-    }
-
-    if (!currentField.label.trim()) {
-      Alert.alert("Erreur", "Le label du champ est requis");
-      return;
-    }
-
-    if (['select', 'radio', 'multiselect'].includes(currentField.type)) {
-      if (!currentField.options || currentField.options.length === 0) {
-        Alert.alert("Erreur", "Ce type de champ nécessite au moins une option");
-        return;
-      }
-    }
-
-    if (editingFieldIndex !== null) {
-      const updatedFields = [...customFields];
-      updatedFields[editingFieldIndex] = currentField;
-      setCustomFields(updatedFields);
-    } else {
-      if (customFields.some(f => f.id === currentField.id)) {
-        Alert.alert("Erreur", "Un champ avec cet ID existe déjà");
-        return;
-      }
-      setCustomFields([...customFields, currentField]);
-    }
-
-    setCurrentField({
-      id: '',
-      label: '',
-      type: 'text',
-      required: false,
-      options: [],
-    });
-    setShowCustomFieldForm(false);
-    setEditingFieldIndex(null);
-  };
-
-  const handleEditCustomField = (index: number) => {
-    setCurrentField({ ...customFields[index] });
-    setEditingFieldIndex(index);
-    setShowCustomFieldForm(true);
-  };
-
-  const handleDeleteCustomField = (index: number) => {
-    Alert.alert(
-      "Confirmer la suppression",
-      "Voulez-vous vraiment supprimer ce champ ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            setCustomFields(customFields.filter((_, i) => i !== index));
-          },
-        },
-      ]
-    );
-  };
-
   const handleSubmit = async () => {
     setError("");
 
@@ -408,24 +313,35 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 
     setLoading(true);
 
+
     try {
-      const eventData: any = {
+      // ✅ GARDER l'ID - le backend en a besoin
+      const customFieldsForBackend = customFields.map(field => ({
+        ...field,
+        id: field.id || getFieldId(field.label)  // S'assurer que l'ID existe
+      }));
+
+      const eventData: Parameters<typeof eventService.createEvent>[0] = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        start_at: startDate!.toISOString(),
-        end_at: endDate!.toISOString(),
-        location: locationInput.trim(),
         max_participants: parseInt(formData.max_participants),
         is_public: formData.is_public,
         has_whitelist: formData.has_whitelist,
         has_link_access: formData.has_link_access,
         has_password_access: formData.has_password_access,
-        custom_fields: customFields,
+        custom_fields: customFieldsForBackend.length > 0 ? customFieldsForBackend : undefined,
+        // App availability dates (required)
+        app_start_at: appStartDate!.toISOString(),
+        app_end_at: appEndDate!.toISOString(),
+        // Theme
+        theme: formData.theme,
       };
 
-      if (selectedLocation) {
-        eventData.latitude = selectedLocation.latitude;
-        eventData.longitude = selectedLocation.longitude;
+      // Physical event dates and location (optional)
+      if (formData.has_physical_event && physicalStartDate && physicalEndDate) {
+        eventData.start_at = physicalStartDate.toISOString();
+        eventData.end_at = physicalEndDate.toISOString();
+        eventData.location = locationInput.trim();
       }
 
       if (formData.has_password_access && formData.access_password) {
@@ -436,10 +352,13 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         eventData.cooldown = `${formData.cooldown} hours`;
       }
 
+      console.log('Sending event data:', JSON.stringify(eventData, null, 2));  // Debug
+
       await eventService.createEvent(eventData);
 
       Alert.alert("Succès", "Événement créé avec succès!");
 
+      // Reset form
       setFormData({
         name: "",
         description: "",
@@ -451,9 +370,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         access_password: "",
         cooldown: "",
         theme: "Professionnel",
+        has_physical_event: false,
       });
-      setStartDate(null);
-      setEndDate(null);
+      setAppStartDate(null);
+      setAppEndDate(null);
+      setPhysicalStartDate(null);
+      setPhysicalEndDate(null);
       setLocationInput("");
       setSelectedLocation(null);
       setCustomFields([]);
@@ -469,6 +391,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     } finally {
       setLoading(false);
     }
+
   };
 
   const themes = [
@@ -479,8 +402,6 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     "Étudiant",
     "Fête",
   ];
-
-  const needsOptions = ['select', 'radio', 'multiselect'].includes(currentField.type);
 
   return (
     <>
@@ -524,7 +445,11 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                   placeholder="Ex: Soirée Networking"
                   placeholderTextColor="#9CA3AF"
                   editable={!loading}
+                  maxLength={100}
                 />
+                <Text style={[styles.helperText, formData.name.length >= 90 && styles.warningText]}>
+                  {formData.name.length}/100
+                </Text>
               </View>
 
               {/* Thème */}
@@ -545,7 +470,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         style={[
                           styles.themeButtonText,
                           formData.theme === theme &&
-                            styles.themeButtonTextActive,
+                          styles.themeButtonTextActive,
                         ]}
                       >
                         {theme}
@@ -569,136 +494,228 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                   multiline
                   numberOfLines={4}
                   editable={!loading}
+                  maxLength={1000}
                 />
+                <Text style={[styles.helperText, formData.description.length >= 900 && styles.warningText]}>
+                  {formData.description.length}/1000
+                </Text>
               </View>
 
-              {/* Date de début */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Date et heure de début *</Text>
-
-                <Pressable onPress={() => setStartDateVisible(true)}>
-                  <View pointerEvents="none">
-                    <TextInput
-                      style={[styles.input, styles.dateInput]}
-                      value={startDate ? formatDateTime(startDate) : ''}
-                      placeholder="Sélectionner la date et l'heure"
-                      placeholderTextColor="#9CA3AF"
-                      editable={false}
-                    />
-                  </View>
-                  <View style={styles.inputIcon}>
-                    <MaterialIcons name="event" size={20} color="#6B7280" />
-                  </View>
-                </Pressable>
+              {/* Banner Info */}
+              <View style={styles.infoBox}>
+                <MaterialIcons name="info-outline" size={20} color="#1271FF" />
+                <Text style={styles.infoText}>
+                  Image de bannière : Vous pourrez ajouter une image de bannière personnalisée après la création de l'événement.
+                </Text>
               </View>
 
-              {/* Date de fin */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Date et heure de fin *</Text>
+              {/* App Availability Section */}
+              <View style={styles.sectionDivider}>
+                <Text style={styles.sectionTitle}>Disponibilité de l'app *</Text>
+                <Text style={styles.helperText}>
+                  Période pendant laquelle les utilisateurs peuvent accéder au swiper, matcher et discuter.
+                </Text>
 
-                <Pressable onPress={() => setEndDateVisible(true)}>
-                  <View pointerEvents="none">
-                    <TextInput
-                      style={[styles.input, styles.dateInput]}
-                      value={endDate ? formatDateTime(endDate) : ''}
-                      placeholder="Sélectionner la date et l'heure"
-                      placeholderTextColor="#9CA3AF"
-                      editable={false}
-                    />
-                  </View>
-                  <View style={styles.inputIcon}>
-                    <MaterialIcons name="event" size={20} color="#6B7280" />
-                  </View>
-                </Pressable>
-              </View>
-
-              {/* Lieu avec autocomplete */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Lieu *</Text>
-                
-                <View style={styles.locationInputContainer}>
-                  <MaterialIcons 
-                    name="location-on" 
-                    size={20} 
-                    color="#6B7280" 
-                    style={styles.locationInputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, styles.locationInput]}
-                    value={locationInput}
-                    onChangeText={(text) => {
-                      setLocationInput(text);
-                      if (text.length <= 2) {
-                        setSelectedLocation(null);
-                      }
-                    }}
-                    placeholder="Commencez à taper une adresse..."
-                    placeholderTextColor="#9CA3AF"
-                    editable={!loading}
-                    onFocus={() => {
-                      if (addressSuggestions.length > 0) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                  />
-                  {loadingSuggestions && (
-                    <ActivityIndicator 
-                      size="small" 
-                      color="#1271FF" 
-                      style={styles.locationLoadingIcon}
-                    />
-                  )}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Début de disponibilité *</Text>
+                  <Pressable onPress={() => setAppStartDateVisible(true)}>
+                    <View pointerEvents="none">
+                      <TextInput
+                        style={[styles.input, styles.dateInput]}
+                        value={appStartDate ? formatDateTime(appStartDate) : ''}
+                        placeholder="Sélectionner la date et l'heure"
+                        placeholderTextColor="#9CA3AF"
+                        editable={false}
+                      />
+                    </View>
+                    <View style={styles.inputIcon}>
+                      <MaterialIcons name="event" size={20} color="#6B7280" />
+                    </View>
+                  </Pressable>
                 </View>
 
-                {/* Address Suggestions */}
-                {showSuggestions && addressSuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    <ScrollView 
-                      style={styles.suggestionsList}
-                      nestedScrollEnabled
-                      keyboardShouldPersistTaps="handled"
-                    >
-                      {addressSuggestions.map((item) => (
-                        <Pressable
-                          key={item.place_id.toString()}
-                          style={styles.suggestionItem}
-                          onPress={() => selectAddress(item)}
-                        >
-                          <MaterialIcons name="place" size={18} color="#6B7280" />
-                          <Text style={styles.suggestionText} numberOfLines={2}>
-                            {item.display_name}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Fin de disponibilité *</Text>
+                  <Pressable onPress={() => setAppEndDateVisible(true)}>
+                    <View pointerEvents="none">
+                      <TextInput
+                        style={[styles.input, styles.dateInput]}
+                        value={appEndDate ? formatDateTime(appEndDate) : ''}
+                        placeholder="Sélectionner la date et l'heure"
+                        placeholderTextColor="#9CA3AF"
+                        editable={false}
+                      />
+                    </View>
+                    <View style={styles.inputIcon}>
+                      <MaterialIcons name="event" size={20} color="#6B7280" />
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Physical Event Toggle */}
+              <View style={styles.sectionDivider}>
+                <Pressable
+                  style={styles.switchContainer}
+                  onPress={() =>
+                    setFormData({ ...formData, has_physical_event: !formData.has_physical_event })
+                  }
+                  disabled={loading}
+                >
+                  <View style={styles.switchLabel}>
+                    <Text style={styles.switchLabelText}>Événement physique</Text>
+                    <Text style={styles.helperText}>
+                      {formData.has_physical_event ? "L'événement a un lieu et une date" : "Pas de lieu ni de date physique"}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.switch,
+                      formData.has_physical_event && styles.switchActive,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.switchThumb,
+                        formData.has_physical_event && styles.switchThumbActive,
+                      ]}
+                    />
+                  </View>
+                </Pressable>
+
+                {/* Physical Event Dates and Location */}
+                {formData.has_physical_event && (
+                  <View style={styles.physicalEventSection}>
+                    <Text style={styles.helperText}>
+                      Quand et où se déroule l'événement physique.
+                    </Text>
+
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Début de l'événement *</Text>
+                      <Pressable onPress={() => setPhysicalStartDateVisible(true)}>
+                        <View pointerEvents="none">
+                          <TextInput
+                            style={[styles.input, styles.dateInput]}
+                            value={physicalStartDate ? formatDateTime(physicalStartDate) : ''}
+                            placeholder="Sélectionner la date et l'heure"
+                            placeholderTextColor="#9CA3AF"
+                            editable={false}
+                          />
+                        </View>
+                        <View style={styles.inputIcon}>
+                          <MaterialIcons name="event" size={20} color="#6B7280" />
+                        </View>
+                      </Pressable>
+                    </View>
+
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Fin de l'événement *</Text>
+                      <Pressable onPress={() => setPhysicalEndDateVisible(true)}>
+                        <View pointerEvents="none">
+                          <TextInput
+                            style={[styles.input, styles.dateInput]}
+                            value={physicalEndDate ? formatDateTime(physicalEndDate) : ''}
+                            placeholder="Sélectionner la date et l'heure"
+                            placeholderTextColor="#9CA3AF"
+                            editable={false}
+                          />
+                        </View>
+                        <View style={styles.inputIcon}>
+                          <MaterialIcons name="event" size={20} color="#6B7280" />
+                        </View>
+                      </Pressable>
+                    </View>
+
+                    {/* Location */}
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Lieu *</Text>
+
+                      <View style={styles.locationInputContainer}>
+                        <MaterialIcons
+                          name="location-on"
+                          size={20}
+                          color="#6B7280"
+                          style={styles.locationInputIcon}
+                        />
+                        <TextInput
+                          style={[styles.input, styles.locationInput]}
+                          value={locationInput}
+                          onChangeText={(text) => {
+                            setLocationInput(text);
+                            if (text.length <= 2) {
+                              setSelectedLocation(null);
+                            }
+                          }}
+                          placeholder="Commencez à taper une adresse..."
+                          placeholderTextColor="#9CA3AF"
+                          editable={!loading}
+                          onFocus={() => {
+                            if (addressSuggestions.length > 0) {
+                              setShowSuggestions(true);
+                            }
+                          }}
+                        />
+                        {loadingSuggestions && (
+                          <ActivityIndicator
+                            size="small"
+                            color="#1271FF"
+                            style={styles.locationLoadingIcon}
+                          />
+                        )}
+                      </View>
+
+                      {/* Address Suggestions */}
+                      {showSuggestions && addressSuggestions.length > 0 && (
+                        <View style={styles.suggestionsContainer}>
+                          <ScrollView
+                            style={styles.suggestionsList}
+                            nestedScrollEnabled
+                            keyboardShouldPersistTaps="handled"
+                          >
+                            {addressSuggestions.map((item) => (
+                              <Pressable
+                                key={item.place_id.toString()}
+                                style={styles.suggestionItem}
+                                onPress={() => selectAddress(item)}
+                              >
+                                <MaterialIcons name="place" size={18} color="#6B7280" />
+                                <Text style={styles.suggestionText} numberOfLines={2}>
+                                  {item.display_name}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
+
+                      <Pressable
+                        style={styles.mapPickerButton}
+                        onPress={() => {
+                          setShowLocationPicker(true);
+                          if (!tempMarker && !selectedLocation) {
+                            getCurrentLocation();
+                          } else if (selectedLocation) {
+                            setTempMarker({
+                              latitude: selectedLocation.latitude,
+                              longitude: selectedLocation.longitude,
+                            });
+                            setMapRegion({
+                              latitude: selectedLocation.latitude,
+                              longitude: selectedLocation.longitude,
+                              latitudeDelta: 0.05,
+                              longitudeDelta: 0.05,
+                            });
+                          }
+                        }}
+                      >
+                        <MaterialIcons name="map" size={18} color="#1271FF" />
+                        <Text style={styles.mapPickerButtonText}>
+                          Ou sélectionner sur la carte
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
                 )}
-
-                <Pressable 
-                  style={styles.mapPickerButton}
-                  onPress={() => {
-                    setShowLocationPicker(true);
-                    if (!tempMarker && !selectedLocation) {
-                      getCurrentLocation();
-                    } else if (selectedLocation) {
-                      setTempMarker({
-                        latitude: selectedLocation.latitude,
-                        longitude: selectedLocation.longitude,
-                      });
-                      setMapRegion({
-                        latitude: selectedLocation.latitude,
-                        longitude: selectedLocation.longitude,
-                        latitudeDelta: 0.05,
-                        longitudeDelta: 0.05,
-                      });
-                    }
-                  }}
-                >
-                  <MaterialIcons name="map" size={18} color="#1271FF" />
-                  <Text style={styles.mapPickerButtonText}>
-                    Ou sélectionner sur la carte
-                  </Text>
-                </Pressable>
               </View>
 
               {/* Max Participants */}
@@ -734,6 +751,13 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                     <Text style={styles.switchLabelText}>Événement public</Text>
                     <Text style={styles.helperText}>
                       Visible par tous les utilisateurs
+                    </Text>
+                    <Text style={[
+                      styles.helperText,
+                      styles.publicStatusText,
+                      formData.is_public ? styles.publicStatus : styles.privateStatus
+                    ]}>
+                      {formData.is_public ? "✓ PUBLIC - Visible dans la liste" : "✗ PRIVÉ - Non visible"}
                     </Text>
                   </View>
                   <View
@@ -839,7 +863,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                       style={[
                         styles.switchThumb,
                         formData.has_password_access &&
-                          styles.switchThumbActive,
+                        styles.switchThumbActive,
                       ]}
                     />
                   </View>
@@ -937,29 +961,57 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 
       {/* Date/Time Pickers */}
       <DateTimePickerModal
-        isVisible={isStartDateVisible}
+        isVisible={isAppStartDateVisible}
         mode="datetime"
         onConfirm={(date) => {
-          setStartDate(date);
-          setStartDateVisible(false);
+          setAppStartDate(date);
+          setAppStartDateVisible(false);
         }}
-        onCancel={() => setStartDateVisible(false)}
+        onCancel={() => setAppStartDateVisible(false)}
         minimumDate={new Date()}
-        date={startDate || new Date()}
+        date={appStartDate || new Date()}
         locale="fr_FR"
         display="inline"
       />
 
       <DateTimePickerModal
-        isVisible={isEndDateVisible}
+        isVisible={isAppEndDateVisible}
         mode="datetime"
         onConfirm={(date) => {
-          setEndDate(date);
-          setEndDateVisible(false);
+          setAppEndDate(date);
+          setAppEndDateVisible(false);
         }}
-        onCancel={() => setEndDateVisible(false)}
-        minimumDate={startDate || new Date()}
-        date={endDate || startDate || new Date()}
+        onCancel={() => setAppEndDateVisible(false)}
+        minimumDate={appStartDate || new Date()}
+        date={appEndDate || appStartDate || new Date()}
+        locale="fr_FR"
+        display="inline"
+      />
+
+      <DateTimePickerModal
+        isVisible={isPhysicalStartDateVisible}
+        mode="datetime"
+        onConfirm={(date) => {
+          setPhysicalStartDate(date);
+          setPhysicalStartDateVisible(false);
+        }}
+        onCancel={() => setPhysicalStartDateVisible(false)}
+        minimumDate={new Date()}
+        date={physicalStartDate || new Date()}
+        locale="fr_FR"
+        display="inline"
+      />
+
+      <DateTimePickerModal
+        isVisible={isPhysicalEndDateVisible}
+        mode="datetime"
+        onConfirm={(date) => {
+          setPhysicalEndDate(date);
+          setPhysicalEndDateVisible(false);
+        }}
+        onCancel={() => setPhysicalEndDateVisible(false)}
+        minimumDate={physicalStartDate || new Date()}
+        date={physicalEndDate || physicalStartDate || new Date()}
         locale="fr_FR"
         display="inline"
       />
@@ -1023,224 +1075,6 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
             >
               <Text style={styles.submitButtonText}>Confirmer</Text>
             </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal pour créer/éditer un custom field */}
-      <Modal
-        visible={showCustomFieldForm}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCustomFieldForm(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingFieldIndex !== null ? 'Modifier' : 'Ajouter'} un champ
-              </Text>
-              <Pressable onPress={() => {
-                setShowCustomFieldForm(false);
-                setEditingFieldIndex(null);
-                setCurrentField({
-                  id: '',
-                  label: '',
-                  type: 'text',
-                  required: false,
-                  options: [],
-                });
-              }}>
-                <MaterialIcons name="close" size={26} color="#303030" />
-              </Pressable>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>ID du champ *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={currentField.id}
-                  onChangeText={(text) =>
-                    setCurrentField({ ...currentField, id: text })
-                  }
-                  placeholder="Ex: linkedin_url"
-                  placeholderTextColor="#9CA3AF"
-                  editable={editingFieldIndex === null}
-                />
-                <Text style={styles.helperText}>
-                  Identifiant unique (sans espaces)
-                </Text>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Label *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={currentField.label}
-                  onChangeText={(text) =>
-                    setCurrentField({ ...currentField, label: text })
-                  }
-                  placeholder="Ex: Profil LinkedIn"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Type de champ *</Text>
-                <View style={styles.typeGrid}>
-                  {fieldTypes.map((type) => (
-                    <Pressable
-                      key={type.value}
-                      style={[
-                        styles.typeButton,
-                        currentField.type === type.value && styles.typeButtonActive,
-                      ]}
-                      onPress={() =>
-                        setCurrentField({ ...currentField, type: type.value as any })
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.typeButtonText,
-                          currentField.type === type.value &&
-                            styles.typeButtonTextActive,
-                        ]}
-                      >
-                        {type.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Placeholder (optionnel)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={currentField.placeholder || ''}
-                  onChangeText={(text) =>
-                    setCurrentField({ ...currentField, placeholder: text })
-                  }
-                  placeholder="Ex: https://linkedin.com/in/..."
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <Pressable
-                style={styles.switchContainer}
-                onPress={() =>
-                  setCurrentField({
-                    ...currentField,
-                    required: !currentField.required,
-                  })
-                }
-              >
-                <View style={styles.switchLabel}>
-                  <Text style={styles.switchLabelText}>Champ requis</Text>
-                  <Text style={styles.helperText}>
-                    Obligatoire lors de l'inscription
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.switch,
-                    currentField.required && styles.switchActive,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.switchThumb,
-                      currentField.required && styles.switchThumbActive,
-                    ]}
-                  />
-                </View>
-              </Pressable>
-
-              {/* Options pour select/radio/multiselect */}
-              {needsOptions && (
-                <View style={styles.optionsSection}>
-                  <Text style={styles.label}>Options *</Text>
-                  
-                  {currentField.options && currentField.options.length > 0 && (
-                    <View style={styles.optionsList}>
-                      {currentField.options.map((option, index) => (
-                        <View key={index} style={styles.optionItem}>
-                          <View style={styles.optionInfo}>
-                            <Text style={styles.optionLabel}>{option.label}</Text>
-                            <Text style={styles.optionValue}>{option.value}</Text>
-                          </View>
-                          <Pressable
-                            onPress={() => handleRemoveOption(index)}
-                            style={styles.iconButton}
-                          >
-                            <MaterialIcons name="close" size={18} color="#EF4444" />
-                          </Pressable>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  <View style={styles.addOptionForm}>
-                    <View style={styles.optionInputs}>
-                      <TextInput
-                        style={[styles.input, styles.optionInput]}
-                        value={newOption.value}
-                        onChangeText={(text) =>
-                          setNewOption({ ...newOption, value: text })
-                        }
-                        placeholder="Valeur"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                      <TextInput
-                        style={[styles.input, styles.optionInput]}
-                        value={newOption.label}
-                        onChangeText={(text) =>
-                          setNewOption({ ...newOption, label: text })
-                        }
-                        placeholder="Label"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                    <Pressable
-                      style={styles.addOptionIconButton}
-                      onPress={handleAddOption}
-                    >
-                      <MaterialIcons name="add" size={24} color="#fff" />
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-
-              <View style={{ height: 20 }} />
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowCustomFieldForm(false);
-                  setEditingFieldIndex(null);
-                  setCurrentField({
-                    id: '',
-                    label: '',
-                    type: 'text',
-                    required: false,
-                    options: [],
-                  });
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
-              </Pressable>
-              <Pressable
-                style={styles.submitButton}
-                onPress={handleSaveCustomField}
-              >
-                <Text style={styles.submitButtonText}>
-                  {editingFieldIndex !== null ? 'Modifier' : 'Ajouter'}
-                </Text>
-              </Pressable>
-            </View>
           </View>
         </View>
       </Modal>
@@ -1383,7 +1217,6 @@ const styles = StyleSheet.create({
     color: '#303030',
     lineHeight: 20,
   },
-  
   mapPickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1457,6 +1290,44 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 18,
   },
+  warningText: {
+    color: "#F59E0B",
+    fontWeight: "600",
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 14,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    marginBottom: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#1E40AF",
+    lineHeight: 18,
+  },
+  physicalEventSection: {
+    padding: 16,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    marginTop: 12,
+    gap: 16,
+  },
+  publicStatusText: {
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  publicStatus: {
+    color: "#16A34A",
+  },
+  privateStatus: {
+    color: "#DC2626",
+  },
   themeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1493,94 +1364,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#303030",
-    marginBottom: 4,
+    marginBottom: 12,
     letterSpacing: -0.3,
-  },
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  typeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-  },
-  typeButtonActive: {
-    backgroundColor: "#1271FF",
-    borderColor: "#1271FF",
-  },
-  typeButtonText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#303030",
-  },
-  typeButtonTextActive: {
-    color: "#FFFFFF",
-  },
-  optionsSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
-  },
-  optionsList: {
-    marginBottom: 16,
-  },
-  optionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  optionInfo: {
-    flex: 1,
-  },
-  optionLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#303030",
-    marginBottom: 2,
-  },
-  optionValue: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  addOptionForm: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-end",
-    overflow: "hidden",
-  },
-  optionInputs: {
-    flex: 1,
-    minWidth: 0,
-    gap: 10,
-  },
-  
-  optionInput: {
-    marginBottom: 0,
-  },
-  addOptionIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#1271FF",
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "flex-end",
-  },  
-  iconButton: {
-    padding: 6,
   },
   switchContainer: {
     flexDirection: "row",
