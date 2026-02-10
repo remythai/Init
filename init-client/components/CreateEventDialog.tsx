@@ -1,5 +1,5 @@
 // components/CreateEventDialog.tsx
-import { CustomField, eventService } from "@/services/event.service";
+import { CustomField, getFieldId, eventService } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from 'expo-location';
 import { useEffect, useState } from "react";

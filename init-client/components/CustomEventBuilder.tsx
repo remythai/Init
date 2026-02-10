@@ -225,11 +225,6 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                   <Text style={styles.helperText}>
                     Cette question sera affichée aux participants lors de l'inscription
                   </Text>
-                  {field.label && (
-                    <Text style={styles.generatedIdText}>
-                      ID généré: {getFieldId(field.label)}
-                    </Text>
-                  )}
                 </View>
 
                 {/* Type Field */}
