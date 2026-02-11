@@ -95,7 +95,7 @@ export default function Navbar() {
 
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
-            className="group inline-flex items-center gap-2 font-poppins font-semibold text-xs md:text-sm text-black bg-white hover:bg-white/90 px-5 md:px-6 py-2.5 rounded-full transition-all duration-300"
+            className="bg-white text-black hover:bg-white/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors"
           >
             {isAuthenticated ? t.navbar.access : t.navbar.start}
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
