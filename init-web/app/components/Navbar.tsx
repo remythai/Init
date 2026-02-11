@@ -39,7 +39,7 @@ export default function Navbar() {
           )}
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
-            className="hover:underline text-white font-semibold px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors"
+            className="bg-white text-black hover:bg-white/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors"
           >
             {isAuthenticated ? "Accéder" : "Commencer"}
           </Link>
