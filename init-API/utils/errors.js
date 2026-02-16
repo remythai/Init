@@ -93,7 +93,7 @@ export const errorHandler = (err, req, res, next) => {
 
   if (err.code === '23502') {
     return res.status(400).json({
-      error: `Le champ ${err.column} est requis`,
+      error: 'Un champ requis est manquant',
       code: 'MISSING_FIELD'
     });
   }

@@ -4,8 +4,8 @@ export const BlockedUserModel = {
   /**
    * Block a user from an event
    */
-  async block(eventId, userId, reason = null) {
-    const result = await pool.query(
+  async block(eventId, userId, reason = null, client = pool) {
+    const result = await client.query(
       `INSERT INTO event_blocked_users (event_id, user_id, reason)
        VALUES ($1, $2, $3)
        ON CONFLICT (event_id, user_id) DO UPDATE

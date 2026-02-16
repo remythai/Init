@@ -1,5 +1,18 @@
 import pool from '../config/database.js';
 
+function escapeLike(str) {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
+const SAFE_COLS = [
+  'id', 'orga_id', 'name', 'description', 'start_at', 'end_at', 'event_date',
+  'location', 'app_start_at', 'app_end_at', 'theme', 'cooldown', 'max_participants',
+  'is_public', 'has_whitelist', 'has_link_access', 'has_password_access',
+  'custom_fields', 'banner_path', 'created_at', 'updated_at'
+];
+const SAFE_COLUMNS = SAFE_COLS.join(', ');
+const SAFE_COLUMNS_PREFIXED = SAFE_COLS.map(c => `e.${c}`).join(', ');
+
 export const EventModel = {
   async create(eventData) {
     const {
@@ -17,7 +30,7 @@ export const EventModel = {
         has_password_access, access_password_hash, cooldown, custom_fields
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      RETURNING *`,
+      RETURNING ${SAFE_COLUMNS}`,
       [
         orga_id, name, description, start_at, end_at, location,
         app_start_at, app_end_at, theme,
@@ -31,13 +44,21 @@ export const EventModel = {
 
   async findById(id) {
     const result = await pool.query(
-      `SELECT e.*, o.nom as orga_nom, o.mail as orga_mail, o.logo_path as orga_logo
+      `SELECT ${SAFE_COLUMNS_PREFIXED}, o.nom as orga_nom, o.mail as orga_mail, o.logo_path as orga_logo
        FROM events e
        JOIN orga o ON e.orga_id = o.id
        WHERE e.id = $1`,
       [id]
     );
     return result.rows[0];
+  },
+
+  async getAccessPasswordHash(eventId) {
+    const result = await pool.query(
+      'SELECT access_password_hash FROM events WHERE id = $1',
+      [eventId]
+    );
+    return result.rows[0]?.access_password_hash;
   },
 
   async findByOrgaId(orgaId) {
@@ -52,11 +73,17 @@ export const EventModel = {
   },
 
   async update(id, updates) {
+    const allowedColumns = [
+      'name', 'description', 'start_at', 'end_at', 'location',
+      'app_start_at', 'app_end_at', 'theme', 'max_participants',
+      'is_public', 'has_whitelist', 'has_link_access', 'has_password_access',
+      'cooldown', 'access_password_hash', 'custom_fields', 'banner_path'
+    ];
     const fields = [];
     const values = [];
     let paramCount = 1;
 
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).filter(key => allowedColumns.includes(key)).forEach(key => {
       if (key === 'custom_fields') {
         fields.push(`${key} = $${paramCount}`);
         values.push(JSON.stringify(updates[key]));
@@ -69,7 +96,7 @@ export const EventModel = {
 
     values.push(id);
     const result = await pool.query(
-      `UPDATE events SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE events SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING ${SAFE_COLUMNS}`,
       values
     );
     return result.rows[0];
@@ -79,12 +106,20 @@ export const EventModel = {
     await pool.query('DELETE FROM events WHERE id = $1', [id]);
   },
 
-  async countParticipants(eventId) {
-    const result = await pool.query(
+  async countParticipants(eventId, client = pool) {
+    const result = await client.query(
       'SELECT COUNT(*) as count FROM user_event_rel WHERE event_id = $1',
       [eventId]
     );
     return parseInt(result.rows[0].count);
+  },
+
+  async findByIdForUpdate(eventId, client) {
+    const result = await client.query(
+      'SELECT max_participants FROM events WHERE id = $1 FOR UPDATE',
+      [eventId]
+    );
+    return result.rows[0];
   },
 
   async findPublicEventsWithUserInfo(userId = null, filters = {}) {
@@ -122,14 +157,14 @@ export const EventModel = {
     }
 
     if (filters.location) {
-      query += ` AND e.location ILIKE $${paramCount}`;
-      values.push(`%${filters.location}%`);
+      query += ` AND e.location ILIKE $${paramCount} ESCAPE '\\'`;
+      values.push(`%${escapeLike(filters.location)}%`);
       paramCount++;
     }
 
     if (filters.search) {
-      query += ` AND (e.name ILIKE $${paramCount} OR e.description ILIKE $${paramCount})`;
-      values.push(`%${filters.search}%`);
+      query += ` AND (e.name ILIKE $${paramCount} ESCAPE '\\' OR e.description ILIKE $${paramCount} ESCAPE '\\')`;
+      values.push(`%${escapeLike(filters.search)}%`);
       paramCount++;
     }
 
@@ -204,11 +239,7 @@ export const EventModel = {
     return result.rows;
   },
 
-  /**
-   * Get comprehensive statistics for an event
-   */
-  async getEventStatistics(eventId) {
-    // Get all stats in parallel for better performance
+  async getEventRawStatistics(eventId) {
     const [
       participantsResult,
       whitelistResult,
@@ -217,7 +248,6 @@ export const EventModel = {
       likesResult,
       activeUsersResult
     ] = await Promise.all([
-      // Total participants (not blocked)
       pool.query(`
         SELECT COUNT(*) as total
         FROM user_event_rel uer
@@ -228,7 +258,6 @@ export const EventModel = {
           )
       `, [eventId]),
 
-      // Whitelist stats
       pool.query(`
         SELECT
           COUNT(*) FILTER (WHERE status = 'active') as total_active,
@@ -239,7 +268,6 @@ export const EventModel = {
         WHERE event_id = $1
       `, [eventId]),
 
-      // Match stats
       pool.query(`
         SELECT
           COUNT(*) as total_matches,
@@ -252,7 +280,6 @@ export const EventModel = {
         WHERE event_id = $1 AND is_archived = false
       `, [eventId]),
 
-      // Message stats (only from active matches)
       pool.query(`
         SELECT
           COUNT(*) as total_messages,
@@ -263,7 +290,6 @@ export const EventModel = {
         WHERE ma.event_id = $1 AND ma.is_archived = false
       `, [eventId]),
 
-      // Likes stats (swipes) - excluding blocked users
       pool.query(`
         SELECT
           COUNT(*) as total_swipes,
@@ -278,7 +304,6 @@ export const EventModel = {
           )
       `, [eventId]),
 
-      // Active users (who did something: swiped or sent message) - only current participants, excluding blocked
       pool.query(`
         SELECT COUNT(DISTINCT user_id) as active_users
         FROM (
@@ -300,157 +325,13 @@ export const EventModel = {
       `, [eventId])
     ]);
 
-    const participants = parseInt(participantsResult.rows[0]?.total || 0);
-    const whitelist = whitelistResult.rows[0] || { total_active: 0, registered: 0, pending: 0, removed: 0 };
-    const matches = matchesResult.rows[0] || { total_matches: 0, users_with_matches: 0 };
-    const messages = messagesResult.rows[0] || { total_messages: 0, users_who_sent: 0, conversations_with_messages: 0 };
-    const likes = likesResult.rows[0] || { total_swipes: 0, likes: 0, passes: 0, users_who_swiped: 0 };
-    const activeUsers = parseInt(activeUsersResult.rows[0]?.active_users || 0);
-
-    // Calculate derived stats
-    const totalMatches = parseInt(matches.total_matches || 0);
-    const totalLikes = parseInt(likes.likes || 0);
-    const totalSwipes = parseInt(likes.total_swipes || 0);
-    const totalMessages = parseInt(messages.total_messages || 0);
-    const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
-
-    // Get leaderboards data - single query for combined stats
-    // Median is calculated over ALL matches (0 if no messages sent in a match)
-    const leaderboardResult = await pool.query(`
-      WITH user_all_matches AS (
-        -- All matches for each user
-        SELECT user_id, match_id
-        FROM (
-          SELECT user1_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
-          UNION ALL
-          SELECT user2_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
-        ) m
-      ),
-      message_counts_per_match AS (
-        -- Count messages per sender per match
-        SELECT sender_id, match_id, COUNT(*) as msg_count
-        FROM messages
-        GROUP BY sender_id, match_id
-      ),
-      user_match_message_counts AS (
-        -- For each (user, match), get message count (0 if none sent)
-        SELECT
-          uam.user_id,
-          uam.match_id,
-          COALESCE(mc.msg_count, 0) as msg_count
-        FROM user_all_matches uam
-        LEFT JOIN message_counts_per_match mc
-          ON mc.sender_id = uam.user_id AND mc.match_id = uam.match_id
-      ),
-      user_stats AS (
-        -- Calculate match count and median messages per user
-        SELECT
-          user_id,
-          COUNT(*) as match_count,
-          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages
-        FROM user_match_message_counts
-        GROUP BY user_id
-      )
-      SELECT
-        u.id,
-        u.firstname,
-        u.lastname,
-        COALESCE(us.match_count, 0) as match_count,
-        COALESCE(us.median_messages, 0) as median_messages
-      FROM users u
-      JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
-      LEFT JOIN user_stats us ON us.user_id = u.id
-      WHERE us.match_count > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
-        )
-      ORDER BY us.match_count DESC NULLS LAST
-    `, [eventId]);
-
-    const allUsers = leaderboardResult.rows;
-
-    // Create separate leaderboards from the combined data
-    const matchUsers = allUsers
-      .filter(u => parseInt(u.match_count) > 0)
-      .sort((a, b) => parseInt(b.match_count) - parseInt(a.match_count))
-      .slice(0, 10);
-
-    const messageUsers = allUsers
-      .filter(u => parseFloat(u.median_messages) > 0)
-      .sort((a, b) => parseFloat(b.median_messages) - parseFloat(a.median_messages))
-      .slice(0, 10);
-
-    // Combined leaderboard: users who have BOTH matches AND messages
-    const maxMatches = matchUsers.length > 0 ? parseInt(matchUsers[0].match_count) : 1;
-    const maxMessages = messageUsers.length > 0 ? parseFloat(messageUsers[0].median_messages) : 1;
-
-    const combinedLeaderboard = allUsers
-      .filter(u => parseInt(u.match_count) > 0 && parseFloat(u.median_messages) > 0)
-      .map(user => {
-        const matchScore = (parseInt(user.match_count) / maxMatches) * 50;
-        const messageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
-        return {
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          match_count: parseInt(user.match_count),
-          median_messages: parseFloat(user.median_messages),
-          combined_score: Math.round(matchScore + messageScore)
-        };
-      })
-      .sort((a, b) => b.combined_score - a.combined_score)
-      .slice(0, 10);
-
     return {
-      participants: {
-        total: participants,
-        active: activeUsers,
-        engagement_rate: participants > 0 ? Math.round((activeUsers / participants) * 100) : 0
-      },
-      whitelist: {
-        total: parseInt(whitelist.total_active || 0),
-        registered: parseInt(whitelist.registered || 0),
-        pending: parseInt(whitelist.pending || 0),
-        removed: parseInt(whitelist.removed || 0),
-        conversion_rate: parseInt(whitelist.total_active || 0) > 0
-          ? Math.round((parseInt(whitelist.registered || 0) / parseInt(whitelist.total_active || 0)) * 100)
-          : 0
-      },
-      matching: {
-        total_matches: totalMatches,
-        average_matches_per_user: participants > 0 ? Math.round((totalMatches * 2 / participants) * 10) / 10 : 0,
-        // Reciprocity rate: % of likes that were mutual (each match = 2 mutual likes)
-        reciprocity_rate: totalLikes > 0 ? Math.round((totalMatches * 2 / totalLikes) * 100) : 0
-      },
-      swipes: {
-        total: totalSwipes,
-        likes: totalLikes,
-        passes: parseInt(likes.passes || 0),
-        users_who_swiped: parseInt(likes.users_who_swiped || 0),
-        like_rate: totalSwipes > 0 ? Math.round((totalLikes / totalSwipes) * 100) : 0
-      },
-      messages: {
-        total: totalMessages,
-        users_who_sent: parseInt(messages.users_who_sent || 0),
-        conversations_active: conversationsWithMessages,
-        average_per_conversation: totalMatches > 0 ? Math.round((totalMessages / totalMatches) * 10) / 10 : 0
-      },
-      leaderboards: {
-        matches: matchUsers.map(u => ({
-          id: u.id,
-          firstname: u.firstname,
-          lastname: u.lastname,
-          match_count: parseInt(u.match_count)
-        })),
-        messages: messageUsers.map(u => ({
-          id: u.id,
-          firstname: u.firstname,
-          lastname: u.lastname,
-          median_messages: parseFloat(u.median_messages),
-          match_count: parseInt(u.match_count)
-        })),
-        combined: combinedLeaderboard
-      }
+      participants: parseInt(participantsResult.rows[0]?.total || 0),
+      whitelist: whitelistResult.rows[0] || { total_active: 0, registered: 0, pending: 0, removed: 0 },
+      matches: matchesResult.rows[0] || { total_matches: 0, users_with_matches: 0 },
+      messages: messagesResult.rows[0] || { total_messages: 0, users_who_sent: 0, conversations_with_messages: 0 },
+      likes: likesResult.rows[0] || { total_swipes: 0, likes: 0, passes: 0, users_who_swiped: 0 },
+      activeUsers: parseInt(activeUsersResult.rows[0]?.active_users || 0)
     };
   }
 };

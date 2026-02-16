@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
+import { asyncHandler } from '../utils/errors.js';
+import { uploadLimiter } from '../middleware/rateLimit.middleware.js';
 import { photoUpload } from '../config/multer.config.js';
 import {
   uploadPhoto,
@@ -47,7 +49,7 @@ router.use(requireRole('user'));
  *       400:
  *         description: Invalid file or limit reached
  */
-router.post('/', photoUpload.single('photo'), uploadPhoto);
+router.post('/', uploadLimiter, photoUpload.single('photo'), asyncHandler(uploadPhoto));
 
 /**
  * @swagger
@@ -67,7 +69,7 @@ router.post('/', photoUpload.single('photo'), uploadPhoto);
  *       200:
  *         description: Photos retrieved successfully
  */
-router.get('/', getPhotos);
+router.get('/', asyncHandler(getPhotos));
 
 /**
  * @swagger
@@ -81,7 +83,7 @@ router.get('/', getPhotos);
  *       200:
  *         description: All photos retrieved and grouped
  */
-router.get('/all', getAllPhotos);
+router.get('/all', asyncHandler(getAllPhotos));
 
 /**
  * @swagger
@@ -111,7 +113,7 @@ router.get('/all', getAllPhotos);
  *       200:
  *         description: Photos reordered successfully
  */
-router.put('/reorder', reorderPhotos);
+router.put('/reorder', asyncHandler(reorderPhotos));
 
 /**
  * @swagger
@@ -141,7 +143,7 @@ router.put('/reorder', reorderPhotos);
  *       201:
  *         description: Photos copied successfully
  */
-router.post('/copy-to-event', copyPhotosToEvent);
+router.post('/copy-to-event', asyncHandler(copyPhotosToEvent));
 
 /**
  * @swagger
@@ -164,7 +166,7 @@ router.post('/copy-to-event', copyPhotosToEvent);
  *       404:
  *         description: Photo not found
  */
-router.delete('/:id', deletePhoto);
+router.delete('/:id', asyncHandler(deletePhoto));
 
 /**
  * @swagger
@@ -187,6 +189,6 @@ router.delete('/:id', deletePhoto);
  *       404:
  *         description: Photo not found
  */
-router.put('/:id/primary', setPrimaryPhoto);
+router.put('/:id/primary', asyncHandler(setPrimaryPhoto));
 
 export default router;

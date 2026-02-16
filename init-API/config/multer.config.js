@@ -1,18 +1,25 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Base upload directory
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
 const ORGA_DIR = path.join(UPLOAD_DIR, 'orga');
 const EVENTS_DIR = path.join(UPLOAD_DIR, 'events');
 
-// Ensure directories exist
+function resolveUploadPath(filePath) {
+  const fullPath = path.resolve(UPLOAD_DIR, '..', filePath);
+  if (!fullPath.startsWith(path.resolve(UPLOAD_DIR))) {
+    throw new Error('Chemin de fichier invalide');
+  }
+  return fullPath;
+}
+
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
@@ -26,7 +33,6 @@ if (!fs.existsSync(EVENTS_DIR)) {
   fs.mkdirSync(EVENTS_DIR, { recursive: true });
 }
 
-// Allowed MIME types
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/jpg',
@@ -34,13 +40,10 @@ const ALLOWED_MIME_TYPES = [
   'image/webp'
 ];
 
-// Max file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-// Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Create user-specific directory
     const userId = req.user?.id;
     if (!userId) {
       return cb(new Error('User ID required'), null);
@@ -54,14 +57,12 @@ const storage = multer.diskStorage({
     cb(null, userDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `photo-${uniqueSuffix}${ext}`);
   }
 });
 
-// File filter
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     cb(null, true);
@@ -70,39 +71,44 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Multer instance for photo uploads
 export const photoUpload = multer({
   storage,
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 1 // One file at a time
+    files: 1
   }
 });
 
-// Multer instance for multiple photos
 export const photosUpload = multer({
   storage,
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 6 // Max 6 photos at once
+    files: 6
   }
 });
 
-// Helper to get public URL path for a photo
+export const stripExif = async (filePath) => {
+  const fullPath = resolveUploadPath(filePath);
+  try {
+    const buffer = await sharp(fullPath).rotate().toBuffer();
+    await sharp(buffer).toFile(fullPath);
+  } catch {
+    throw new Error('Le fichier n\'est pas une image valide');
+  }
+};
+
 export const getPhotoUrl = (userId, filename) => {
   return `/uploads/photos/${userId}/${filename}`;
 };
 
-// Helper to get full file path
 export const getPhotoPath = (userId, filename) => {
   return path.join(PHOTOS_DIR, String(userId), filename);
 };
 
-// Helper to delete a photo file
 export const deletePhotoFile = (filePath) => {
-  const fullPath = path.join(UPLOAD_DIR, '..', filePath);
+  const fullPath = resolveUploadPath(filePath);
   if (fs.existsSync(fullPath)) {
     fs.unlinkSync(fullPath);
     return true;
@@ -110,9 +116,6 @@ export const deletePhotoFile = (filePath) => {
   return false;
 };
 
-// ============ ORGA LOGO UPLOAD ============
-
-// Storage for orga logos
 const orgaLogoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const orgaId = req.user?.id;
@@ -133,7 +136,6 @@ const orgaLogoStorage = multer.diskStorage({
   }
 });
 
-// Multer instance for orga logo upload
 export const orgaLogoUpload = multer({
   storage: orgaLogoStorage,
   fileFilter,
@@ -143,12 +145,10 @@ export const orgaLogoUpload = multer({
   }
 });
 
-// Helper to get orga logo URL
 export const getOrgaLogoUrl = (orgaId, filename) => {
   return `/uploads/orga/${orgaId}/${filename}`;
 };
 
-// Helper to delete orga logo
 export const deleteOrgaLogo = (orgaId) => {
   const orgaDir = path.join(ORGA_DIR, String(orgaId));
   if (fs.existsSync(orgaDir)) {
@@ -163,9 +163,6 @@ export const deleteOrgaLogo = (orgaId) => {
   return false;
 };
 
-// ============ EVENT BANNER UPLOAD ============
-
-// Storage for event banners
 const eventBannerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const eventId = req.params.id;
@@ -186,7 +183,6 @@ const eventBannerStorage = multer.diskStorage({
   }
 });
 
-// Multer instance for event banner upload
 export const eventBannerUpload = multer({
   storage: eventBannerStorage,
   fileFilter,
@@ -196,12 +192,10 @@ export const eventBannerUpload = multer({
   }
 });
 
-// Helper to get event banner URL
 export const getEventBannerUrl = (eventId, filename) => {
   return `/uploads/events/${eventId}/${filename}`;
 };
 
-// Helper to delete event banner
 export const deleteEventBanner = (eventId) => {
   const eventDir = path.join(EVENTS_DIR, String(eventId));
   if (fs.existsSync(eventDir)) {
@@ -212,6 +206,33 @@ export const deleteEventBanner = (eventId) => {
         return true;
       }
     }
+  }
+  return false;
+};
+
+export const deleteUserPhotosDir = (userId) => {
+  const userDir = path.join(PHOTOS_DIR, String(userId));
+  if (fs.existsSync(userDir)) {
+    fs.rmSync(userDir, { recursive: true });
+    return true;
+  }
+  return false;
+};
+
+export const deleteOrgaDir = (orgaId) => {
+  const orgaDir = path.join(ORGA_DIR, String(orgaId));
+  if (fs.existsSync(orgaDir)) {
+    fs.rmSync(orgaDir, { recursive: true });
+    return true;
+  }
+  return false;
+};
+
+export const deleteEventDir = (eventId) => {
+  const eventDir = path.join(EVENTS_DIR, String(eventId));
+  if (fs.existsSync(eventDir)) {
+    fs.rmSync(eventDir, { recursive: true });
+    return true;
   }
   return false;
 };

@@ -9,9 +9,11 @@ import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '.
 import { success, created } from '../utils/responses.js';
 import { validateCustomFields, validateCustomData } from '../utils/customFieldsSchema.js';
 import { emitUserJoinedEvent } from '../socket/emitters.js';
-import { getEventBannerUrl, deleteEventBanner } from '../config/multer.config.js';
- 
-import bcrypt from 'bcrypt';
+import { getEventBannerUrl, deleteEventBanner, deleteEventDir } from '../config/multer.config.js';
+
+import { withTransaction } from '../config/database.js';
+import { getCache, setCache } from '../utils/cache.js';
+import argon2 from 'argon2';
  
 export const EventController = {
   async create(req, res) {
@@ -21,10 +23,9 @@ export const EventController = {
       has_password_access, access_password, cooldown, custom_fields,
       app_start_at, app_end_at, theme
     } = req.body;
- 
-    // Validate app availability dates (required)
-    if (!app_start_at) {
-      throw new ValidationError('Le champ app_start_at est requis');
+
+    if (!app_start_at || !app_end_at) {
+      throw new ValidationError('Les dates de disponibilité de l\'app sont requises');
     }
     if (!app_end_at) {
       throw new ValidationError('Le champ app_end_at est requis');
@@ -43,8 +44,7 @@ export const EventController = {
     if (appEnd <= appStart) {
       throw new ValidationError('La date de fin de l\'app doit être après la date de début');
     }
- 
-    // Validate physical event dates if provided
+
     if (start_at && end_at) {
       const physicalStart = new Date(start_at);
       const physicalEnd = new Date(end_at);
@@ -55,7 +55,7 @@ export const EventController = {
  
     let access_password_hash = null;
     if (has_password_access && access_password) {
-      access_password_hash = await bcrypt.hash(access_password, 10);
+      access_password_hash = await argon2.hash(access_password);
     } else if (has_password_access && !access_password) {
       throw new ValidationError('Un mot de passe est requis quand has_password_access est activé');
     }
@@ -68,15 +68,12 @@ export const EventController = {
       orga_id: req.user.id,
       name,
       description: description || ' ',
-      // Physical event dates (optional)
       start_at: start_at || null,
       end_at: end_at || null,
       location: location || null,
-      // App availability dates (required) - pass validated Date objects
-      app_start_at: appStart,
-      app_end_at: appEnd,
-      // Theme
-      theme: theme ? theme.toLowerCase() : 'général',
+      app_start_at,
+      app_end_at,
+      theme: theme || 'général',
       max_participants,
       is_public: is_public !== undefined ? is_public : true,
       has_whitelist: has_whitelist || false,
@@ -125,13 +122,10 @@ export const EventController = {
           max_participants,
           description,
           theme,
-          // Physical event dates (optional)
           start_at,
           end_at,
-          // App availability dates (required)
           app_start_at,
           app_end_at,
-          // Images
           banner_path,
           orga_logo,
           participant_count: await EventModel.countParticipants(event.id)
@@ -165,14 +159,11 @@ export const EventController = {
  
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
-    // Physical event dates (optional)
     if (start_at !== undefined) updates.start_at = start_at || null;
     if (end_at !== undefined) updates.end_at = end_at || null;
     if (location !== undefined) updates.location = location || null;
-    // App availability dates
     if (app_start_at) updates.app_start_at = app_start_at;
     if (app_end_at) updates.app_end_at = app_end_at;
-    // Theme
     if (theme) updates.theme = theme;
     if (max_participants !== undefined) updates.max_participants = max_participants;
     if (is_public !== undefined) updates.is_public = is_public;
@@ -182,15 +173,14 @@ export const EventController = {
     if (cooldown !== undefined) updates.cooldown = cooldown;
  
     if (access_password) {
-      updates.access_password_hash = await bcrypt.hash(access_password, 10);
+      updates.access_password_hash = await argon2.hash(access_password);
     }
     
     if (custom_fields) {
       validateCustomFields(custom_fields);
       updates.custom_fields = custom_fields;
     }
- 
-    // Validate physical event dates if provided
+
     if (updates.start_at || updates.end_at) {
       const start = new Date(updates.start_at || event.start_at);
       const end = new Date(updates.end_at || event.end_at);
@@ -199,8 +189,7 @@ export const EventController = {
         throw new ValidationError('La date de fin de l\'événement doit être après la date de début');
       }
     }
- 
-    // Validate app availability dates if provided
+
     if (updates.app_start_at || updates.app_end_at) {
       const appStart = new Date(updates.app_start_at || event.app_start_at);
       const appEnd = new Date(updates.app_end_at || event.app_end_at);
@@ -215,8 +204,7 @@ export const EventController = {
     }
  
     const updatedEvent = await EventModel.update(eventId, updates);
-    delete updatedEvent.access_password_hash;
-    
+
     return success(res, updatedEvent, 'Événement mis à jour');
   },
  
@@ -231,7 +219,8 @@ export const EventController = {
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez supprimer que vos propres événements');
     }
- 
+
+    deleteEventDir(eventId);
     await EventModel.delete(eventId);
     return success(res, null, 'Événement supprimé');
   },
@@ -265,30 +254,26 @@ export const EventController = {
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez supprimer que les participants de vos événements');
     }
- 
-    // Check if user is registered
+
     const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!registration) {
       throw new NotFoundError('Ce participant n\'est pas inscrit à cet événement');
     }
  
     if (action === 'delete') {
-      // SUPPRESSION COMPLETE : comme s'il n'avait jamais existé
-      // Delete all matches and their messages
-      await MatchModel.deleteUserMatchesInEvent(userId, eventId);
-      // Delete all likes/swipes
-      await MatchModel.deleteUserLikesInEvent(userId, eventId);
-      // Remove registration (with profil_info)
-      await RegistrationModel.delete(userId, eventId);
- 
+      await withTransaction(async (client) => {
+        await MatchModel.deleteUserMatchesInEvent(userId, eventId, client);
+        await MatchModel.deleteUserLikesInEvent(userId, eventId, client);
+        await RegistrationModel.delete(userId, eventId, client);
+      });
+
       return success(res, null, 'Participant supprimé définitivement');
     } else {
-      // BLOCAGE : données persistantes, accès bloqué
-      // Archive matches (read-only conversations)
-      await MatchModel.archiveUserMatchesInEvent(userId, eventId);
-      // Keep registration but block user
-      await BlockedUserModel.block(eventId, userId, 'Bloqué par l\'organisateur');
- 
+      await withTransaction(async (client) => {
+        await MatchModel.archiveUserMatchesInEvent(userId, eventId, client);
+        await BlockedUserModel.block(eventId, userId, 'Bloqué par l\'organisateur', client);
+      });
+
       return success(res, null, 'Participant bloqué de l\'événement');
     }
   },
@@ -325,17 +310,13 @@ export const EventController = {
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Accès non autorisé');
     }
- 
-    // Check if already blocked
+
     const isBlocked = await BlockedUserModel.isBlocked(eventId, user_id);
     if (isBlocked) {
       throw new ConflictError('Cet utilisateur est déjà bloqué');
     }
- 
-    // Archive matches if they exist
+
     await MatchModel.archiveUserMatchesInEvent(user_id, eventId);
- 
-    // Block the user
     await BlockedUserModel.block(eventId, user_id, reason || 'Bloqué par l\'organisateur');
  
     return success(res, null, 'Utilisateur bloqué');
@@ -358,11 +339,8 @@ export const EventController = {
     if (!isBlocked) {
       throw new NotFoundError('Cet utilisateur n\'est pas bloqué');
     }
- 
-    // Unblock user
+
     await BlockedUserModel.unblock(eventId, userId);
- 
-    // Unarchive matches so conversations work again
     await MatchModel.unarchiveUserMatchesInEvent(userId, eventId);
  
     return success(res, null, 'Utilisateur débloqué');
@@ -381,21 +359,18 @@ export const EventController = {
     if (!event.is_public) {
       throw new ForbiddenError('Cet événement n\'est pas public');
     }
- 
-    // Check if user is blocked from this event
+
     const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
     if (isBlocked) {
       throw new ForbiddenError('Vous n\'êtes plus autorisé à vous inscrire à cet événement');
     }
- 
-    // Check whitelist if enabled
+
     if (event.has_whitelist) {
       const user = await UserModel.findById(userId);
       const isWhitelisted = await WhitelistModel.isWhitelisted(eventId, user.tel);
       if (!isWhitelisted) {
         throw new ForbiddenError('Vous n\'êtes pas autorisé à accéder à cet événement');
       }
-      // Link user to whitelist entry
       await WhitelistModel.linkUser(user.tel, userId);
     }
  
@@ -403,7 +378,13 @@ export const EventController = {
       if (!access_password) {
         throw new ValidationError('Un mot de passe est requis pour accéder à cet événement');
       }
-      const validPassword = await bcrypt.compare(access_password, event.access_password_hash);
+      const hash = await EventModel.getAccessPasswordHash(eventId);
+      let validPassword = false;
+      try {
+        if (hash) {
+          validPassword = await argon2.verify(hash, access_password);
+        }
+      } catch {}
       if (!validPassword) {
         throw new ValidationError('Mot de passe incorrect');
       }
@@ -413,17 +394,10 @@ export const EventController = {
     if (existing) {
       throw new ConflictError('Vous êtes déjà inscrit à cet événement');
     }
-  
-    if (event.max_participants) {
-      const currentCount = await EventModel.countParticipants(eventId);
-      if (currentCount >= event.max_participants) {
-        throw new ConflictError('L\'événement a atteint le nombre maximum de participants');
-      }
-    }
-  
-    if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
+
+    if (event.custom_fields?.length > 0) {
       const requiredFields = event.custom_fields.filter(field => field.required);
-      
+
       if (requiredFields.length > 0) {
         if (!profil_info || Object.keys(profil_info).length === 0) {
           throw new ValidationError('Les informations de profil sont requises pour cet événement');
@@ -433,10 +407,18 @@ export const EventController = {
         validateCustomData(event.custom_fields, profil_info);
       }
     }
-  
-    const registration = await RegistrationModel.create(userId, eventId, profil_info || {});
- 
-    // Emit user joined event via Socket.io (use getUserBasicInfo to include photos)
+
+    const registration = await withTransaction(async (client) => {
+      if (event.max_participants) {
+        await EventModel.findByIdForUpdate(eventId, client);
+        const currentCount = await EventModel.countParticipants(eventId, client);
+        if (currentCount >= event.max_participants) {
+          throw new ConflictError('L\'événement a atteint le nombre maximum de participants');
+        }
+      }
+      return await RegistrationModel.create(userId, eventId, profil_info || {}, client);
+    });
+
     const userWithPhotos = await MatchModel.getUserBasicInfo(userId);
     emitUserJoinedEvent(eventId, {
       id: userWithPhotos.id,
@@ -462,15 +444,13 @@ export const EventController = {
     if (!registration) {
       throw new NotFoundError('Inscription non trouvée');
     }
- 
-    // Check if user is blocked
+
     const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
     if (isBlocked) {
       throw new ForbiddenError('Vous ne pouvez plus modifier votre profil sur cet événement');
     }
- 
-    // Validate custom data if event has custom fields
-    if (event.custom_fields && Array.isArray(event.custom_fields) && event.custom_fields.length > 0) {
+
+    if (event.custom_fields?.length > 0) {
       if (profil_info && Object.keys(profil_info).length > 0) {
         validateCustomData(event.custom_fields, profil_info);
       }
@@ -501,7 +481,7 @@ export const EventController = {
       upcoming: upcoming !== 'false',
       location,
       search,
-      limit: limit ? parseInt(limit) : 20,
+      limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
  
@@ -522,7 +502,7 @@ export const EventController = {
     const filters = {
       upcoming: upcoming === 'true',
       past: past === 'true',
-      limit: limit ? parseInt(limit) : 20,
+      limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
  
@@ -572,17 +552,70 @@ export const EventController = {
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Accès non autorisé');
     }
- 
-    const statistics = await EventModel.getEventStatistics(eventId);
- 
-    return success(res, {
+
+    const cacheKey = `stats:${eventId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return success(res, cached);
+    }
+
+    const raw = await EventModel.getEventRawStatistics(eventId);
+
+    const { participants, whitelist, matches, messages, likes, activeUsers } = raw;
+
+    const totalMatches = parseInt(matches.total_matches || 0);
+    const totalLikes = parseInt(likes.likes || 0);
+    const totalSwipes = parseInt(likes.total_swipes || 0);
+    const totalMessages = parseInt(messages.total_messages || 0);
+    const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
+
+    const statistics = {
+      participants: {
+        total: participants,
+        active: activeUsers,
+        engagement_rate: participants > 0 ? Math.round((activeUsers / participants) * 100) : 0
+      },
+      whitelist: {
+        total: parseInt(whitelist.total_active || 0),
+        registered: parseInt(whitelist.registered || 0),
+        pending: parseInt(whitelist.pending || 0),
+        removed: parseInt(whitelist.removed || 0),
+        conversion_rate: parseInt(whitelist.total_active || 0) > 0
+          ? Math.round((parseInt(whitelist.registered || 0) / parseInt(whitelist.total_active || 0)) * 100)
+          : 0
+      },
+      matching: {
+        total_matches: totalMatches,
+        average_matches_per_user: participants > 0 ? Math.round((totalMatches * 2 / participants) * 10) / 10 : 0,
+        reciprocity_rate: totalLikes > 0 ? Math.round((totalMatches * 2 / totalLikes) * 100) : 0
+      },
+      swipes: {
+        total: totalSwipes,
+        likes: totalLikes,
+        passes: parseInt(likes.passes || 0),
+        users_who_swiped: parseInt(likes.users_who_swiped || 0),
+        like_rate: totalSwipes > 0 ? Math.round((totalLikes / totalSwipes) * 100) : 0
+      },
+      messages: {
+        total: totalMessages,
+        users_who_sent: parseInt(messages.users_who_sent || 0),
+        conversations_active: conversationsWithMessages,
+        average_per_conversation: totalMatches > 0 ? Math.round((totalMessages / totalMatches) * 10) / 10 : 0
+      }
+    };
+
+    const result = {
       event: {
         id: event.id,
         name: event.name,
         has_whitelist: event.has_whitelist
       },
       statistics
-    });
+    };
+
+    setCache(cacheKey, result, 30000);
+
+    return success(res, result);
   },
  
   async uploadBanner(req, res) {
@@ -603,8 +636,7 @@ export const EventController = {
     }
  
     const bannerPath = getEventBannerUrl(eventId, req.file.filename);
- 
-    // Update banner_path in database
+
     const updatedEvent = await EventModel.update(eventId, { banner_path: bannerPath });
  
     return success(res, { banner_path: updatedEvent.banner_path }, 'Bannière uploadée avec succès');
@@ -622,11 +654,8 @@ export const EventController = {
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
- 
-    // Delete file from disk
+
     deleteEventBanner(eventId);
- 
-    // Set banner_path to null in database
     await EventModel.update(eventId, { banner_path: null });
  
     return success(res, null, 'Bannière supprimée avec succès');
@@ -645,8 +674,7 @@ export const EventController = {
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
- 
-    // Check if already registered
+
     const existing = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (existing) {
       return success(res, {
@@ -655,8 +683,7 @@ export const EventController = {
         message: 'Vous êtes déjà inscrit à cet événement'
       });
     }
- 
-    // Check if event is public
+
     if (!event.is_public) {
       return success(res, {
         eligible: false,
@@ -664,8 +691,7 @@ export const EventController = {
         message: 'Cet événement n\'est pas public'
       });
     }
- 
-    // Check if user is blocked
+
     const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
     if (isBlocked) {
       return success(res, {
@@ -674,8 +700,7 @@ export const EventController = {
         message: 'Vous n\'êtes plus autorisé à vous inscrire à cet événement'
       });
     }
- 
-    // Check whitelist if enabled
+
     if (event.has_whitelist) {
       const user = await UserModel.findById(userId);
       const isWhitelisted = await WhitelistModel.isWhitelisted(eventId, user.tel);
@@ -687,8 +712,7 @@ export const EventController = {
         });
       }
     }
- 
-    // Check if event is full
+
     if (event.max_participants) {
       const currentCount = await EventModel.countParticipants(eventId);
       if (currentCount >= event.max_participants) {
@@ -699,8 +723,7 @@ export const EventController = {
         });
       }
     }
- 
-    // User is eligible
+
     return success(res, {
       eligible: true,
       requires_password: event.has_password_access,

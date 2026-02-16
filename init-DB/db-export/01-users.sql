@@ -36,11 +36,11 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 ALTER TABLE ONLY public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
 -- Unique constraints
-ALTER TABLE ONLY public.users ADD CONSTRAINT unique_mail UNIQUE (mail);
+CREATE UNIQUE INDEX unique_mail ON public.users (LOWER(mail));
 ALTER TABLE ONLY public.users ADD CONSTRAINT unique_tel UNIQUE (tel);
 
 -- Indexes
-CREATE INDEX idx_user_mail ON public.users USING btree (mail);
+CREATE INDEX idx_user_mail ON public.users USING btree (LOWER(mail));
 CREATE INDEX idx_user_tel ON public.users USING btree (tel);
 CREATE INDEX idx_user_birthday ON public.users USING btree (birthday);
 

@@ -29,11 +29,12 @@ export const OrgaModel = {
   },
 
   async update(id, updates) {
+    const allowedColumns = ['nom', 'description', 'mail', 'tel', 'logo_path'];
     const fields = [];
     const values = [];
     let paramCount = 1;
 
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).filter(key => allowedColumns.includes(key)).forEach(key => {
       fields.push(`${key} = $${paramCount}`);
       values.push(updates[key]);
       paramCount++;
