@@ -13,7 +13,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --chown=nodejs:nodejs package*.json ./
 
 # Install production dependencies only
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY --chown=nodejs:nodejs . .
