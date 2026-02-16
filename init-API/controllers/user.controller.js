@@ -1,10 +1,13 @@
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { UserModel } from '../models/user.model.js';
 import { TokenModel } from '../models/token.model.js';
+import { normalizePhone } from '../utils/phone.js';
+import { deleteUserPhotosDir } from '../config/multer.config.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
+import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -12,13 +15,13 @@ export const UserController = {
   async register(req, res) {
     const { firstname, lastname, mail, tel, birthday, password } = req.body;
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await argon2.hash(password);
 
     const user = await UserModel.create({
       firstname,
       lastname,
-      mail,
-      tel,
+      mail: mail?.toLowerCase(),
+      tel: normalizePhone(tel),
       birthday,
       password_hash
     });
@@ -29,13 +32,14 @@ export const UserController = {
   async login(req, res) {
     const { tel, password } = req.body;
 
-    const user = await UserModel.findByTel(tel);
-    if (!user) {
-      throw new UnauthorizedError('Identifiants incorrects');
-    }
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) {
+    const user = await UserModel.findByTel(normalizePhone(tel));
+    let valid = false;
+    try {
+      if (user?.password_hash) {
+        valid = await argon2.verify(user.password_hash, password);
+      }
+    } catch {}
+    if (!user || !valid) {
       throw new UnauthorizedError('Identifiants incorrects');
     }
 
@@ -51,9 +55,10 @@ export const UserController = {
 
     await TokenModel.create(user.id, refreshToken, expiry, 'user');
 
+    setRefreshCookie(res, refreshToken);
+
     return success(res, {
       accessToken,
-      refreshToken,
       user: {
         id: user.id,
         firstname: user.firstname,
@@ -65,7 +70,7 @@ export const UserController = {
   },
 
   async refreshToken(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token requis');
@@ -79,21 +84,32 @@ export const UserController = {
     const entityId = tokenEntry.user_id || tokenEntry.orga_id;
     const role = tokenEntry.user_type;
 
+    await TokenModel.delete(refreshToken);
+
     const accessToken = jwt.sign(
       { id: entityId, role: role },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
 
+    const newRefreshToken = crypto.randomBytes(64).toString('hex');
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 7);
+    await TokenModel.create(entityId, newRefreshToken, expiry, role);
+
+    setRefreshCookie(res, newRefreshToken);
+
     return success(res, { accessToken }, 'Token rafraîchi');
   },
 
   async logout(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (refreshToken) {
       await TokenModel.delete(refreshToken);
     }
+
+    clearRefreshCookie(res);
 
     return success(res, null, 'Déconnexion réussie');
   },
@@ -114,20 +130,8 @@ export const UserController = {
 
     if (firstname) updates.firstname = firstname;
     if (lastname) updates.lastname = lastname;
-    if (mail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(mail)) {
-        throw new ValidationError('Format d\'email invalide');
-      }
-      updates.mail = mail;
-    }
-    if (tel) {
-      const telRegex = /^[0-9+\s()-]{10,20}$/;
-      if (!telRegex.test(tel)) {
-        throw new ValidationError('Format de téléphone invalide');
-      }
-      updates.tel = tel;
-    }
+    if (mail) updates.mail = mail.toLowerCase();
+    if (tel) updates.tel = normalizePhone(tel);
 
     if (Object.keys(updates).length === 0) {
       throw new ValidationError('Aucune donnée à mettre à jour');
@@ -139,6 +143,7 @@ export const UserController = {
 
   async deleteAccount(req, res) {
     await TokenModel.deleteAllForUser(req.user.id, 'user');
+    deleteUserPhotosDir(req.user.id);
     await UserModel.delete(req.user.id);
     return success(res, null, 'Compte supprimé');
   }

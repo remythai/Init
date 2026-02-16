@@ -48,8 +48,8 @@ export const MatchModel = {
   /**
    * Record a like or pass
    */
-  async createLike(likerId, likedId, eventId, isLike) {
-    const result = await pool.query(
+  async createLike(likerId, likedId, eventId, isLike, client = pool) {
+    const result = await client.query(
       `INSERT INTO likes (liker_id, liked_id, event_id, is_like)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
@@ -61,8 +61,8 @@ export const MatchModel = {
   /**
    * Check if a like exists (for mutual like detection)
    */
-  async findLike(likerId, likedId, eventId) {
-    const result = await pool.query(
+  async findLike(likerId, likedId, eventId, client = pool) {
+    const result = await client.query(
       `SELECT * FROM likes
        WHERE liker_id = $1 AND liked_id = $2 AND event_id = $3 AND is_like = true`,
       [likerId, likedId, eventId]
@@ -85,13 +85,12 @@ export const MatchModel = {
   /**
    * Create a match between two users for an event
    */
-  async createMatch(user1Id, user2Id, eventId) {
-    // Always store with smaller id first for consistency
+  async createMatch(user1Id, user2Id, eventId, client = pool) {
     const [smallerId, largerId] = user1Id < user2Id
       ? [user1Id, user2Id]
       : [user2Id, user1Id];
 
-    const result = await pool.query(
+    const result = await client.query(
       `INSERT INTO matches (user1_id, user2_id, event_id)
        VALUES ($1, $2, $3)
        RETURNING *`,
@@ -274,10 +273,6 @@ export const MatchModel = {
     );
     return result.rows[0];
   },
-
-  // =========================================================================
-  // MESSAGING
-  // =========================================================================
 
   /**
    * Get messages for a match
@@ -503,8 +498,8 @@ export const MatchModel = {
   /**
    * Archive all matches for a user in a specific event
    */
-  async archiveUserMatchesInEvent(userId, eventId) {
-    const result = await pool.query(
+  async archiveUserMatchesInEvent(userId, eventId, client = pool) {
+    const result = await client.query(
       `UPDATE matches
        SET is_archived = true
        WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
@@ -531,25 +526,22 @@ export const MatchModel = {
   /**
    * Delete all matches for a user in a specific event (and their messages)
    */
-  async deleteUserMatchesInEvent(userId, eventId) {
-    // First get match IDs to delete messages
-    const matchesResult = await pool.query(
+  async deleteUserMatchesInEvent(userId, eventId, client = pool) {
+    const matchesResult = await client.query(
       `SELECT id FROM matches
        WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)`,
       [eventId, userId]
     );
     const matchIds = matchesResult.rows.map(m => m.id);
 
-    // Delete messages for these matches
     if (matchIds.length > 0) {
-      await pool.query(
+      await client.query(
         `DELETE FROM messages WHERE match_id = ANY($1)`,
         [matchIds]
       );
     }
 
-    // Delete matches
-    const result = await pool.query(
+    const result = await client.query(
       `DELETE FROM matches
        WHERE event_id = $1 AND (user1_id = $2 OR user2_id = $2)
        RETURNING id`,
@@ -561,9 +553,8 @@ export const MatchModel = {
   /**
    * Delete all likes (swipes) for a user in a specific event
    */
-  async deleteUserLikesInEvent(userId, eventId) {
-    // Delete likes where user is liker or liked
-    const result = await pool.query(
+  async deleteUserLikesInEvent(userId, eventId, client = pool) {
+    const result = await client.query(
       `DELETE FROM likes
        WHERE event_id = $1 AND (liker_id = $2 OR liked_id = $2)`,
       [eventId, userId]

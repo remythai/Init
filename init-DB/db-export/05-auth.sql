@@ -46,3 +46,19 @@ ALTER TABLE ONLY public.refresh_tokens
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_orga_id_fkey
     FOREIGN KEY (orga_id) REFERENCES public.orga(id) ON DELETE CASCADE;
+
+-- Function: clean expired tokens on each new insert
+CREATE FUNCTION public.clean_expired_tokens() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    DELETE FROM public.refresh_tokens WHERE expiry <= NOW();
+    RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION public.clean_expired_tokens() OWNER TO dating_admin;
+
+CREATE TRIGGER trg_clean_expired_tokens
+    BEFORE INSERT ON public.refresh_tokens
+    FOR EACH ROW EXECUTE FUNCTION public.clean_expired_tokens();

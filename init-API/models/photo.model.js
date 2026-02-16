@@ -5,7 +5,6 @@ class PhotoModel {
    * Create a new photo record
    */
   async create({ userId, filePath, eventId = null, displayOrder = 0, isPrimary = false }) {
-    // If setting as primary, unset other primary photos for this context
     if (isPrimary) {
       await this.unsetPrimaryForContext(userId, eventId);
     }
@@ -99,7 +98,6 @@ class PhotoModel {
     const photo = await this.findById(id);
     if (!photo) return null;
 
-    // If setting as primary, unset other primary photos for this context
     if (isPrimary) {
       await this.unsetPrimaryForContext(photo.user_id, photo.event_id);
     }
