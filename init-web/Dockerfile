@@ -14,6 +14,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ARG BACKEND_INTERNAL_URL
 ENV BACKEND_INTERNAL_URL=$BACKEND_INTERNAL_URL
 
+ENV NODE_OPTIONS="--max-old-space-size=512"
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM node:20-alpine AS runner
