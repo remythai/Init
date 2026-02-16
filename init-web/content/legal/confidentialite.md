@@ -2,13 +2,7 @@
 
 **Application Init**
 
-*Version 1.0 - En vigueur au 03/02/2026*
-
----
-
-## Avertissement - Version Bêta
-
-L'Application Init est actuellement en phase de test (version bêta). Durant cette période, un seul événement est disponible sur la plateforme. **L'intégralité des données personnelles collectées (comptes, profils, photos, messages, matchs) sera définitivement supprimée au plus tard le 18 février 2026**, date de fin de la période de test.
+*Version 1.1 - En vigueur au 16/02/2026*
 
 ---
 
@@ -56,7 +50,7 @@ Les données personnelles collectées dans le cadre de notre activité sont les 
 
 - Nom et prénom
 - Adresse email
-- Numéro de téléphone (optionnel)
+- Numéro de téléphone (optionnel pour les organisateurs)
 - Date de naissance
 - Photographies de profil
 - Informations de profil personnalisées selon les événements (champs définis par les organisateurs)
@@ -89,13 +83,11 @@ D'autres données personnelles sont collectées lorsque vous effectuez les opér
 
 Elles sont conservées par le responsable du traitement dans des conditions raisonnables de sécurité, pour une durée de :
 
-- **Données de compte** : durée de vie du compte + 30 jours après suppression
+- **Données de compte** : durée de vie du compte, supprimées immédiatement à la suppression du compte
 - **Messages** : durée du match, supprimés si le match est annulé ou le compte supprimé
-- **Données d'événement** : durée de l'événement + 12 mois
-- **Signalements** : 24 mois
-- **Logs techniques** : 12 mois
-
-**Disposition spécifique à la phase bêta** : Nonobstant les durées mentionnées ci-dessus, l'ensemble des données personnelles collectées durant la phase bêta sera définitivement supprimé au plus tard le **18 février 2026**.
+- **Données d'événement** : durée de l'événement, supprimées à la suppression de l'événement par l'organisateur
+- **Signalements** : conservés tant que l'événement associé existe
+- **Logs techniques** : rotation automatique (fichiers limités en taille)
 
 L'éditeur est susceptible de conserver certaines données à caractère personnel au-delà des délais annoncés ci-dessus afin de remplir ses obligations légales ou réglementaires.
 
@@ -109,6 +101,8 @@ New York, NY 10013, États-Unis
 https://www.digitalocean.com
 Support : https://www.digitalocean.com/support
 
+Le trafic transite par le réseau de **Cloudflare, Inc.** (CDN et protection DDoS), dont le siège est situé au 101 Townsend Street, San Francisco, CA 94107, États-Unis.
+
 **Article 3.4 : Transmission des données à des tiers**
 
 Les données peuvent être accessibles aux personnes suivantes :
@@ -120,12 +114,12 @@ Les données ne sont jamais vendues à des tiers.
 
 **Article 3.5 : Politique en matière de cookies**
 
-Le site utilise des cookies techniques nécessaires au fonctionnement :
+Le site utilise des cookies et mécanismes de stockage strictement nécessaires au fonctionnement du service :
 
-- **Cookies d'authentification** : stockage du token de session (localStorage)
-- **Cookies de préférences** : mémorisation de vos choix d'interface
+- **Cookie d'authentification (`refreshToken`)** : cookie technique HttpOnly utilisé pour maintenir votre session de connexion. Ce cookie n'est pas accessible par JavaScript, a une durée de 7 jours et est automatiquement envoyé avec les requêtes vers l'API. Il ne nécessite pas de consentement car il est indispensable au fonctionnement du service (article 82 de la loi Informatique et Libertés).
+- **Stockage local (localStorage)** : le token d'accès (durée de vie : 15 minutes) et le type de compte sont stockés localement dans votre navigateur pour le fonctionnement de l'application.
 
-Aucun cookie publicitaire ou de tracking n'est utilisé.
+Aucun cookie publicitaire, analytique ou de tracking n'est utilisé.
 
 ---
 
@@ -175,8 +169,6 @@ Consultez le site cnil.fr pour plus d'informations sur vos droits.
 
 L'éditeur du site Init se réserve le droit de pouvoir modifier la présente Politique à tout moment afin d'assurer aux utilisateurs du site sa conformité avec le droit en vigueur.
 
-Les éventuelles modifications ne sauraient avoir d'incidence sur les achats antérieurement effectués sur le site, lesquels restent soumis à la Politique en vigueur au moment de l'achat et telle qu'acceptée par l'utilisateur lors de la validation de l'achat.
-
 L'utilisateur est invité à prendre connaissance de cette Politique à chaque fois qu'il utilise nos services, sans qu'il soit nécessaire de l'en prévenir formellement.
 
-La présente politique, éditée le 3 février 2026, a été mise à jour le 3 février 2026.
+La présente politique, éditée le 3 février 2026, a été mise à jour le 16 février 2026.

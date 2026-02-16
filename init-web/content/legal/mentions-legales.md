@@ -1,12 +1,6 @@
 # Mentions légales
 
-*En vigueur au 03/02/2026*
-
----
-
-## Avertissement - Version Bêta
-
-Le Site init-app.tech est actuellement en phase de test (version bêta). Durant cette période, un seul événement est disponible. L'ensemble des données utilisateurs sera définitivement supprimé au plus tard le **18 février 2026**, date de fin de la période de test.
+*En vigueur au 16/02/2026*
 
 ---
 
@@ -28,9 +22,13 @@ Ci-après l'"Éditeur".
 
 ## Hébergeur
 
-L'hébergeur du Site est la société DigitalOcean, dont le siège social est situé au ZEKERINSTRAAT 17A 1014 AMSTERDAM PAYS-BAS.
+L'hébergeur du Site est la société DigitalOcean, LLC, dont le siège social est situé au 101 Avenue of the Americas, 10th Floor, New York, NY 10013, États-Unis.
 
-Le numéro de téléphone de l'hébergeur est le 330820320363.
+Site web : https://www.digitalocean.com
+
+Le trafic du Site transite par le réseau de Cloudflare, Inc., dont le siège est situé au 101 Townsend Street, San Francisco, CA 94107, États-Unis.
+
+Site web : https://www.cloudflare.com
 
 ---
 
@@ -48,6 +46,8 @@ En vertu de la Réglementation applicable en matière de protection des Données
 
 - par mail à l'adresse email antton.ducos@gmail.com
 
+Pour plus d'informations, consultez notre [Politique de confidentialité](/legal/confidentialite).
+
 ---
 
 ## Propriété intellectuelle
@@ -56,4 +56,4 @@ Toute utilisation, reproduction, diffusion, commercialisation, modification de t
 
 ---
 
-*Rédigé sur http://legalplace.fr*
+*Date de dernière mise à jour : 16/02/2026*
