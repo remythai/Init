@@ -1,15 +1,3 @@
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-COPY package*.json ./
-
-RUN npm ci
-
-# Copy source code AFTER installing dependencies
-COPY . .
-
-# Production stage
 FROM node:20-alpine
 
 WORKDIR /app
@@ -21,16 +9,16 @@ RUN apk add --no-cache wget
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy only package files
+# Copy only package files first (layer cache)
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install production dependencies in the final stage
-RUN npm ci --only=production
+# Install production dependencies only
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
+# Copy source code
 COPY --chown=nodejs:nodejs . .
 
-# Create uploads directory with correct permissions AFTER copy
-# This ensures the directory exists and is writable even if volume is mounted
+# Create uploads directory with correct permissions
 RUN mkdir -p /app/uploads/photos && \
     chown -R nodejs:nodejs /app/uploads && \
     chmod -R 755 /app/uploads
@@ -43,4 +31,3 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 CMD ["node", "server.js"]
-

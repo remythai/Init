@@ -1,5 +1,9 @@
 .env
 .env.development
+.DS_Store
+.next/
+.vscode/
 
-retour
 CLAUDE.md
+retour
+test.txt
