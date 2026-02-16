@@ -1,4 +1,5 @@
 export function normalizePhone(phone) {
+  if (!phone) return null;
   let normalized = phone.replace(/[^\d+]/g, '');
 
   if (normalized.startsWith('0') && normalized.length === 10) {
