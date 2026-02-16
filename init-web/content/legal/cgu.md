@@ -2,20 +2,7 @@
 
 **Application Init**
 
-*Version 1.0 - En vigueur au 03/02/2026*
-
----
-
-## Avertissement - Version Bêta
-
-L'Application Init est actuellement en phase de test (version bêta). Durant cette période :
-
-- **Un seul événement** est disponible sur la plateforme.
-- L'ensemble des fonctionnalités peut être amené à évoluer sans préavis.
-- Des dysfonctionnements ou interruptions de service peuvent survenir.
-- **L'intégralité des données utilisateurs (comptes, profils, photos, messages, matchs) sera définitivement supprimée au plus tard le 18 février 2026**, marquant la fin de la période de test.
-
-En utilisant l'Application durant cette phase bêta, vous reconnaissez et acceptez ces conditions particulières. L'Éditeur décline toute responsabilité en cas de perte de données ou d'indisponibilité du service durant cette période.
+*Version 1.1 - En vigueur au 16/02/2026*
 
 ---
 
@@ -35,6 +22,13 @@ DigitalOcean, LLC
 101 Avenue of the Americas, 10th Floor
 New York, NY 10013, États-Unis
 Site web : https://www.digitalocean.com
+
+**CDN et protection**
+
+Cloudflare, Inc.
+101 Townsend Street
+San Francisco, CA 94107, États-Unis
+Site web : https://www.cloudflare.com
 
 **Contact Protection des Données (DPO)**
 
@@ -298,7 +292,7 @@ Le traitement de vos données personnelles est détaillé dans notre [Politique 
 **Points clés :**
 
 - Vos données sont traitées conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés
-- Vous disposez de droits sur vos données : accès, rectification, suppression, opposition
+- Vous disposez de droits sur vos données : accès, rectification, suppression, opposition, portabilité
 - Vos données sont supprimées automatiquement à la fin de l'événement
 - Pour exercer vos droits : antton.ducos@gmail.com
 
@@ -394,7 +388,7 @@ Conséquences de la suppression :
 
 - Votre profil disparaît immédiatement de l'Application
 - Vos matchs et conversations sont supprimés
-- Toutes vos données personnelles sont effacées définitivement sous 30 jours
+- Toutes vos données personnelles sont effacées immédiatement et définitivement
 
 La suppression de votre compte est définitive et irréversible.
 
@@ -406,9 +400,7 @@ L'Éditeur peut suspendre ou résilier votre accès à l'Application, à tout mo
 
 À la fermeture de chaque événement, toutes vos données liées à cet événement sont automatiquement et définitivement supprimées.
 
-**Durant la phase bêta** : L'ensemble des données utilisateurs sera supprimé de manière définitive et irréversible au plus tard le **18 février 2026**, indépendamment de la date de fermeture de l'événement.
-
-Pensez à sauvegarder toute information que vous souhaitez conserver avant cette date.
+Pensez à sauvegarder toute information que vous souhaitez conserver avant la date de fermeture de l'événement.
 
 ---
 
@@ -470,6 +462,6 @@ Pour toute question concernant les présentes CGU ou l'utilisation de l'Applicat
 
 ---
 
-*Date de dernière mise à jour : 03/02/2026*
+*Date de dernière mise à jour : 16/02/2026*
 
 En utilisant l'Application Init, vous reconnaissez avoir lu, compris et accepté les présentes Conditions Générales d'Utilisation.
