@@ -333,56 +333,5 @@ export const EventModel = {
       likes: likesResult.rows[0] || { total_swipes: 0, likes: 0, passes: 0, users_who_swiped: 0 },
       activeUsers: parseInt(activeUsersResult.rows[0]?.active_users || 0)
     };
-  },
-
-  async getLeaderboardData(eventId) {
-    const result = await pool.query(`
-      WITH user_all_matches AS (
-        SELECT user_id, match_id
-        FROM (
-          SELECT user1_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
-          UNION ALL
-          SELECT user2_id as user_id, id as match_id FROM matches WHERE event_id = $1 AND is_archived = false
-        ) m
-      ),
-      message_counts_per_match AS (
-        SELECT sender_id, match_id, COUNT(*) as msg_count
-        FROM messages
-        GROUP BY sender_id, match_id
-      ),
-      user_match_message_counts AS (
-        SELECT
-          uam.user_id,
-          uam.match_id,
-          COALESCE(mc.msg_count, 0) as msg_count
-        FROM user_all_matches uam
-        LEFT JOIN message_counts_per_match mc
-          ON mc.sender_id = uam.user_id AND mc.match_id = uam.match_id
-      ),
-      user_stats AS (
-        SELECT
-          user_id,
-          COUNT(*) as match_count,
-          ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY msg_count)::numeric, 1) as median_messages
-        FROM user_match_message_counts
-        GROUP BY user_id
-      )
-      SELECT
-        u.id,
-        u.firstname,
-        u.lastname,
-        COALESCE(us.match_count, 0) as match_count,
-        COALESCE(us.median_messages, 0) as median_messages
-      FROM users u
-      JOIN user_event_rel uer ON uer.user_id = u.id AND uer.event_id = $1
-      LEFT JOIN user_stats us ON us.user_id = u.id
-      WHERE us.match_count > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM event_blocked_users ebu WHERE ebu.event_id = $1 AND ebu.user_id = u.id
-        )
-      ORDER BY us.match_count DESC NULLS LAST
-    `, [eventId]);
-
-    return result.rows;
   }
 };

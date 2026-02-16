@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { UserModel } from '../models/user.model.js';
@@ -7,6 +7,7 @@ import { normalizePhone } from '../utils/phone.js';
 import { deleteUserPhotosDir } from '../config/multer.config.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
+import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -14,12 +15,12 @@ export const UserController = {
   async register(req, res) {
     const { firstname, lastname, mail, tel, birthday, password } = req.body;
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await argon2.hash(password);
 
     const user = await UserModel.create({
       firstname,
       lastname,
-      mail,
+      mail: mail?.toLowerCase(),
       tel: normalizePhone(tel),
       birthday,
       password_hash
@@ -32,8 +33,12 @@ export const UserController = {
     const { tel, password } = req.body;
 
     const user = await UserModel.findByTel(normalizePhone(tel));
-    const hash = user?.password_hash || '$2b$10$dummyhashtopreventtimingattack000000000000000000000';
-    const valid = await bcrypt.compare(password, hash);
+    let valid = false;
+    try {
+      if (user?.password_hash) {
+        valid = await argon2.verify(user.password_hash, password);
+      }
+    } catch {}
     if (!user || !valid) {
       throw new UnauthorizedError('Identifiants incorrects');
     }
@@ -50,9 +55,10 @@ export const UserController = {
 
     await TokenModel.create(user.id, refreshToken, expiry, 'user');
 
+    setRefreshCookie(res, refreshToken);
+
     return success(res, {
       accessToken,
-      refreshToken,
       user: {
         id: user.id,
         firstname: user.firstname,
@@ -64,7 +70,7 @@ export const UserController = {
   },
 
   async refreshToken(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token requis');
@@ -91,15 +97,19 @@ export const UserController = {
     expiry.setDate(expiry.getDate() + 7);
     await TokenModel.create(entityId, newRefreshToken, expiry, role);
 
-    return success(res, { accessToken, refreshToken: newRefreshToken }, 'Token rafraîchi');
+    setRefreshCookie(res, newRefreshToken);
+
+    return success(res, { accessToken }, 'Token rafraîchi');
   },
 
   async logout(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (refreshToken) {
       await TokenModel.delete(refreshToken);
     }
+
+    clearRefreshCookie(res);
 
     return success(res, null, 'Déconnexion réussie');
   },
@@ -120,7 +130,7 @@ export const UserController = {
 
     if (firstname) updates.firstname = firstname;
     if (lastname) updates.lastname = lastname;
-    if (mail) updates.mail = mail;
+    if (mail) updates.mail = mail.toLowerCase();
     if (tel) updates.tel = normalizePhone(tel);
 
     if (Object.keys(updates).length === 0) {

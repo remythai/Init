@@ -13,7 +13,7 @@ import { getEventBannerUrl, deleteEventBanner, deleteEventDir } from '../config/
 
 import { withTransaction } from '../config/database.js';
 import { getCache, setCache } from '../utils/cache.js';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
  
 export const EventController = {
   async create(req, res) {
@@ -55,7 +55,7 @@ export const EventController = {
  
     let access_password_hash = null;
     if (has_password_access && access_password) {
-      access_password_hash = await bcrypt.hash(access_password, 10);
+      access_password_hash = await argon2.hash(access_password);
     } else if (has_password_access && !access_password) {
       throw new ValidationError('Un mot de passe est requis quand has_password_access est activé');
     }
@@ -173,7 +173,7 @@ export const EventController = {
     if (cooldown !== undefined) updates.cooldown = cooldown;
  
     if (access_password) {
-      updates.access_password_hash = await bcrypt.hash(access_password, 10);
+      updates.access_password_hash = await argon2.hash(access_password);
     }
     
     if (custom_fields) {
@@ -379,7 +379,12 @@ export const EventController = {
         throw new ValidationError('Un mot de passe est requis pour accéder à cet événement');
       }
       const hash = await EventModel.getAccessPasswordHash(eventId);
-      const validPassword = await bcrypt.compare(access_password, hash);
+      let validPassword = false;
+      try {
+        if (hash) {
+          validPassword = await argon2.verify(hash, access_password);
+        }
+      } catch {}
       if (!validPassword) {
         throw new ValidationError('Mot de passe incorrect');
       }
@@ -554,10 +559,7 @@ export const EventController = {
       return success(res, cached);
     }
 
-    const [raw, leaderboardUsers] = await Promise.all([
-      EventModel.getEventRawStatistics(eventId),
-      EventModel.getLeaderboardData(eventId)
-    ]);
+    const raw = await EventModel.getEventRawStatistics(eventId);
 
     const { participants, whitelist, matches, messages, likes, activeUsers } = raw;
 
@@ -566,36 +568,6 @@ export const EventController = {
     const totalSwipes = parseInt(likes.total_swipes || 0);
     const totalMessages = parseInt(messages.total_messages || 0);
     const conversationsWithMessages = parseInt(messages.conversations_with_messages || 0);
-
-    const matchUsers = leaderboardUsers
-      .filter(u => parseInt(u.match_count) > 0)
-      .sort((a, b) => parseInt(b.match_count) - parseInt(a.match_count))
-      .slice(0, 10);
-
-    const messageUsers = leaderboardUsers
-      .filter(u => parseFloat(u.median_messages) > 0)
-      .sort((a, b) => parseFloat(b.median_messages) - parseFloat(a.median_messages))
-      .slice(0, 10);
-
-    const maxMatches = matchUsers.length > 0 ? parseInt(matchUsers[0].match_count) : 1;
-    const maxMessages = messageUsers.length > 0 ? parseFloat(messageUsers[0].median_messages) : 1;
-
-    const combinedLeaderboard = leaderboardUsers
-      .filter(u => parseInt(u.match_count) > 0 && parseFloat(u.median_messages) > 0)
-      .map(user => {
-        const matchScore = (parseInt(user.match_count) / maxMatches) * 50;
-        const messageScore = (parseFloat(user.median_messages) / maxMessages) * 50;
-        return {
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          match_count: parseInt(user.match_count),
-          median_messages: parseFloat(user.median_messages),
-          combined_score: Math.round(matchScore + messageScore)
-        };
-      })
-      .sort((a, b) => b.combined_score - a.combined_score)
-      .slice(0, 10);
 
     const statistics = {
       participants: {
@@ -629,22 +601,6 @@ export const EventController = {
         users_who_sent: parseInt(messages.users_who_sent || 0),
         conversations_active: conversationsWithMessages,
         average_per_conversation: totalMatches > 0 ? Math.round((totalMessages / totalMatches) * 10) / 10 : 0
-      },
-      leaderboards: {
-        matches: matchUsers.map(u => ({
-          id: u.id,
-          firstname: u.firstname,
-          lastname: u.lastname,
-          match_count: parseInt(u.match_count)
-        })),
-        messages: messageUsers.map(u => ({
-          id: u.id,
-          firstname: u.firstname,
-          lastname: u.lastname,
-          median_messages: parseFloat(u.median_messages),
-          match_count: parseInt(u.match_count)
-        })),
-        combined: combinedLeaderboard
       }
     };
 

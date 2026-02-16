@@ -3,11 +3,12 @@
 ## Stack technique
 - **Backend** : Node.js, Express 4.18, ES Modules
 - **DB** : PostgreSQL 17 (pg driver)
-- **Auth** : JWT + bcrypt, refresh tokens
+- **Auth** : JWT + argon2, refresh token HttpOnly cookie
 - **Realtime** : Socket.io
 - **Upload** : Multer
 - **Docs** : Swagger (swagger-jsdoc + swagger-ui-express)
-- **Infra** : Docker Compose (API + DB + Frontend Next.js)
+- **Infra** : Docker Compose (API + DB + Frontend Next.js), Cloudflare (DNS + SSL)
+- **Domaine** : `init-app.tech` (registrar get.tech, DNS gere par Cloudflare)
 
 ## Architecture
 - **Pattern** : MVC (Models = requetes SQL uniquement, Controllers = logique metier, Routes = routing + middleware)
@@ -39,7 +40,7 @@
 - Nettoyage fichiers disque sur suppression compte/event (multer.config.js)
 - Regex email/phone strictes dans validation.middleware.js
 - Index DB dans leurs fichiers respectifs (04-matching.sql, 03-events.sql)
-- Timing attack login corrige (bcrypt.compare toujours execute, dummy hash si user inexistant)
+- Timing attack login corrige (argon2.verify toujours execute, dummy hash si user inexistant)
 - Rotation refresh token a chaque /refresh (ancien supprime, nouveau genere et renvoye)
 - Strip EXIF metadata sur photos uploadees (sharp.rotate() preserve l'orientation, supprime GPS/metadata)
 - Error handler ne leak plus le nom de colonne DB (err.column supprime du message 23502)
@@ -52,7 +53,7 @@
 - Limite explicite body size 100kb sur express.json() et express.urlencoded()
 - Echappement wildcards LIKE/ILIKE (%, _, \\ echappes dans les recherches event)
 
-- npm audit : 2 vulns high dans tar (dep de bcrypt via node-pre-gyp) — install-time only, corrige par migration argon2 en Phase 4
+- npm audit : bcrypt supprime, argon2 en place (Phase 4)
 - WebSocket IDOR corrige : chat:join verifie appartenance au match, event:join verifie inscription a l'event (+ typing/markRead bloques si pas dans le room)
 - Handlers unhandledRejection et uncaughtException : log l'erreur puis graceful shutdown (evite crash silencieux)
 - Limite longueur messages chat 5000 caracteres (XSS stocke non pertinent car React echappe par defaut)
@@ -61,11 +62,27 @@
 - trust proxy active (prepare Cloudflare : rate limiting utilise X-Forwarded-For au lieu de l'IP proxy)
 - Docker logging persistant avec rotation (json-file, 10m max, 3-5 fichiers par service)
 
-### Phase 4 - Apres la beta
-18. Email orga beta hardcode dans orga.controller.js:17
-22. Migrer bcrypt vers argon2 pour le hash des mots de passe (user, orga, event) — necessite migration des hash existants en DB
-23. Enlever le leaderboard
-24. Password policy plus stricte (majuscule, chiffre, caractere special)
+### Phase 4 - Apres la beta (DONE)
+- ~~Email orga beta hardcode~~ → supprime (orga.controller.js)
+- ~~Migrer bcrypt vers argon2~~ → argon2.hash/verify partout (user, orga, event controllers)
+- ~~Enlever le leaderboard~~ → supprime (model, controller, frontend stats page, event.service.ts)
+- ~~Password policy plus stricte~~ → majuscule + chiffre + caractere special requis (validation.middleware.js)
+
+### Phase 5 - Securite tokens (DONE)
+- ~~Refresh token en localStorage~~ → migre vers cookie HttpOnly (secure en prod, sameSite=lax, path=/api, maxAge=7j)
+- cookie-parser middleware ajoute (server.js)
+- utils/cookie.js : setRefreshCookie() + clearRefreshCookie() helpers
+- user.controller + orga.controller : login/refresh/logout lisent/ecrivent le cookie au lieu du body
+- auth.service.ts : credentials:'include' sur tous les fetch, refreshToken supprime du localStorage
+- event.service.ts : credentials:'include' sur uploadEventBanner (fetch direct)
+- Access token reste en localStorage (short-lived 15min, necessaire pour Socket.io auth)
+
+## Deploiement
+- Domaine : `init-app.tech` (registrar get.tech)
+- DNS : Cloudflare (nameservers migres depuis get.tech)
+- SSL/TLS : Full (Strict) via Cloudflare
+- CORS_ORIGINS : `https://init-app.tech` en prod
+- TODO : ajouter A record dans Cloudflare DNS une fois propagation terminee
 
 ## Branches
 - `main` : branche principale

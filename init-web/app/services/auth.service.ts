@@ -21,7 +21,6 @@ export interface RegisterData {
 
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
   user?: User;
   orga?: Orga;
 }
@@ -72,14 +71,6 @@ class AuthService {
     this.setStorageItem('token', token);
   }
 
-  setRefreshToken(refreshToken: string) {
-    if (!refreshToken) {
-      console.warn('Tentative de sauvegarde d\'un refreshToken undefined/null');
-      return;
-    }
-    this.setStorageItem('refreshToken', refreshToken);
-  }
-
   setUserType(userType: 'user' | 'orga') {
     if (!userType) {
       console.warn('Tentative de sauvegarde d\'un userType undefined/null');
@@ -92,17 +83,12 @@ class AuthService {
     return this.getStorageItem('token');
   }
 
-  getRefreshToken(): string | null {
-    return this.getStorageItem('refreshToken');
-  }
-
   getUserType(): 'user' | 'orga' | null {
     return this.getStorageItem('userType') as 'user' | 'orga' | null;
   }
 
   clearAuth() {
     this.removeStorageItem('token');
-    this.removeStorageItem('refreshToken');
     this.removeStorageItem('userType');
   }
 
@@ -118,6 +104,7 @@ class AuthService {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -129,24 +116,19 @@ class AuthService {
     }
 
     let token = null;
-    let refreshToken = null;
     let payload = null;
 
     if (data.data && data.data.accessToken) {
       token = data.data.accessToken;
-      refreshToken = data.data.refreshToken;
       payload = data.data;
     } else if (data.data && data.data.token) {
       token = data.data.token;
-      refreshToken = data.data.refreshToken;
       payload = data.data;
     } else if (data.accessToken) {
       token = data.accessToken;
-      refreshToken = data.refreshToken;
       payload = data;
     } else if (data.token) {
       token = data.token;
-      refreshToken = data.refreshToken;
       payload = data;
     }
 
@@ -156,7 +138,6 @@ class AuthService {
     }
 
     this.setToken(token);
-    if (refreshToken) this.setRefreshToken(refreshToken);
     this.setUserType(isOrganizer ? 'orga' : 'user');
 
     console.log('Login réussi pour', isOrganizer ? 'orga' : 'user');
@@ -188,6 +169,7 @@ class AuthService {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -209,7 +191,6 @@ class AuthService {
 
   async logout(): Promise<void> {
     const token = this.getToken();
-    const refreshToken = this.getRefreshToken();
     const userType = this.getUserType();
 
     if (token && userType) {
@@ -221,7 +202,7 @@ class AuthService {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ refreshToken }),
+          credentials: 'include',
         });
       } catch (error) {
         console.error('Logout error:', error);
@@ -232,11 +213,10 @@ class AuthService {
   }
 
   async refreshAccessToken(): Promise<string | null> {
-    const refreshToken = this.getRefreshToken();
     const userType = this.getUserType();
 
-    if (!refreshToken || !userType) {
-      console.log('No refresh token or user type available');
+    if (!userType) {
+      console.log('No user type available');
       return null;
     }
 
@@ -246,7 +226,7 @@ class AuthService {
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -284,6 +264,7 @@ class AuthService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      credentials: 'include',
     });
 
     if (response.status === 401) {
@@ -298,6 +279,7 @@ class AuthService {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
+          credentials: 'include',
         });
       } else {
         throw new Error('Failed to refresh token');
@@ -324,21 +306,20 @@ class AuthService {
     }
 
     try {
-      // Validate token by calling the appropriate endpoint
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
       let response = await fetch(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
-      // If token expired, try to refresh
       if (response.status === 401) {
         console.log('Token expired, attempting refresh...');
         token = await this.refreshAccessToken();
 
         if (token) {
-          // Retry with new token
           response = await fetch(`${API_URL}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
           });
         } else {
           console.log('Failed to refresh token');
@@ -438,6 +419,7 @@ class AuthService {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      credentials: 'include',
       body: formData,
     });
 
@@ -480,9 +462,9 @@ class AuthService {
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
       let response = await fetch(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
-      // If token expired, try to refresh
       if (response.status === 401) {
         console.log('Token expired, attempting refresh...');
         token = await this.refreshAccessToken();
@@ -490,6 +472,7 @@ class AuthService {
         if (token) {
           response = await fetch(`${API_URL}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
           });
         } else {
           console.log('Failed to refresh token');
