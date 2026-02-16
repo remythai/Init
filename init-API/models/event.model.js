@@ -1,5 +1,9 @@
 import pool from '../config/database.js';
 
+function escapeLike(str) {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 const SAFE_COLS = [
   'id', 'orga_id', 'name', 'description', 'start_at', 'end_at', 'event_date',
   'location', 'app_start_at', 'app_end_at', 'theme', 'cooldown', 'max_participants',
@@ -153,14 +157,14 @@ export const EventModel = {
     }
 
     if (filters.location) {
-      query += ` AND e.location ILIKE $${paramCount}`;
-      values.push(`%${filters.location}%`);
+      query += ` AND e.location ILIKE $${paramCount} ESCAPE '\\'`;
+      values.push(`%${escapeLike(filters.location)}%`);
       paramCount++;
     }
 
     if (filters.search) {
-      query += ` AND (e.name ILIKE $${paramCount} OR e.description ILIKE $${paramCount})`;
-      values.push(`%${filters.search}%`);
+      query += ` AND (e.name ILIKE $${paramCount} ESCAPE '\\' OR e.description ILIKE $${paramCount} ESCAPE '\\')`;
+      values.push(`%${escapeLike(filters.search)}%`);
       paramCount++;
     }
 

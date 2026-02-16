@@ -32,12 +32,9 @@ export const UserController = {
     const { tel, password } = req.body;
 
     const user = await UserModel.findByTel(normalizePhone(tel));
-    if (!user) {
-      throw new UnauthorizedError('Identifiants incorrects');
-    }
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) {
+    const hash = user?.password_hash || '$2b$10$dummyhashtopreventtimingattack000000000000000000000';
+    const valid = await bcrypt.compare(password, hash);
+    if (!user || !valid) {
       throw new UnauthorizedError('Identifiants incorrects');
     }
 
@@ -81,13 +78,20 @@ export const UserController = {
     const entityId = tokenEntry.user_id || tokenEntry.orga_id;
     const role = tokenEntry.user_type;
 
+    await TokenModel.delete(refreshToken);
+
     const accessToken = jwt.sign(
       { id: entityId, role: role },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
 
-    return success(res, { accessToken }, 'Token rafraîchi');
+    const newRefreshToken = crypto.randomBytes(64).toString('hex');
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 7);
+    await TokenModel.create(entityId, newRefreshToken, expiry, role);
+
+    return success(res, { accessToken, refreshToken: newRefreshToken }, 'Token rafraîchi');
   },
 
   async logout(req, res) {

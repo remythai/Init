@@ -429,6 +429,9 @@ export const MatchController = {
     if (!content || !content.trim()) {
       throw new ValidationError('Le contenu du message est requis');
     }
+    if (content.trim().length > 5000) {
+      throw new ValidationError('Le message est trop long (max 5000 caractères)');
+    }
 
     const match = await MatchModel.getMatchById(matchId, userId);
     if (!match) {

@@ -18,7 +18,7 @@ export const initializeSocket = (httpServer) => {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
 
-        if (process.env.NODE_ENV !== 'production') {
+        if (allowedOrigins.length === 0) {
           return callback(null, true);
         }
 

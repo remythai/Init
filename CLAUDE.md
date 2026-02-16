@@ -39,11 +39,33 @@
 - Nettoyage fichiers disque sur suppression compte/event (multer.config.js)
 - Regex email/phone strictes dans validation.middleware.js
 - Index DB dans leurs fichiers respectifs (04-matching.sql, 03-events.sql)
+- Timing attack login corrige (bcrypt.compare toujours execute, dummy hash si user inexistant)
+- Rotation refresh token a chaque /refresh (ancien supprime, nouveau genere et renvoye)
+- Strip EXIF metadata sur photos uploadees (sharp.rotate() preserve l'orientation, supprime GPS/metadata)
+- Error handler ne leak plus le nom de colonne DB (err.column supprime du message 23502)
+- Pagination plafonnee a 100 (Math.min sur les deux endpoints pagines)
+- Cache en memoire (30s TTL) sur endpoint stats/leaderboard (utils/cache.js)
+- Validation contenu image via sharp (rejette les fichiers non-image meme si mimetype correct, 400)
+- Headers securite helmet (X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, etc.)
+- Rate limiting global API (100 req/min par IP) + upload strict (20 req/min) sur photo.routes.js
+
+- Limite explicite body size 100kb sur express.json() et express.urlencoded()
+- Echappement wildcards LIKE/ILIKE (%, _, \\ echappes dans les recherches event)
+
+- npm audit : 2 vulns high dans tar (dep de bcrypt via node-pre-gyp) — install-time only, corrige par migration argon2 en Phase 4
+- WebSocket IDOR corrige : chat:join verifie appartenance au match, event:join verifie inscription a l'event (+ typing/markRead bloques si pas dans le room)
+- Handlers unhandledRejection et uncaughtException : log l'erreur puis graceful shutdown (evite crash silencieux)
+- Limite longueur messages chat 5000 caracteres (XSS stocke non pertinent car React echappe par defaut)
+- CORS socket : ne depend plus de NODE_ENV, utilise CORS_ORIGINS (si vide = tout accepte = dev, si rempli = strict)
+- Path traversal : resolveUploadPath() verifie que le chemin reste dans UPLOAD_DIR (stripExif, deletePhotoFile)
+- trust proxy active (prepare Cloudflare : rate limiting utilise X-Forwarded-For au lieu de l'IP proxy)
+- Docker logging persistant avec rotation (json-file, 10m max, 3-5 fichiers par service)
 
 ### Phase 4 - Apres la beta
 18. Email orga beta hardcode dans orga.controller.js:17
 22. Migrer bcrypt vers argon2 pour le hash des mots de passe (user, orga, event) — necessite migration des hash existants en DB
 23. Enlever le leaderboard
+24. Password policy plus stricte (majuscule, chiffre, caractere special)
 
 ## Branches
 - `main` : branche principale

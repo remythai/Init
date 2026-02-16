@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +11,14 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads
 const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
 const ORGA_DIR = path.join(UPLOAD_DIR, 'orga');
 const EVENTS_DIR = path.join(UPLOAD_DIR, 'events');
+
+function resolveUploadPath(filePath) {
+  const fullPath = path.resolve(UPLOAD_DIR, '..', filePath);
+  if (!fullPath.startsWith(path.resolve(UPLOAD_DIR))) {
+    throw new Error('Chemin de fichier invalide');
+  }
+  return fullPath;
+}
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -80,6 +89,16 @@ export const photosUpload = multer({
   }
 });
 
+export const stripExif = async (filePath) => {
+  const fullPath = resolveUploadPath(filePath);
+  try {
+    const buffer = await sharp(fullPath).rotate().toBuffer();
+    await sharp(buffer).toFile(fullPath);
+  } catch {
+    throw new Error('Le fichier n\'est pas une image valide');
+  }
+};
+
 export const getPhotoUrl = (userId, filename) => {
   return `/uploads/photos/${userId}/${filename}`;
 };
@@ -89,7 +108,7 @@ export const getPhotoPath = (userId, filename) => {
 };
 
 export const deletePhotoFile = (filePath) => {
-  const fullPath = path.join(UPLOAD_DIR, '..', filePath);
+  const fullPath = resolveUploadPath(filePath);
   if (fs.existsSync(fullPath)) {
     fs.unlinkSync(fullPath);
     return true;

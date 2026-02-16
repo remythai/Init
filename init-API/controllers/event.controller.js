@@ -12,6 +12,7 @@ import { emitUserJoinedEvent } from '../socket/emitters.js';
 import { getEventBannerUrl, deleteEventBanner, deleteEventDir } from '../config/multer.config.js';
 
 import { withTransaction } from '../config/database.js';
+import { getCache, setCache } from '../utils/cache.js';
 import bcrypt from 'bcrypt';
 
 export const EventController = {
@@ -465,7 +466,7 @@ export const EventController = {
       upcoming: upcoming !== 'false',
       location,
       search,
-      limit: limit ? parseInt(limit) : 20,
+      limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
 
@@ -486,7 +487,7 @@ export const EventController = {
     const filters = {
       upcoming: upcoming === 'true',
       past: past === 'true',
-      limit: limit ? parseInt(limit) : 20,
+      limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
 
@@ -535,6 +536,12 @@ export const EventController = {
 
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Accès non autorisé');
+    }
+
+    const cacheKey = `stats:${eventId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return success(res, cached);
     }
 
     const [raw, leaderboardUsers] = await Promise.all([
@@ -631,14 +638,18 @@ export const EventController = {
       }
     };
 
-    return success(res, {
+    const result = {
       event: {
         id: event.id,
         name: event.name,
         has_whitelist: event.has_whitelist
       },
       statistics
-    });
+    };
+
+    setCache(cacheKey, result, 30000);
+
+    return success(res, result);
   },
 
   async uploadBanner(req, res) {

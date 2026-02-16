@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
+import { uploadLimiter } from '../middleware/rateLimit.middleware.js';
 import { photoUpload } from '../config/multer.config.js';
 import {
   uploadPhoto,
@@ -48,7 +49,7 @@ router.use(requireRole('user'));
  *       400:
  *         description: Invalid file or limit reached
  */
-router.post('/', photoUpload.single('photo'), asyncHandler(uploadPhoto));
+router.post('/', uploadLimiter, photoUpload.single('photo'), asyncHandler(uploadPhoto));
 
 /**
  * @swagger

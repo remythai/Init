@@ -16,8 +16,10 @@ import photoRoutes from './routes/photo.routes.js';
 import reportRoutes from './routes/report.routes.js';
 
 import morgan from 'morgan';
+import helmet from 'helmet';
 import pool from './config/database.js';
 import { errorHandler } from './utils/errors.js';
+import { apiLimiter } from './middleware/rateLimit.middleware.js';
 import { initializeSocket } from './socket/index.js';
 
 dotenv.config();
@@ -30,9 +32,11 @@ const httpServer = createServer(app);
 
 const io = initializeSocket(httpServer);
 
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 const uploadsPath = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath));
@@ -71,6 +75,8 @@ app.get('/api-docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
+
+app.use('/api', apiLimiter);
 
 // Photo routes must come before user routes (more specific path first)
 app.use('/api/users/photos', photoRoutes);
@@ -119,3 +125,13 @@ function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  shutdown('unhandledRejection');
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  shutdown('uncaughtException');
+});

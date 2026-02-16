@@ -1,6 +1,6 @@
 import PhotoModel from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
-import { getPhotoUrl, deletePhotoFile } from '../config/multer.config.js';
+import { getPhotoUrl, deletePhotoFile, stripExif } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
 import { success } from '../utils/responses.js';
 
@@ -42,6 +42,11 @@ export const uploadPhoto = async (req, res) => {
     const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
 
     const filePath = getPhotoUrl(userId, req.file.filename);
+    try {
+      await stripExif(filePath);
+    } catch {
+      throw new AppError(400, 'Le fichier n\'est pas une image valide');
+    }
     const photo = await PhotoModel.create({
       userId,
       filePath,
