@@ -1,3 +1,5 @@
+import { isValidPhone } from '../utils/phone.js';
+
 export const validationSchemas = {
   userRegister: {
     firstname: { required: true, type: 'string', minLength: 2, maxLength: 100 },
@@ -53,14 +55,13 @@ const validators = {
   },
   
   email: (value) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(value)) return "Format d'email invalide";
     return null;
   },
-  
+
   phone: (value) => {
-    const phoneRegex = /^[0-9+\s()-]{10,20}$/;
-    if (!phoneRegex.test(value)) return 'Format de téléphone invalide';
+    if (!isValidPhone(value)) return 'Format de téléphone invalide';
     return null;
   },
   

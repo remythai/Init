@@ -143,6 +143,7 @@ ALTER TABLE ONLY public.event_whitelist
 -- Indexes
 CREATE INDEX idx_event_whitelist_phone ON public.event_whitelist USING btree (phone);
 CREATE INDEX idx_event_whitelist_event_status ON public.event_whitelist USING btree (event_id, status);
+CREATE INDEX idx_event_whitelist_user_id ON public.event_whitelist USING btree (user_id);
 
 -- Trigger
 CREATE TRIGGER update_event_whitelist_updated_at

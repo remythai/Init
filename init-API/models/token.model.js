@@ -1,4 +1,9 @@
+import crypto from 'crypto';
 import pool from '../config/database.js';
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 export const TokenModel = {
   async create(entityId, token, expiry, userType = 'user') {
@@ -8,26 +13,29 @@ export const TokenModel = {
 
     const userId = userType === 'user' ? entityId : null;
     const orgaId = userType === 'orga' ? entityId : null;
+    const tokenHash = hashToken(token);
 
     const result = await pool.query(
-      `INSERT INTO refresh_tokens (user_id, orga_id, token, expiry, user_type) 
-       VALUES ($1, $2, $3, $4, $5) 
+      `INSERT INTO refresh_tokens (user_id, orga_id, token, expiry, user_type)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [userId, orgaId, token, expiry, userType]
+      [userId, orgaId, tokenHash, expiry, userType]
     );
     return result.rows[0];
   },
 
   async findValidToken(token) {
+    const tokenHash = hashToken(token);
     const result = await pool.query(
       'SELECT * FROM refresh_tokens WHERE token = $1 AND expiry > NOW()',
-      [token]
+      [tokenHash]
     );
     return result.rows[0];
   },
 
   async delete(token) {
-    await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [token]);
+    const tokenHash = hashToken(token);
+    await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [tokenHash]);
   },
 
   async deleteAllForUser(userId, userType = 'user') {
@@ -36,9 +44,5 @@ export const TokenModel = {
     } else {
       await pool.query('DELETE FROM refresh_tokens WHERE orga_id = $1', [userId]);
     }
-  },
-
-  async cleanExpired() {
-    await pool.query('DELETE FROM refresh_tokens WHERE expiry <= NOW()');
   }
 };

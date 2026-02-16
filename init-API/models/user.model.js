@@ -37,11 +37,12 @@ export const UserModel = {
   },
 
   async update(id, updates) {
+    const allowedColumns = ['firstname', 'lastname', 'mail', 'tel'];
     const fields = [];
     const values = [];
     let paramCount = 1;
 
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).filter(key => allowedColumns.includes(key)).forEach(key => {
       fields.push(`${key} = $${paramCount}`);
       values.push(updates[key]);
       paramCount++;

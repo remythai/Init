@@ -1,36 +1,5 @@
 import pool from '../config/database.js';
-
-/**
- * Normalize phone number to E.164 format (+33XXXXXXXXX)
- * Handles French numbers by default
- */
-export function normalizePhone(phone) {
-  // Remove all non-digit characters except leading +
-  let normalized = phone.replace(/[^\d+]/g, '');
-
-  // Handle French numbers
-  if (normalized.startsWith('0') && normalized.length === 10) {
-    // 0601020304 -> +33601020304
-    normalized = '+33' + normalized.substring(1);
-  } else if (normalized.startsWith('33') && !normalized.startsWith('+')) {
-    // 33601020304 -> +33601020304
-    normalized = '+' + normalized;
-  } else if (!normalized.startsWith('+')) {
-    // Assume French if no country code
-    normalized = '+33' + normalized;
-  }
-
-  return normalized;
-}
-
-/**
- * Validate phone number format
- */
-export function isValidPhone(phone) {
-  const normalized = normalizePhone(phone);
-  // E.164: + followed by 10-15 digits
-  return /^\+\d{10,15}$/.test(normalized);
-}
+import { normalizePhone } from '../utils/phone.js';
 
 export const WhitelistModel = {
   /**

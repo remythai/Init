@@ -93,3 +93,7 @@ ALTER TABLE ONLY public.messages
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT messages_sender_id_fkey
     FOREIGN KEY (sender_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+-- Indexes
+CREATE INDEX idx_messages_match_id ON public.messages USING btree (match_id);
+CREATE INDEX idx_messages_sender_id ON public.messages USING btree (sender_id);

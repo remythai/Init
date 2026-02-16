@@ -2,7 +2,7 @@ import { ReportModel } from '../models/report.model.js';
 import { EventModel } from '../models/event.model.js';
 import { MatchModel } from '../models/match.model.js';
 import PhotoModel from '../models/photo.model.js';
-import pool from '../config/database.js';
+import { RegistrationModel } from '../models/registration.model.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
 
@@ -181,19 +181,13 @@ export const ReportController = {
     // Get profile info if it's a profile report
     let profileInfo = null;
     if (report.report_type === 'profile') {
-      const profileResult = await pool.query(
-        `SELECT uer.profil_info, u.firstname, u.lastname, u.birthday
-         FROM user_event_rel uer
-         JOIN users u ON uer.user_id = u.id
-         WHERE uer.user_id = $1 AND uer.event_id = $2`,
-        [report.reported_user_id, eventId]
-      );
-      if (profileResult.rows[0]) {
+      const profile = await RegistrationModel.findUserProfileByEvent(report.reported_user_id, eventId);
+      if (profile) {
         profileInfo = {
-          firstname: profileResult.rows[0].firstname,
-          lastname: profileResult.rows[0].lastname,
-          birthday: profileResult.rows[0].birthday,
-          custom_fields: profileResult.rows[0].profil_info
+          firstname: profile.firstname,
+          lastname: profile.lastname,
+          birthday: profile.birthday,
+          custom_fields: profile.profil_info
         };
       }
     }

@@ -1,8 +1,8 @@
 import pool from '../config/database.js';
 
 export const RegistrationModel = {
-  async create(userId, eventId, profilInfo) {
-    const result = await pool.query(
+  async create(userId, eventId, profilInfo, client = pool) {
+    const result = await client.query(
       `INSERT INTO user_event_rel (user_id, event_id, profil_info)
        VALUES ($1, $2, $3)
        RETURNING *`,
@@ -73,10 +73,21 @@ export const RegistrationModel = {
     return result.rows[0];
   },
 
-  async delete(userId, eventId) {
-    await pool.query(
+  async delete(userId, eventId, client = pool) {
+    await client.query(
       'DELETE FROM user_event_rel WHERE user_id = $1 AND event_id = $2',
       [userId, eventId]
     );
+  },
+
+  async findUserProfileByEvent(userId, eventId) {
+    const result = await pool.query(
+      `SELECT uer.profil_info, u.firstname, u.lastname, u.birthday
+       FROM user_event_rel uer
+       JOIN users u ON uer.user_id = u.id
+       WHERE uer.user_id = $1 AND uer.event_id = $2`,
+      [userId, eventId]
+    );
+    return result.rows[0];
   }
 };
