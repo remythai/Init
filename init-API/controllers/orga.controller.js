@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OrgaModel } from '../models/orga.model.js';
@@ -6,6 +6,7 @@ import { TokenModel } from '../models/token.model.js';
 import { normalizePhone } from '../utils/phone.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
+import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { getOrgaLogoUrl, deleteOrgaLogo, deleteOrgaDir, deleteEventDir } from '../config/multer.config.js';
 import { EventModel } from '../models/event.model.js';
 
@@ -15,17 +16,11 @@ export const OrgaController = {
   async register(req, res) {
     const { name, mail, description, tel, password } = req.body;
 
-    // Beta: restrict organizer registration to allowed emails only
-    const allowedOrgaEmails = ['mtech.bdx1@gmail.com'];
-    if (!allowedOrgaEmails.includes(mail.toLowerCase())) {
-      throw new ValidationError('Cette adresse email n\'est pas autorisée à créer un compte organisateur');
-    }
-
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await argon2.hash(password);
 
     const orga = await OrgaModel.create({
       name,
-      mail,
+      mail: mail.toLowerCase(),
       description,
       tel: normalizePhone(tel),
       password_hash
@@ -41,9 +36,13 @@ export const OrgaController = {
       throw new ValidationError('Email et mot de passe requis');
     }
 
-    const orga = await OrgaModel.findByMail(mail);
-    const hash = orga?.password_hash || '$2b$10$dummyhashtopreventtimingattack000000000000000000000';
-    const valid = await bcrypt.compare(password, hash);
+    const orga = await OrgaModel.findByMail(mail.toLowerCase());
+    let valid = false;
+    try {
+      if (orga?.password_hash) {
+        valid = await argon2.verify(orga.password_hash, password);
+      }
+    } catch {}
     if (!orga || !valid) {
       throw new UnauthorizedError('Identifiants incorrects');
     }
@@ -60,9 +59,10 @@ export const OrgaController = {
 
     await TokenModel.create(orga.id, refreshToken, expiry, 'orga');
 
+    setRefreshCookie(res, refreshToken);
+
     return success(res, {
       accessToken,
-      refreshToken,
       orga: {
         id: orga.id,
         nom: orga.nom,
@@ -88,7 +88,7 @@ export const OrgaController = {
 
     if (nom) updates.nom = nom;
     if (description !== undefined) updates.description = description;
-    if (mail) updates.mail = mail;
+    if (mail) updates.mail = mail.toLowerCase();
     if (tel) updates.tel = normalizePhone(tel);
 
     if (Object.keys(updates).length === 0) {
@@ -100,7 +100,7 @@ export const OrgaController = {
   },
 
   async refreshToken(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token requis');
@@ -127,15 +127,19 @@ export const OrgaController = {
     expiry.setDate(expiry.getDate() + 7);
     await TokenModel.create(entityId, newRefreshToken, expiry, role);
 
-    return success(res, { accessToken, refreshToken: newRefreshToken }, 'Token rafraîchi');
+    setRefreshCookie(res, newRefreshToken);
+
+    return success(res, { accessToken }, 'Token rafraîchi');
   },
 
   async logout(req, res) {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (refreshToken) {
       await TokenModel.delete(refreshToken);
     }
+
+    clearRefreshCookie(res);
 
     return success(res, null, 'Déconnexion réussie');
   },

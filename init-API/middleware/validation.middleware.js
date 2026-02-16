@@ -7,7 +7,7 @@ export const validationSchemas = {
     mail: { required: false, type: 'email' },
     tel: { required: true, type: 'phone' },
     birthday: { required: true, type: 'age18' },
-    password: { required: true, type: 'string', minLength: 8 }
+    password: { required: true, type: 'password', minLength: 8 }
   },
 
   userLogin: {
@@ -27,7 +27,7 @@ export const validationSchemas = {
     mail: { required: true, type: 'email' },
     description: { required: false, type: 'string' },
     tel: { required: false, type: 'phone' },
-    password: { required: true, type: 'string', minLength: 8 }
+    password: { required: true, type: 'password', minLength: 8 }
   },
 
   orgaLogin: {
@@ -54,6 +54,17 @@ const validators = {
     return null;
   },
   
+  password: (value, rules) => {
+    if (typeof value !== 'string') return 'Doit être une chaîne de caractères';
+    if (rules.minLength && value.length < rules.minLength) {
+      return `Doit contenir au moins ${rules.minLength} caractères`;
+    }
+    if (!/[A-Z]/.test(value)) return 'Doit contenir au moins une majuscule';
+    if (!/[0-9]/.test(value)) return 'Doit contenir au moins un chiffre';
+    if (!/[^A-Za-z0-9]/.test(value)) return 'Doit contenir au moins un caractère spécial';
+    return null;
+  },
+
   email: (value) => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(value)) return "Format d'email invalide";

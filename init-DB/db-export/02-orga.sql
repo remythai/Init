@@ -34,11 +34,11 @@ ALTER TABLE ONLY public.orga ALTER COLUMN id SET DEFAULT nextval('public.orga_id
 -- Primary key
 ALTER TABLE ONLY public.orga ADD CONSTRAINT orga_pkey PRIMARY KEY (id);
 
--- Unique constraint
-ALTER TABLE ONLY public.orga ADD CONSTRAINT orga_mail_key UNIQUE (mail);
+-- Unique constraint (case-insensitive)
+CREATE UNIQUE INDEX orga_mail_key ON public.orga (LOWER(mail));
 
 -- Index
-CREATE INDEX idx_orga_mail ON public.orga USING btree (mail);
+CREATE INDEX idx_orga_mail ON public.orga USING btree (LOWER(mail));
 
 -- Trigger
 CREATE TRIGGER update_orga_updated_at

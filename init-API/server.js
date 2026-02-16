@@ -17,6 +17,7 @@ import reportRoutes from './routes/report.routes.js';
 
 import morgan from 'morgan';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import pool from './config/database.js';
 import { errorHandler } from './utils/errors.js';
 import { apiLimiter } from './middleware/rateLimit.middleware.js';
@@ -34,6 +35,7 @@ const io = initializeSocket(httpServer);
 
 app.set('trust proxy', 1);
 app.use(helmet());
+app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
