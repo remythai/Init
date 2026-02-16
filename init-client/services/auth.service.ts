@@ -47,6 +47,7 @@ export interface Orga {
   mail: string;
   description?: string;
   tel?: string;
+  logo_path?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -108,7 +109,7 @@ class AuthService {
     });
 
     const data = await response.json();
-    console.log('Login response complète:', JSON.stringify(data, null, 2));
+    console.log('Login response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Erreur de connexion');
@@ -122,41 +123,24 @@ class AuthService {
       token = data.data.accessToken;
       refreshToken = data.data.refreshToken;
       payload = data.data;
-      console.log('Token trouvé dans data.data.accessToken');
     } else if (data.data && data.data.token) {
       token = data.data.token;
       refreshToken = data.data.refreshToken;
       payload = data.data;
-      console.log('Token trouvé dans data.data.token');
     } else if (data.accessToken) {
       token = data.accessToken;
       refreshToken = data.refreshToken;
       payload = data;
-      console.log('Token trouvé dans data.accessToken');
     } else if (data.token) {
       token = data.token;
       refreshToken = data.refreshToken;
       payload = data;
-      console.log('Token trouvé dans data.token');
-    } else if (data.data?.data?.accessToken) {
-      token = data.data.data.accessToken;
-      refreshToken = data.data.data.refreshToken;
-      payload = data.data.data;
-      console.log('Token trouvé dans data.data.data.accessToken');
-    } else if (data.data?.data?.token) {
-      token = data.data.data.token;
-      refreshToken = data.data.data.refreshToken;
-      payload = data.data.data;
-      console.log('Token trouvé dans data.data.data.token');
     }
 
     if (!token) {
-      console.error('Structure de réponse non reconnue:', JSON.stringify(data, null, 2));
-      throw new Error("Le serveur n'a pas retourné de token. Vérifiez la console pour plus de détails.");
+      console.error('Structure de réponse non reconnue:', data);
+      throw new Error("Le serveur n'a pas retourné de token.");
     }
-
-    console.log('Token extrait:', token.substring(0, 20) + '...');
-    console.log('RefreshToken extrait:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'non fourni');
 
     await this.setToken(token);
     if (refreshToken) await this.setRefreshToken(refreshToken);
@@ -195,7 +179,7 @@ class AuthService {
     });
 
     const result = await response.json();
-    console.log('Register response complète:', JSON.stringify(result, null, 2));
+    console.log('Register response:', result);
 
     if (!response.ok) {
       throw new Error(result.error || result.message || "Erreur lors de l'inscription");
@@ -234,7 +218,7 @@ class AuthService {
     await this.clearAuth();
   }
 
-  async refreshToken(): Promise<string | null> {
+  async refreshAccessToken(): Promise<string | null> {
     const refreshToken = await this.getRefreshToken();
     const userType = await this.getUserType();
 
@@ -246,13 +230,9 @@ class AuthService {
     try {
       const endpoint = userType === 'orga' ? '/api/orga/refresh' : '/api/users/refresh';
       
-      console.log('Refresh token request:', { endpoint });
-      
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
 
@@ -295,7 +275,7 @@ class AuthService {
 
     if (response.status === 401) {
       console.log('Token expired, attempting refresh...');
-      token = await this.refreshToken();
+      token = await this.refreshAccessToken();
       
       if (token) {
         return fetch(`${API_URL}${url}`, {
@@ -316,35 +296,106 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
-    
+    const userType = await this.getUserType();
+    return !!token && !!userType;
+  }
+
+  async validateAndGetUserType(): Promise<'user' | 'orga' | null> {
+    let token = await this.getToken();
+    const userType = await this.getUserType();
+
+    if (!token || !userType) {
+      console.log('No token or userType found');
+      await this.clearAuth();
+      return null;
+    }
+
+    try {
+      // Validate token by calling the appropriate endpoint
+      const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
+      let response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // If token expired, try to refresh
+      if (response.status === 401) {
+        console.log('Token expired, attempting refresh...');
+        token = await this.refreshAccessToken();
+
+        if (token) {
+          // Retry with new token
+          response = await fetch(`${API_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } else {
+          console.log('Failed to refresh token');
+          await this.clearAuth();
+          return null;
+        }
+      }
+
+      if (!response.ok) {
+        console.log('Token invalid for userType:', userType);
+        await this.clearAuth();
+        return null;
+      }
+
+      console.log('Token valid for userType:', userType);
+      return userType;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      await this.clearAuth();
+      return null;
+    }
+  }
+
+  async validateToken(): Promise<boolean> {
+    let token = await this.getToken();
+
     if (!token) {
-      console.log('🔐 No token found');
+      console.log('No token found');
       return false;
     }
-  
+
     try {
       const userType = await this.getUserType();
       if (!userType) {
-        console.log('🔐 No user type found');
+        console.log('No user type found');
         await this.clearAuth();
         return false;
       }
-  
+
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      let response = await fetch(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
+      // If token expired, try to refresh
+      if (response.status === 401) {
+        console.log('Token expired, attempting refresh...');
+        token = await this.refreshAccessToken();
+
+        if (token) {
+          response = await fetch(`${API_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } else {
+          console.log('Failed to refresh token');
+          await this.clearAuth();
+          return false;
+        }
+      }
+
       if (!response.ok) {
-        console.log('🔐 Token invalid, clearing auth');
+        console.log('Token invalid, clearing auth');
         await this.clearAuth();
         return false;
       }
-  
-      console.log('🔐 Token valid');
+
+      console.log('Token valid');
       return true;
     } catch (error) {
-      console.error('🔐 Error checking token:', error);
+      console.error('Error checking token:', error);
       await this.clearAuth();
       return false;
     }
@@ -410,6 +461,47 @@ class AuthService {
 
   async updateCurrentOrga(updates: Partial<Orga>): Promise<Orga | null> {
     return await this.updateCurrentProfile(updates) as Orga | null;
+  }
+
+  async uploadOrgaLogo(fileUri: string, fileName: string, fileType: string): Promise<string> {
+    const token = await this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    const formData = new FormData();
+    formData.append('logo', {
+      uri: fileUri,
+      name: fileName,
+      type: fileType,
+    } as any);
+
+    const response = await fetch(`${API_URL}/api/orga/logo`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de l\'upload du logo');
+    }
+
+    const data = await response.json();
+    return data.data.logo_path;
+  }
+
+  async deleteOrgaLogo(): Promise<void> {
+    const response = await this.authenticatedFetch('/api/orga/logo', {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Erreur lors de la suppression du logo');
+    }
   }
 }
 

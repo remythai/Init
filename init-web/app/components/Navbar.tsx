@@ -17,15 +17,15 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030]/80 backdrop-blur-md border-b border-white/10">
-      <div className="max-w-[1400px] mx-auto px-3 md:px-12 py-2 md:py-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-52">
+      <div className="max-w-[1800px] mx-auto py-2 md:py-4 flex items-center justify-between">
         <Link href="/">
           <Image
-            src="/initLogoGray.png"
+            src="/logo.png"
             alt="Init Logo"
             width={200}
             height={80}
-            className="h-10 md:h-14 w-auto"
+            className="h-8 md:h-10 w-auto"
           />
         </Link>
         <div className="flex items-center gap-2 md:gap-3">
@@ -39,7 +39,7 @@ export default function Navbar() {
           )}
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
-            className="bg-white hover:bg-gray-100 text-[#303030] px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors"
+            className="hover:underline text-white font-semibold px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors"
           >
             {isAuthenticated ? "Accéder" : "Commencer"}
           </Link>

@@ -4,7 +4,7 @@ import { UserModel } from '../models/user.model.js';
 import { WhitelistModel } from '../models/whitelist.model.js';
 import { MatchModel } from '../models/match.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
-
+ 
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { success, created } from '../utils/responses.js';
 import { validateCustomFields, validateCustomData } from '../utils/customFieldsSchema.js';
@@ -14,7 +14,7 @@ import { getEventBannerUrl, deleteEventBanner, deleteEventDir } from '../config/
 import { withTransaction } from '../config/database.js';
 import { getCache, setCache } from '../utils/cache.js';
 import bcrypt from 'bcrypt';
-
+ 
 export const EventController = {
   async create(req, res) {
     const {
@@ -27,10 +27,20 @@ export const EventController = {
     if (!app_start_at || !app_end_at) {
       throw new ValidationError('Les dates de disponibilité de l\'app sont requises');
     }
-
+    if (!app_end_at) {
+      throw new ValidationError('Le champ app_end_at est requis');
+    }
+ 
     const appStart = new Date(app_start_at);
     const appEnd = new Date(app_end_at);
-
+ 
+    if (isNaN(appStart.getTime())) {
+      throw new ValidationError('Le champ app_start_at contient une date invalide');
+    }
+    if (isNaN(appEnd.getTime())) {
+      throw new ValidationError('Le champ app_end_at contient une date invalide');
+    }
+ 
     if (appEnd <= appStart) {
       throw new ValidationError('La date de fin de l\'app doit être après la date de début');
     }
@@ -42,18 +52,18 @@ export const EventController = {
         throw new ValidationError('La date de fin de l\'événement doit être après la date de début');
       }
     }
-
+ 
     let access_password_hash = null;
     if (has_password_access && access_password) {
       access_password_hash = await bcrypt.hash(access_password, 10);
     } else if (has_password_access && !access_password) {
       throw new ValidationError('Un mot de passe est requis quand has_password_access est activé');
     }
-
+ 
     if (custom_fields) {
       validateCustomFields(custom_fields);
     }
-
+ 
     const event = await EventModel.create({
       orga_id: req.user.id,
       name,
@@ -73,37 +83,37 @@ export const EventController = {
       cooldown,
       custom_fields: custom_fields || []
     });
-
+ 
     return created(res, event, 'Événement créé avec succès');
   },
-
+ 
   async getEventByID(req, res) {
     const eventId = req.params.id;
     const event = await EventModel.findById(eventId);
-
+ 
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez consulter que vos propres événements');
     }
-
+ 
     const eventWithCount = {
       ...event,
       participant_count: await EventModel.countParticipants(event.id),
     };
-
+ 
     return success(res, eventWithCount);
   },
-
+ 
   async getMyOrgaEvents(req, res) {
     const events = await EventModel.findByOrgaId(req.user.id);
-
+ 
     const eventsWithCount = await Promise.all(
       events.map(async (event) => {
         const { id, name, location, event_date, max_participants, start_at, end_at, app_start_at, app_end_at, theme, description, banner_path, orga_logo } = event;
-
+ 
         return {
           id,
           name,
@@ -122,31 +132,31 @@ export const EventController = {
         };
       })
     );
-
+ 
     return success(res, eventsWithCount);
   },
-
+ 
   async update(req, res) {
     const eventId = req.params.id;
     const event = await EventModel.findById(eventId);
-
+ 
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
-
+ 
     const {
       name, description, start_at, end_at, location,
       app_start_at, app_end_at, theme,
       max_participants, is_public, has_whitelist, has_link_access,
       has_password_access, access_password, cooldown, custom_fields
     } = req.body;
-
+ 
     const updates = {};
-
+ 
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (start_at !== undefined) updates.start_at = start_at || null;
@@ -161,7 +171,7 @@ export const EventController = {
     if (has_link_access !== undefined) updates.has_link_access = has_link_access;
     if (has_password_access !== undefined) updates.has_password_access = has_password_access;
     if (cooldown !== undefined) updates.cooldown = cooldown;
-
+ 
     if (access_password) {
       updates.access_password_hash = await bcrypt.hash(access_password, 10);
     }
@@ -174,7 +184,7 @@ export const EventController = {
     if (updates.start_at || updates.end_at) {
       const start = new Date(updates.start_at || event.start_at);
       const end = new Date(updates.end_at || event.end_at);
-
+ 
       if (start && end && end <= start) {
         throw new ValidationError('La date de fin de l\'événement doit être après la date de début');
       }
@@ -183,29 +193,29 @@ export const EventController = {
     if (updates.app_start_at || updates.app_end_at) {
       const appStart = new Date(updates.app_start_at || event.app_start_at);
       const appEnd = new Date(updates.app_end_at || event.app_end_at);
-
+ 
       if (appEnd <= appStart) {
         throw new ValidationError('La date de fin de l\'app doit être après la date de début');
       }
     }
-
+ 
     if (Object.keys(updates).length === 0) {
       throw new ValidationError('Aucune donnée à mettre à jour');
     }
-
+ 
     const updatedEvent = await EventModel.update(eventId, updates);
 
     return success(res, updatedEvent, 'Événement mis à jour');
   },
-
+ 
   async delete(req, res) {
     const eventId = req.params.id;
     const event = await EventModel.findById(eventId);
-
+ 
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez supprimer que vos propres événements');
     }
@@ -214,33 +224,33 @@ export const EventController = {
     await EventModel.delete(eventId);
     return success(res, null, 'Événement supprimé');
   },
-
+ 
   async getParticipants(req, res) {
     const eventId = req.params.id;
     const event = await EventModel.findById(eventId);
-
+ 
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez voir que les participants de vos événements');
     }
-
+ 
     const participants = await RegistrationModel.findByEventId(eventId);
     return success(res, participants);
   },
-
+ 
   async removeParticipant(req, res) {
     const eventId = parseInt(req.params.id);
     const userId = parseInt(req.params.userId);
     const action = req.query.action || req.body?.action || 'block'; // 'block' or 'delete'
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez supprimer que les participants de vos événements');
     }
@@ -249,7 +259,7 @@ export const EventController = {
     if (!registration) {
       throw new NotFoundError('Ce participant n\'est pas inscrit à cet événement');
     }
-
+ 
     if (action === 'delete') {
       await withTransaction(async (client) => {
         await MatchModel.deleteUserMatchesInEvent(userId, eventId, client);
@@ -267,36 +277,36 @@ export const EventController = {
       return success(res, null, 'Participant bloqué de l\'événement');
     }
   },
-
+ 
   async getBlockedUsers(req, res) {
     const eventId = parseInt(req.params.id);
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez voir que les utilisateurs bloqués de vos événements');
     }
-
+ 
     const blockedUsers = await BlockedUserModel.getByEventId(eventId);
     return success(res, blockedUsers);
   },
-
+ 
   async blockUser(req, res) {
     const eventId = parseInt(req.params.id);
     const { user_id, reason } = req.body;
-
+ 
     if (!user_id) {
       throw new ValidationError('user_id est requis');
     }
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Accès non autorisé');
     }
@@ -308,23 +318,23 @@ export const EventController = {
 
     await MatchModel.archiveUserMatchesInEvent(user_id, eventId);
     await BlockedUserModel.block(eventId, user_id, reason || 'Bloqué par l\'organisateur');
-
+ 
     return success(res, null, 'Utilisateur bloqué');
   },
-
+ 
   async unblockParticipant(req, res) {
     const eventId = parseInt(req.params.id);
     const userId = parseInt(req.params.userId);
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== req.user.id) {
       throw new ForbiddenError('Vous ne pouvez débloquer que les utilisateurs de vos événements');
     }
-
+ 
     const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
     if (!isBlocked) {
       throw new NotFoundError('Cet utilisateur n\'est pas bloqué');
@@ -332,20 +342,20 @@ export const EventController = {
 
     await BlockedUserModel.unblock(eventId, userId);
     await MatchModel.unarchiveUserMatchesInEvent(userId, eventId);
-
+ 
     return success(res, null, 'Utilisateur débloqué');
   },
-
+ 
   async register(req, res) {
     const eventId = req.params.id;
     const userId = req.user.id;
     const { profil_info, access_password } = req.body;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (!event.is_public) {
       throw new ForbiddenError('Cet événement n\'est pas public');
     }
@@ -363,7 +373,7 @@ export const EventController = {
       }
       await WhitelistModel.linkUser(user.tel, userId);
     }
-
+ 
     if (event.has_password_access) {
       if (!access_password) {
         throw new ValidationError('Un mot de passe est requis pour accéder à cet événement');
@@ -374,7 +384,7 @@ export const EventController = {
         throw new ValidationError('Mot de passe incorrect');
       }
     }
-
+ 
     const existing = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (existing) {
       throw new ConflictError('Vous êtes déjà inscrit à cet événement');
@@ -411,20 +421,20 @@ export const EventController = {
       lastname: userWithPhotos.lastname,
       photos: userWithPhotos.photos || []
     });
-
+ 
     return created(res, registration, 'Inscription réussie');
   },
-
+ 
   async updateRegistration(req, res) {
     const eventId = req.params.id;
     const userId = req.user.id;
     const { profil_info } = req.body;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!registration) {
       throw new NotFoundError('Inscription non trouvée');
@@ -440,28 +450,28 @@ export const EventController = {
         validateCustomData(event.custom_fields, profil_info);
       }
     }
-
+ 
     const updated = await RegistrationModel.update(userId, eventId, profil_info || {});
     return success(res, updated, 'Profil mis à jour');
   },
-
+ 
   async unregister(req, res) {
     const eventId = req.params.id;
     const userId = req.user.id;
-
+ 
     const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!registration) {
       throw new NotFoundError('Inscription non trouvée');
     }
-
+ 
     await RegistrationModel.delete(userId, eventId);
     return success(res, null, 'Désinscription réussie');
   },
-
+ 
   async getPublicEventsForUser(req, res) {
     const userId = req.user.id;
     const { upcoming, location, search, limit, offset } = req.query;
-
+ 
     const filters = {
       upcoming: upcoming !== 'false',
       location,
@@ -469,9 +479,9 @@ export const EventController = {
       limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
-
+ 
     const events = await EventModel.findPublicEventsWithUserInfo(userId, filters);
-
+ 
     return success(res, {
       events,
       total: events.length,
@@ -479,18 +489,18 @@ export const EventController = {
       offset: filters.offset
     });
   },
-
+ 
   async getMyRegisteredEvents(req, res) {
     const userId = req.user.id;
     const { upcoming, past, limit, offset } = req.query;
-
+ 
     const filters = {
       upcoming: upcoming === 'true',
       past: past === 'true',
       limit: Math.min(parseInt(limit) || 20, 100),
       offset: offset ? parseInt(offset) : 0
     };
-
+ 
     const events = await EventModel.findUserRegisteredEvents(userId, filters);
     
     return success(res, {
@@ -500,27 +510,27 @@ export const EventController = {
       offset: filters.offset
     });
   },
-
+ 
   async getMyEventProfile(req, res) {
     const eventId = req.params.id;
     const userId = req.user.id;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     const registration = await RegistrationModel.findByUserAndEvent(userId, eventId);
     if (!registration) {
       throw new NotFoundError('Vous n\'êtes pas inscrit à cet événement');
     }
-
+ 
     return success(res, {
       profil_info: registration.profil_info || {},
       custom_fields: event.custom_fields || []
     });
   },
-
+ 
   /**
    * GET /api/events/:id/statistics
    * Get comprehensive statistics for an event (orga only)
@@ -528,12 +538,12 @@ export const EventController = {
   async getStatistics(req, res) {
     const eventId = parseInt(req.params.id);
     const orgaId = req.user.id;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Accès non autorisé');
     }
@@ -651,50 +661,50 @@ export const EventController = {
 
     return success(res, result);
   },
-
+ 
   async uploadBanner(req, res) {
     if (!req.file) {
       throw new ValidationError('Aucun fichier uploadé');
     }
-
+ 
     const eventId = parseInt(req.params.id);
     const orgaId = req.user.id;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
-
+ 
     const bannerPath = getEventBannerUrl(eventId, req.file.filename);
 
     const updatedEvent = await EventModel.update(eventId, { banner_path: bannerPath });
-
+ 
     return success(res, { banner_path: updatedEvent.banner_path }, 'Bannière uploadée avec succès');
   },
-
+ 
   async deleteBanner(req, res) {
     const eventId = parseInt(req.params.id);
     const orgaId = req.user.id;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
     }
-
+ 
     if (event.orga_id !== orgaId) {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
 
     deleteEventBanner(eventId);
     await EventModel.update(eventId, { banner_path: null });
-
+ 
     return success(res, null, 'Bannière supprimée avec succès');
   },
-
+ 
   /**
    * GET /api/events/:id/check-eligibility
    * Check if user can register to event (whitelist, blocked, full, etc.)
@@ -703,7 +713,7 @@ export const EventController = {
   async checkEligibility(req, res) {
     const eventId = parseInt(req.params.id);
     const userId = req.user.id;
-
+ 
     const event = await EventModel.findById(eventId);
     if (!event) {
       throw new NotFoundError('Événement non trouvé');
@@ -765,3 +775,4 @@ export const EventController = {
     });
   }
 };
+ 

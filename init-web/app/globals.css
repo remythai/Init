@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@font-face {
+  font-family: 'ZT Grafton';
+  src: url('/fonts/ZTGrafton-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -52,6 +60,82 @@ body {
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+/* Hero image load animations */
+@keyframes hero-from-top {
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-from-bottom {
+  0% {
+    opacity: 0;
+    transform: translateY(80px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-from-right {
+  0% {
+    opacity: 0;
+    transform: translateX(80px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.hero-img-top {
+  opacity: 0;
+  animation: hero-from-top 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-img-bottom {
+  opacity: 0;
+  animation: hero-from-bottom 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-img-right {
+  opacity: 0;
+  animation: hero-from-right 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-img-delay-1 {
+  animation-delay: 0.2s;
+}
+
+.hero-img-delay-2 {
+  animation-delay: 0.4s;
+}
+
+.hero-img-delay-3 {
+  animation-delay: 0.6s;
+}
+
+
+/* Hero infinite vertical scroll */
+@keyframes hero-scroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.hero-scroll-infinite {
+  animation: hero-scroll 12s linear infinite;
 }
 
 /* Safe area for devices with notches */

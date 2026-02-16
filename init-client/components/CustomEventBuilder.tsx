@@ -1,4 +1,5 @@
-// components/CustomFieldsBuilder.tsx
+// components/CustomEventBuilder.tsx
+import { getFieldId } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
@@ -24,18 +25,12 @@ export const FIELD_TYPES = {
   MULTISELECT: 'multiselect'
 };
 
-export interface CustomFieldOption {
-  label: string;
-  value: string;
-}
-
 export interface CustomField {
-  id: string;
+  id?: string;  // Généré automatiquement à partir du label
   type: string;
   label: string;
-  options?: CustomFieldOption[];
+  options?: string[];  // Liste simple de chaînes
   required: boolean;
-  placeholder: string;
 }
 
 interface CustomFieldsBuilderProps {
@@ -48,11 +43,9 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
 
   const addField = () => {
     const newField: CustomField = {
-      id: `field_${Date.now()}`,
       type: FIELD_TYPES.TEXT,
       label: "",
       required: false,
-      placeholder: "",
       options: []
     };
     onChange([...fields, newField]);
@@ -83,6 +76,11 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], ...updates };
 
+    // Si le label change, régénérer l'ID
+    if (updates.label !== undefined) {
+      newFields[index].id = getFieldId(updates.label);
+    }
+
     if (updates.type && !needsOptions(updates.type)) {
       delete newFields[index].options;
     }
@@ -93,24 +91,20 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
     onChange(newFields);
   };
 
-  const addOption = (fieldIndex: number) => {
+  const addOption = (fieldIndex: number, optionValue: string) => {
+    if (!optionValue.trim()) return;
+    
     const newFields = [...fields];
     if (!newFields[fieldIndex].options) {
       newFields[fieldIndex].options = [];
     }
-    newFields[fieldIndex].options!.push({ label: "", value: "" });
+    newFields[fieldIndex].options!.push(optionValue.trim());
     onChange(newFields);
   };
 
   const removeOption = (fieldIndex: number, optionIndex: number) => {
     const newFields = [...fields];
     newFields[fieldIndex].options = newFields[fieldIndex].options!.filter((_, i) => i !== optionIndex);
-    onChange(newFields);
-  };
-
-  const updateOption = (fieldIndex: number, optionIndex: number, key: 'label' | 'value', value: string) => {
-    const newFields = [...fields];
-    newFields[fieldIndex].options![optionIndex][key] = value;
     onChange(newFields);
   };
 
@@ -178,7 +172,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
       {/* Fields List */}
       <View style={styles.fieldsList}>
         {fields.map((field, fieldIndex) => (
-          <View key={field.id} style={styles.fieldCard}>
+          <View key={fieldIndex} style={styles.fieldCard}>
             {/* Field Header */}
             <Pressable
               style={styles.fieldHeader}
@@ -218,16 +212,19 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
             {/* Field Body (Expanded) */}
             {expandedFieldIndex === fieldIndex && (
               <View style={styles.fieldBody}>
-                {/* ID Field */}
+                {/* Label Field (Question) */}
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>ID du champ</Text>
+                  <Text style={styles.label}>Question *</Text>
                   <TextInput
                     style={styles.input}
-                    value={field.id}
-                    onChangeText={(text) => updateField(fieldIndex, { id: text })}
-                    placeholder="Ex: field_question_1"
+                    value={field.label}
+                    onChangeText={(text) => updateField(fieldIndex, { label: text })}
+                    placeholder="Ex: Quel est votre profil LinkedIn ?"
                     placeholderTextColor="#9CA3AF"
                   />
+                  <Text style={styles.helperText}>
+                    Cette question sera affichée aux participants lors de l'inscription
+                  </Text>
                 </View>
 
                 {/* Type Field */}
@@ -256,30 +253,6 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                   </View>
                 </View>
 
-                {/* Label Field */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Label du champ</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={field.label}
-                    onChangeText={(text) => updateField(fieldIndex, { label: text })}
-                    placeholder="Ex: Quel est votre niveau ?"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-
-                {/* Placeholder Field */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Placeholder</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={field.placeholder}
-                    onChangeText={(text) => updateField(fieldIndex, { placeholder: text })}
-                    placeholder="Ex: Entrez votre réponse..."
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-
                 {/* Required Switch */}
                 <View style={styles.switchContainer}>
                   <Text style={styles.switchLabel}>Champ obligatoire</Text>
@@ -293,62 +266,87 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
 
                 {/* Options for select/radio/multiselect */}
                 {needsOptions(field.type) && (
-                  <View style={styles.optionsSection}>
-                    <View style={styles.optionsHeader}>
-                      <Text style={styles.label}>Options</Text>
-                      <Pressable
-                        style={styles.addOptionButton}
-                        onPress={() => addOption(fieldIndex)}
-                      >
-                        <MaterialIcons name="add" size={16} color="#1271FF" />
-                        <Text style={styles.addOptionButtonText}>Ajouter</Text>
-                      </Pressable>
-                    </View>
-
-                    {(!field.options || field.options.length === 0) && (
-                      <View style={styles.emptyOptions}>
-                        <Text style={styles.emptyOptionsText}>
-                          Aucune option. Ajoutez-en au moins une.
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={styles.optionsList}>
-                      {field.options?.map((option, optionIndex) => (
-                        <View key={optionIndex} style={styles.optionItem}>
-                          <TextInput
-                            style={[styles.input, styles.optionInput]}
-                            value={option.label}
-                            onChangeText={(text) =>
-                              updateOption(fieldIndex, optionIndex, 'label', text)
-                            }
-                            placeholder="Label"
-                            placeholderTextColor="#9CA3AF"
-                          />
-                          <TextInput
-                            style={[styles.input, styles.optionInput]}
-                            value={option.value}
-                            onChangeText={(text) =>
-                              updateOption(fieldIndex, optionIndex, 'value', text)
-                            }
-                            placeholder="Valeur"
-                            placeholderTextColor="#9CA3AF"
-                          />
-                          <Pressable
-                            onPress={() => removeOption(fieldIndex, optionIndex)}
-                            style={styles.removeOptionButton}
-                          >
-                            <MaterialIcons name="close" size={20} color="#EF4444" />
-                          </Pressable>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
+                  <OptionsEditor
+                    options={field.options || []}
+                    onAddOption={(value) => addOption(fieldIndex, value)}
+                    onRemoveOption={(optionIndex) => removeOption(fieldIndex, optionIndex)}
+                  />
                 )}
               </View>
             )}
           </View>
         ))}
+      </View>
+    </View>
+  );
+}
+
+// Sous-composant pour gérer les options
+function OptionsEditor({ 
+  options, 
+  onAddOption, 
+  onRemoveOption 
+}: { 
+  options: string[]; 
+  onAddOption: (value: string) => void; 
+  onRemoveOption: (index: number) => void; 
+}) {
+  const [newOption, setNewOption] = useState("");
+
+  const handleAdd = () => {
+    if (newOption.trim()) {
+      onAddOption(newOption);
+      setNewOption("");
+    }
+  };
+
+  return (
+    <View style={styles.optionsSection}>
+      <View style={styles.optionsHeader}>
+        <Text style={styles.label}>Choix possibles</Text>
+      </View>
+
+      {options.length === 0 && (
+        <View style={styles.emptyOptions}>
+          <Text style={styles.emptyOptionsText}>
+            Aucune option. Ajoutez-en au moins une.
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.optionsList}>
+        {options.map((option, optionIndex) => (
+          <View key={optionIndex} style={styles.optionItem}>
+            <Text style={styles.optionText} numberOfLines={1}>
+              {option}
+            </Text>
+            <Pressable
+              onPress={() => onRemoveOption(optionIndex)}
+              style={styles.removeOptionButton}
+            >
+              <MaterialIcons name="close" size={20} color="#EF4444" />
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
+      {/* Add Option Input */}
+      <View style={styles.addOptionContainer}>
+        <TextInput
+          style={styles.addOptionInput}
+          value={newOption}
+          onChangeText={setNewOption}
+          placeholder="Ajouter un choix..."
+          placeholderTextColor="#9CA3AF"
+          onSubmitEditing={handleAdd}
+          returnKeyType="done"
+        />
+        <Pressable
+          style={styles.addOptionIconButton}
+          onPress={handleAdd}
+        >
+          <MaterialIcons name="add" size={20} color="#1271FF" />
+        </Pressable>
       </View>
     </View>
   );
@@ -474,6 +472,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
+  helperText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  generatedIdText: {
+    fontSize: 10,
+    color: '#1271FF',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
@@ -534,22 +543,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  addOptionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#1271FF',
-    backgroundColor: '#F0F7FF',
-  },
-  addOptionButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#1271FF',
-  },
   emptyOptions: {
     paddingVertical: 16,
     paddingHorizontal: 12,
@@ -568,16 +561,48 @@ const styles = StyleSheet.create({
   },
   optionItem: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-
-  optionInput: {
+  optionText: {
     flex: 1,
-    minWidth: 0,
+    fontSize: 13,
+    color: '#303030',
+    marginRight: 8,
   },
   removeOptionButton: {
-    padding: 6,
+    padding: 4,
+  },
+  addOptionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addOptionInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#303030',
+    backgroundColor: '#FFFFFF',
+  },
+  addOptionIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F0F7FF',
+    borderWidth: 1.5,
+    borderColor: '#1271FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
