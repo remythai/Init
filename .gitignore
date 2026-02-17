@@ -3,7 +3,10 @@
 .DS_Store
 .next/
 .vscode/
+node_modules
 
 CLAUDE.md
+MIGRATION_TS.md
+PLANS.md
 retour
 test.txt
