@@ -1,12 +1,12 @@
 import { PhotoModel } from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
-import { getPhotoUrl, deletePhotoFile, stripExif } from '../config/multer.config.js';
+import { getPhotoUrl, getPhotoPath, deletePhotoFile, stripExif } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
-import logger from '../utils/logger.js';
+import fs from 'fs';
 
 const MAX_PHOTOS_PER_CONTEXT = 6;
 
-async function checkNotBlocked(eventId: number | null | undefined, userId: number): Promise<void> {
+async function checkNotBlocked(eventId: number | undefined, userId: number): Promise<void> {
   if (!eventId) return;
   const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
   if (isBlocked) {
@@ -15,38 +15,47 @@ async function checkNotBlocked(eventId: number | null | undefined, userId: numbe
 }
 
 export const PhotoService = {
-  async uploadPhoto(userId: number, filename: string, eventId?: string, isPrimary?: string | boolean) {
+  async uploadPhoto(
+    userId: number,
+    filename: string,
+    eventId?: string,
+    isPrimary?: string | boolean
+  ) {
     const parsedEventId = eventId ? parseInt(eventId) : undefined;
+    await checkNotBlocked(parsedEventId, userId);
+
+    const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId ?? null);
+    if (count >= MAX_PHOTOS_PER_CONTEXT) {
+      throw new AppError(400, `Vous ne pouvez pas avoir plus de ${MAX_PHOTOS_PER_CONTEXT} photos`);
+    }
+
+    const displayOrder = count;
+    const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
+
+    const filePath = getPhotoUrl(userId, filename);
+    const localPath = getPhotoPath(userId, filename);
+
     try {
-      await checkNotBlocked(parsedEventId, userId);
-
-      const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId || null);
-      if (count >= MAX_PHOTOS_PER_CONTEXT) {
-        throw new AppError(400, `Vous ne pouvez pas avoir plus de ${MAX_PHOTOS_PER_CONTEXT} photos`);
+      await stripExif(localPath);
+    } catch (error) {
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
       }
+      throw new AppError(400, 'Le fichier n\'est pas une image valide');
+    }
 
-      const displayOrder = count;
-      const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
-
-      const filePath = getPhotoUrl(userId, filename);
-      try {
-        await stripExif(filePath);
-      } catch {
-        throw new AppError(400, 'Le fichier n\'est pas une image valide');
-      }
-
-      return await PhotoModel.create({
+    try {
+      const photo = await PhotoModel.create({
         userId,
         filePath,
         eventId: parsedEventId,
         displayOrder,
         isPrimary: shouldBePrimary
       });
+      return photo;
     } catch (error) {
-      try {
-        deletePhotoFile(getPhotoUrl(userId, filename));
-      } catch (e) {
-        logger.error({ err: e }, 'Error cleaning up file');
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
       }
       throw error;
     }
@@ -54,30 +63,34 @@ export const PhotoService = {
 
   async getPhotos(userId: number, eventId?: string) {
     if (eventId) {
-      return PhotoModel.findByUserAndEvent(userId, parseInt(eventId));
+      return await PhotoModel.findByUserAndEvent(userId, parseInt(eventId));
     }
-    return PhotoModel.findByUserId(userId);
+    return await PhotoModel.findByUserId(userId);
   },
 
   async getAllPhotos(userId: number) {
     const photos = await PhotoModel.findAllByUserId(userId);
 
-    const grouped: { general: typeof photos; events: Record<number, { event_name: string | undefined; photos: typeof photos }> } = {
+    const grouped: {
+      general: unknown[];
+      events: Record<string, { event_name: string; photos: unknown[] }>;
+    } = {
       general: [],
       events: {}
     };
 
-    photos.forEach(photo => {
+    photos.forEach((photo) => {
       if (!photo.event_id) {
         grouped.general.push(photo);
       } else {
-        if (!grouped.events[photo.event_id]) {
-          grouped.events[photo.event_id] = {
-            event_name: photo.event_name,
+        const eventId = photo.event_id;
+        if (!grouped.events[eventId]) {
+          grouped.events[eventId] = {
+            event_name: photo.event_name || '',
             photos: []
           };
         }
-        grouped.events[photo.event_id].photos.push(photo);
+        grouped.events[eventId].photos.push(photo);
       }
     });
 
@@ -93,7 +106,7 @@ export const PhotoService = {
       throw new AppError(403, 'Vous ne pouvez pas supprimer cette photo');
     }
 
-    await checkNotBlocked(photo.event_id, userId);
+    await checkNotBlocked(photo.event_id ?? undefined, userId);
 
     await PhotoModel.delete(photoId);
     deletePhotoFile(photo.file_path);
@@ -118,9 +131,9 @@ export const PhotoService = {
       throw new AppError(403, 'Vous ne pouvez pas modifier cette photo');
     }
 
-    await checkNotBlocked(photo.event_id, userId);
+    await checkNotBlocked(photo.event_id ?? undefined, userId);
 
-    return PhotoModel.setPrimary(photoId);
+    return await PhotoModel.setPrimary(photoId);
   },
 
   async reorderPhotos(userId: number, photoIds: number[], eventId?: number) {
@@ -137,11 +150,11 @@ export const PhotoService = {
       }
     }
 
-    await PhotoModel.reorder(userId, eventId || null, photoIds);
+    await PhotoModel.reorder(userId, eventId ?? null, photoIds);
 
     return eventId
-      ? PhotoModel.findByUserAndEvent(userId, eventId)
-      : PhotoModel.findByUserId(userId);
+      ? await PhotoModel.findByUserAndEvent(userId, eventId)
+      : await PhotoModel.findByUserId(userId);
   },
 
   async copyPhotosToEvent(userId: number, eventId: number, photoIds?: number[]) {
@@ -179,7 +192,7 @@ export const PhotoService = {
       const photo = await PhotoModel.create({
         userId,
         filePath: source.file_path,
-        eventId: parseInt(String(eventId)),
+        eventId,
         displayOrder: existingCount + i,
         isPrimary: i === 0 && existingCount === 0
       });
