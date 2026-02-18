@@ -13,7 +13,8 @@ export const ORGA_DIR = path.join(UPLOAD_DIR, 'orga');
 export const EVENTS_DIR = path.join(UPLOAD_DIR, 'events');
 
 export function resolveUploadPath(filePath: string): string {
-  const fullPath = path.resolve(UPLOAD_DIR, '..', filePath);
+  const relativePath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+  const fullPath = path.resolve(UPLOAD_DIR, '..', relativePath);
   if (!fullPath.startsWith(path.resolve(UPLOAD_DIR))) {
     throw new Error('Chemin de fichier invalide');
   }
@@ -90,7 +91,7 @@ export const photosUpload = multer({
 });
 
 export const stripExif = async (filePath: string): Promise<void> => {
-  const fullPath = resolveUploadPath(filePath);
+  const fullPath = path.isAbsolute(filePath) ? filePath : resolveUploadPath(filePath);
   try {
     const buffer = await sharp(fullPath).rotate().toBuffer();
     await sharp(buffer).toFile(fullPath);
@@ -108,10 +109,14 @@ export const getPhotoPath = (userId: number, filename: string): string => {
 };
 
 export const deletePhotoFile = (filePath: string): boolean => {
-  const fullPath = resolveUploadPath(filePath);
-  if (fs.existsSync(fullPath)) {
-    fs.unlinkSync(fullPath);
-    return true;
+  try {
+    const fullPath = resolveUploadPath(filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      return true;
+    }
+  } catch (e: any) {
+    console.error('deletePhotoFile error:', e.message);
   }
   return false;
 };
