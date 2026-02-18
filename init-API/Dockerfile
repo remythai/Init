@@ -1,3 +1,12 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json tsconfig.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
 FROM node:20-alpine
 
 WORKDIR /app
@@ -13,10 +22,13 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --chown=nodejs:nodejs package*.json ./
 
 # Install production dependencies only
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN npm ci --omit=dev
 
-# Copy source code
-COPY --chown=nodejs:nodejs . .
+# Copy compiled output from builder
+COPY --chown=nodejs:nodejs --from=builder /app/dist ./dist
+
+# Copy migration files
+COPY --chown=nodejs:nodejs migrations ./migrations
 
 # Create uploads directory with correct permissions
 RUN mkdir -p /app/uploads/photos && \
@@ -30,4 +42,4 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["node", "server.js"]
+CMD ["node", "dist/server.js"]
