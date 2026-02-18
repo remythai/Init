@@ -1,4 +1,5 @@
 // components/EventDetails.tsx
+import { CustomField } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
@@ -12,7 +13,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { CustomField } from "@/services/event.service";
 
 export interface Event {
   id: string;
@@ -71,7 +71,15 @@ export function EventDetail({
     return colors[theme.toLowerCase()] || "#6b7280";
   };
 
-  const getFieldKey = (field: CustomField) => field.label;
+  const getFieldKey = (field: CustomField): string => {
+    return field.label
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+  };
 
   const hasRequiredFields = event.customFields?.some((f) => f.required) ?? false;
 
