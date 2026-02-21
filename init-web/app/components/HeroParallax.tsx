@@ -27,10 +27,7 @@ export default function HeroParallax() {
         alt=""
         fill
         priority
-        className="object-cover"
-        sizes="100vw"
-        quality={90}
-        style={{ transform: `translateY(${offsetY}px)` }}
+        className="absolute inset-0 object-cover"
       />
 
       {/* Gradient overlay */}
