@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useLang } from "../contexts/LangContext";
 
 export default function Footer() {
+  const { t } = useLang();
+
   return (
     <footer className="bg-[#1a1a1a] border-t border-white/5">
       {/* Main footer */}
@@ -20,7 +25,7 @@ export default function Footer() {
                 />
               </Link>
               <p className="font-roboto text-sm text-white/40 max-w-xs text-center md:text-left">
-                Des événements. Des personnes. Des connexions.
+                {t.footer.tagline}
               </p>
             </div>
 
@@ -28,7 +33,7 @@ export default function Footer() {
             <div className="flex flex-wrap justify-center md:justify-end gap-x-12 gap-y-6">
               <div>
                 <h4 className="font-poppins text-xs uppercase tracking-widest text-white/30 mb-3 md:mb-4 text-center md:text-left">
-                  Légal
+                  {t.footer.legal}
                 </h4>
                 <ul className="space-y-2 text-center md:text-left">
                   <li>
@@ -36,7 +41,7 @@ export default function Footer() {
                       href="/legal/cgu"
                       className="font-roboto text-sm text-white/50 hover:text-white transition-colors"
                     >
-                      CGU
+                      {t.footer.cgu}
                     </Link>
                   </li>
                   <li>
@@ -44,7 +49,7 @@ export default function Footer() {
                       href="/legal/confidentialite"
                       className="font-roboto text-sm text-white/50 hover:text-white transition-colors"
                     >
-                      Confidentialité
+                      {t.footer.privacy}
                     </Link>
                   </li>
                   <li>
@@ -52,7 +57,7 @@ export default function Footer() {
                       href="/legal/mentions-legales"
                       className="font-roboto text-sm text-white/50 hover:text-white transition-colors"
                     >
-                      Mentions légales
+                      {t.footer.legalNotice}
                     </Link>
                   </li>
                 </ul>
@@ -60,7 +65,7 @@ export default function Footer() {
 
               <div>
                 <h4 className="font-poppins text-xs uppercase tracking-widest text-white/30 mb-3 md:mb-4 text-center md:text-left">
-                  Contact
+                  {t.footer.contact}
                 </h4>
                 <ul className="space-y-2 text-center md:text-left">
                   <li>
@@ -82,10 +87,10 @@ export default function Footer() {
       <div className="px-4 md:px-12 border-t border-white/5">
         <div className="max-w-[1400px] mx-auto py-5 md:py-6 flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="font-roboto text-xs text-white/30">
-            © {new Date().getFullYear()} Init. Tous droits réservés.
+            © {new Date().getFullYear()} Init. {t.footer.rights}
           </p>
           <p className="font-roboto text-xs text-white/20">
-            Fait avec passion à Paris
+            {t.footer.madeWith}
           </p>
         </div>
       </div>
