@@ -2,15 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { authService } from "../services/auth.service";
 import { useLang } from "../contexts/LangContext";
 
 export default function HeroParallax() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [offsetY, setOffsetY] = useState(0);
   const [splashDone, setSplashDone] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { t } = useLang();
@@ -21,20 +19,8 @@ export default function HeroParallax() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      if (rect.bottom > 0) {
-        setOffsetY(window.scrollY * 0.4);
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return (
-    <section ref={sectionRef} className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#303030]">
+    <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#303030]">
       {/* Background image */}
       <Image
         src="/bgLanding.jpg"
