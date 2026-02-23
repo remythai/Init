@@ -5,7 +5,7 @@ const mockPhotoModel = vi.hoisted(() => {
   process.env.DB_HOST = 'localhost';
   process.env.DB_NAME = 'testdb';
   process.env.DB_PASSWORD = 'testpass';
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     create: vi.fn(),
@@ -26,14 +26,14 @@ const mockBlockedUserModel = vi.hoisted(() => ({
 
 const mockGetPhotoUrl = vi.hoisted(() => vi.fn());
 const mockDeletePhotoFile = vi.hoisted(() => vi.fn());
-const mockStripExif = vi.hoisted(() => vi.fn());
+const mockValidateAndSavePhoto = vi.hoisted(() => vi.fn());
 
 vi.mock('../../models/photo.model.js', () => ({ PhotoModel: mockPhotoModel }));
 vi.mock('../../models/blockedUser.model.js', () => ({ BlockedUserModel: mockBlockedUserModel }));
 vi.mock('../../config/multer.config.js', () => ({
   getPhotoUrl: mockGetPhotoUrl,
   deletePhotoFile: mockDeletePhotoFile,
-  stripExif: mockStripExif,
+  validateAndSavePhoto: mockValidateAndSavePhoto,
 }));
 vi.mock('../../utils/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -62,17 +62,25 @@ describe('PhotoService', () => {
   });
 
   describe('uploadPhoto', () => {
-    it('should check blocked, count, strip exif, and create photo', async () => {
+    const fakeBuf = Buffer.from('fake-image');
+
+    it('should throw 403 when user is blocked on event', async () => {
+      mockBlockedUserModel.isBlocked.mockResolvedValueOnce(true);
+
+      await expectAppError(() => PhotoService.uploadPhoto(1, fakeBuf, 'photo.jpg', '5'), 403, 'ne pouvez plus modifier');
+    });
+
+    it('should check blocked, count, validate+save, and create photo', async () => {
       mockPhotoModel.countByUserAndEvent.mockResolvedValueOnce(2);
+      mockValidateAndSavePhoto.mockResolvedValueOnce('photo.jpg');
       mockGetPhotoUrl.mockReturnValue('/uploads/photos/1/photo.jpg');
-      mockStripExif.mockResolvedValueOnce(undefined);
       mockPhotoModel.create.mockResolvedValueOnce({ id: 10, user_id: 1 });
 
-      const result = await PhotoService.uploadPhoto(1, 'photo.jpg', '5', 'false');
+      const result = await PhotoService.uploadPhoto(1, fakeBuf, 'photo.jpg', '5', 'false');
 
       expect(mockBlockedUserModel.isBlocked).toHaveBeenCalledWith(5, 1);
       expect(mockPhotoModel.countByUserAndEvent).toHaveBeenCalledWith(1, 5);
-      expect(mockStripExif).toHaveBeenCalledWith('/uploads/photos/1/photo.jpg');
+      expect(mockValidateAndSavePhoto).toHaveBeenCalledWith(fakeBuf, 1, 'photo.jpg');
       expect(mockPhotoModel.create).toHaveBeenCalledWith({
         userId: 1, filePath: '/uploads/photos/1/photo.jpg', eventId: 5, displayOrder: 2, isPrimary: false,
       });
@@ -81,36 +89,36 @@ describe('PhotoService', () => {
 
     it('should set isPrimary true when first photo', async () => {
       mockPhotoModel.countByUserAndEvent.mockResolvedValueOnce(0);
+      mockValidateAndSavePhoto.mockResolvedValueOnce('first.jpg');
       mockGetPhotoUrl.mockReturnValue('/uploads/photos/1/first.jpg');
-      mockStripExif.mockResolvedValueOnce(undefined);
       mockPhotoModel.create.mockResolvedValueOnce({ id: 1, is_primary: true });
 
-      await PhotoService.uploadPhoto(1, 'first.jpg');
+      await PhotoService.uploadPhoto(1, fakeBuf, 'first.jpg');
 
       expect(mockPhotoModel.create).toHaveBeenCalledWith(expect.objectContaining({ isPrimary: true }));
     });
 
     it('should throw if max photos exceeded', async () => {
       mockPhotoModel.countByUserAndEvent.mockResolvedValueOnce(6);
-      mockGetPhotoUrl.mockReturnValue('/uploads/photos/1/max.jpg');
 
-      await expectAppError(() => PhotoService.uploadPhoto(1, 'max.jpg'), 400, 'plus de 6 photos');
+      await expectAppError(() => PhotoService.uploadPhoto(1, fakeBuf, 'max.jpg'), 400, 'plus de 6 photos');
     });
 
     it('should clean up file on error', async () => {
-      mockPhotoModel.countByUserAndEvent.mockRejectedValueOnce(new Error('db down'));
+      mockPhotoModel.countByUserAndEvent.mockResolvedValueOnce(1);
+      mockValidateAndSavePhoto.mockResolvedValueOnce('err.jpg');
       mockGetPhotoUrl.mockReturnValue('/uploads/photos/1/err.jpg');
+      mockPhotoModel.create.mockRejectedValueOnce(new Error('db down'));
 
-      await expect(PhotoService.uploadPhoto(1, 'err.jpg', '5')).rejects.toThrow('db down');
+      await expect(PhotoService.uploadPhoto(1, fakeBuf, 'err.jpg', '5')).rejects.toThrow('db down');
       expect(mockDeletePhotoFile).toHaveBeenCalledWith('/uploads/photos/1/err.jpg');
     });
 
-    it('should throw if stripExif fails', async () => {
+    it('should throw if validateAndSavePhoto fails', async () => {
       mockPhotoModel.countByUserAndEvent.mockResolvedValueOnce(0);
-      mockGetPhotoUrl.mockReturnValue('/uploads/photos/1/bad.jpg');
-      mockStripExif.mockRejectedValueOnce(new Error('not an image'));
+      mockValidateAndSavePhoto.mockRejectedValueOnce(new Error('not an image'));
 
-      await expectAppError(() => PhotoService.uploadPhoto(1, 'bad.jpg'), 400, "pas une image valide");
+      await expectAppError(() => PhotoService.uploadPhoto(1, fakeBuf, 'bad.jpg'), 400, "pas une image valide");
     });
   });
 

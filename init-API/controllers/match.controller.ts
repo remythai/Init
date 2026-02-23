@@ -11,7 +11,7 @@ export const MatchController = {
   async getProfiles(req: Request, res: Response): Promise<void> {
     const eventId = parseInt(req.params.id);
     const userId = req.user!.id;
-    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 100);
 
     const profiles = await MatchService.getProfiles(userId, eventId, limit);
     success(res, profiles);
@@ -49,8 +49,8 @@ export const MatchController = {
       throw new ForbiddenError('Vous devez être inscrit à cet événement');
     }
 
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const matches = await MatchModel.getMatchesByEvent(userId, eventId, limit, offset);
 
     success(res, matches);
@@ -58,8 +58,8 @@ export const MatchController = {
 
   async getAllMatches(req: Request, res: Response): Promise<void> {
     const userId = req.user!.id;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
     const matches = await MatchModel.getAllMatches(userId, limit, offset) as Array<Record<string, unknown>>;
 
@@ -95,8 +95,8 @@ export const MatchController = {
 
   async getAllConversations(req: Request, res: Response): Promise<void> {
     const userId = req.user!.id;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const result = await MatchService.getAllConversations(userId, limit, offset);
     success(res, result);
   },
@@ -104,8 +104,8 @@ export const MatchController = {
   async getEventConversations(req: Request, res: Response): Promise<void> {
     const eventId = parseInt(req.params.eventId);
     const userId = req.user!.id;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const result = await MatchService.getEventConversations(userId, eventId, limit, offset);
     success(res, result);
   },

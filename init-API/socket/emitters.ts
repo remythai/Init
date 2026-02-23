@@ -62,3 +62,12 @@ export const emitConversationUpdate = (userId: number, conversationData: unknown
 
   emitToUser(userId, 'chat:conversationUpdate', conversationData);
 };
+
+export const disconnectUser = (userId: number): void => {
+  if (!io) return;
+
+  const roomName = `user:${userId}`;
+  io.in(roomName).disconnectSockets(true);
+
+  logger.debug({ userId, room: roomName }, 'Disconnected user sockets');
+};

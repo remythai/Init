@@ -11,6 +11,10 @@ if (missing.length > 0) {
   throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
 }
 
+if (process.env.JWT_SECRET!.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters');
+}
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,

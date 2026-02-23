@@ -1,10 +1,11 @@
 import type { Request, Response } from 'express';
 import { OrgaModel } from '../models/orga.model.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
+import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
+import { disconnectUser } from '../socket/emitters.js';
 import { success, created } from '../utils/responses.js';
 import { AuthService } from '../services/auth.service.js';
 import { OrgaService } from '../services/orga.service.js';
-import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 
 export const OrgaController = {
   async register(req: Request, res: Response): Promise<void> {
@@ -40,6 +41,10 @@ export const OrgaController = {
 
   async logout(req: Request, res: Response): Promise<void> {
     await AuthService.revokeRefreshToken(req.cookies?.refreshToken);
+    if (req.user) {
+      await OrgaModel.setLogoutAt(req.user.id);
+      disconnectUser(req.user.id);
+    }
     clearRefreshCookie(res);
     success(res, null, 'Déconnexion réussie');
   },

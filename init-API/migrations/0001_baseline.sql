@@ -56,6 +56,7 @@ CREATE TABLE public.users (
     tel character varying(20) NOT NULL,
     birthday date NOT NULL,
     password_hash character varying(255) NOT NULL,
+    logout_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -144,6 +145,7 @@ CREATE TABLE public.orga (
     description text,
     tel character varying(20),
     password_hash character varying(255) NOT NULL,
+    logout_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );

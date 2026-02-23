@@ -1,6 +1,6 @@
 import { PhotoModel } from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
-import { getPhotoUrl, deletePhotoFile, stripExif } from '../config/multer.config.js';
+import { getPhotoUrl, deletePhotoFile, validateAndSavePhoto } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
 import logger from '../utils/logger.js';
 
@@ -15,26 +15,28 @@ async function checkNotBlocked(eventId: number | null | undefined, userId: numbe
 }
 
 export const PhotoService = {
-  async uploadPhoto(userId: number, filename: string, eventId?: string, isPrimary?: string | boolean) {
+  async uploadPhoto(userId: number, fileBuffer: Buffer, originalname: string, eventId?: string, isPrimary?: string | boolean) {
     const parsedEventId = eventId ? parseInt(eventId) : undefined;
+    await checkNotBlocked(parsedEventId, userId);
+
+    const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId || null);
+    if (count >= MAX_PHOTOS_PER_CONTEXT) {
+      throw new AppError(400, `Vous ne pouvez pas avoir plus de ${MAX_PHOTOS_PER_CONTEXT} photos`);
+    }
+
+    const displayOrder = count;
+    const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
+
+    let filename: string;
     try {
-      await checkNotBlocked(parsedEventId, userId);
+      filename = await validateAndSavePhoto(fileBuffer, userId, originalname);
+    } catch {
+      throw new AppError(400, 'Le fichier n\'est pas une image valide');
+    }
 
-      const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId || null);
-      if (count >= MAX_PHOTOS_PER_CONTEXT) {
-        throw new AppError(400, `Vous ne pouvez pas avoir plus de ${MAX_PHOTOS_PER_CONTEXT} photos`);
-      }
+    const filePath = getPhotoUrl(userId, filename);
 
-      const displayOrder = count;
-      const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
-
-      const filePath = getPhotoUrl(userId, filename);
-      try {
-        await stripExif(filePath);
-      } catch {
-        throw new AppError(400, 'Le fichier n\'est pas une image valide');
-      }
-
+    try {
       return await PhotoModel.create({
         userId,
         filePath,
@@ -44,7 +46,7 @@ export const PhotoService = {
       });
     } catch (error) {
       try {
-        deletePhotoFile(getPhotoUrl(userId, filename));
+        deletePhotoFile(filePath);
       } catch (e) {
         logger.error({ err: e }, 'Error cleaning up file');
       }

@@ -21,8 +21,8 @@ export const EventController = {
   },
 
   async getMyOrgaEvents(req: Request, res: Response): Promise<void> {
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const eventsWithCount = await EventService.getOrgaEvents(req.user!.id, limit, offset);
     success(res, eventsWithCount);
   },
@@ -51,8 +51,8 @@ export const EventController = {
       throw new ForbiddenError('Vous ne pouvez voir que les participants de vos événements');
     }
 
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const participants = await RegistrationModel.findByEventId(eventId, limit, offset);
     success(res, participants);
   },
@@ -78,8 +78,8 @@ export const EventController = {
       throw new ForbiddenError('Vous ne pouvez voir que les utilisateurs bloqués de vos événements');
     }
 
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     const blockedUsers = await BlockedUserModel.getByEventId(eventId, limit, offset);
     success(res, blockedUsers);
   },
@@ -139,8 +139,8 @@ export const EventController = {
       upcoming: upcoming !== 'false',
       location: location as string | undefined,
       search: search as string | undefined,
-      limit: Math.min(parseInt(limit as string) || 20, 100),
-      offset: offset ? parseInt(offset as string) : 0
+      limit: Math.min(Math.max(parseInt(limit as string) || 20, 1), 100),
+      offset: Math.max(offset ? parseInt(offset as string) : 0, 0)
     };
 
     const events = await EventModel.findPublicEventsWithUserInfo(userId, filters);
@@ -160,8 +160,8 @@ export const EventController = {
     const filters = {
       upcoming: upcoming === 'true',
       past: past === 'true',
-      limit: Math.min(parseInt(limit as string) || 20, 100),
-      offset: offset ? parseInt(offset as string) : 0
+      limit: Math.min(Math.max(parseInt(limit as string) || 20, 1), 100),
+      offset: Math.max(offset ? parseInt(offset as string) : 0, 0)
     };
 
     const events = await EventModel.findUserRegisteredEvents(userId, filters);

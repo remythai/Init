@@ -6,7 +6,7 @@ const { mockQuery, mockConnect, mockOn } = vi.hoisted(() => {
   process.env.DB_HOST = 'localhost';
   process.env.DB_NAME = 'testdb';
   process.env.DB_PASSWORD = 'testpass';
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     mockQuery: vi.fn(),
@@ -94,6 +94,59 @@ describe('TokenModel', () => {
       const result = await TokenModel.findValidToken('expired-token');
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('findValidTokenForUpdate', () => {
+    it('should query with FOR UPDATE using the provided client', async () => {
+      const mockRow = { id: 1, token: 'hashed', user_id: 10, user_type: 'user' };
+      const mockClient = { query: vi.fn().mockResolvedValueOnce({ rows: [mockRow] }) };
+
+      const result = await TokenModel.findValidTokenForUpdate('raw-token-lock', mockClient as any);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('FOR UPDATE'),
+        [expectedHash('raw-token-lock')]
+      );
+      expect(result).toEqual(mockRow);
+    });
+
+    it('should return undefined when no valid token found', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValueOnce({ rows: [] }) };
+
+      const result = await TokenModel.findValidTokenForUpdate('expired-token', mockClient as any);
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('create with client', () => {
+    it('should use provided client instead of pool', async () => {
+      const mockRow = { id: 3, user_id: 10, token: 'hashed', user_type: 'user' };
+      const mockClient = { query: vi.fn().mockResolvedValueOnce({ rows: [mockRow] }) };
+
+      const expiry = new Date('2025-01-01');
+      await TokenModel.create(10, 'raw-token-tx', expiry, 'user', mockClient as any);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO refresh_tokens'),
+        [10, null, expectedHash('raw-token-tx'), expiry, 'user']
+      );
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('delete with client', () => {
+    it('should use provided client instead of pool', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValueOnce({ rows: [] }) };
+
+      await TokenModel.delete('raw-token-tx-del', mockClient as any);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM refresh_tokens WHERE token = $1'),
+        [expectedHash('raw-token-tx-del')]
+      );
+      expect(mockQuery).not.toHaveBeenCalled();
     });
   });
 

@@ -134,6 +134,19 @@ function handleErrorKind(classified: ErrorKind, res: Response): Response {
 
 export const errorHandler = (err: any, req: Request, res: Response, _next: NextFunction): Response => {
   const classified = classifyError(err);
+
+  if (classified.kind === 'operational' && (classified.statusCode === 401 || classified.statusCode === 403)) {
+    logger.warn({
+      event: 'security.access_denied',
+      status: classified.statusCode,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+      userId: req.user?.id,
+      message: classified.message
+    }, 'Access denied');
+  }
+
   return handleErrorKind(classified, res);
 };
 

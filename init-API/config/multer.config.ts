@@ -42,6 +42,8 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+const photoMemoryStorage = multer.memoryStorage();
+
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const userId = req.user?.id;
@@ -72,7 +74,7 @@ const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
 };
 
 export const photoUpload = multer({
-  storage,
+  storage: photoMemoryStorage,
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
@@ -81,7 +83,7 @@ export const photoUpload = multer({
 });
 
 export const photosUpload = multer({
-  storage,
+  storage: photoMemoryStorage,
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
@@ -89,14 +91,48 @@ export const photosUpload = multer({
   }
 });
 
+const MAX_IMAGE_DIMENSION = 10000;
+
 export const stripExif = async (filePath: string): Promise<void> => {
   const fullPath = resolveUploadPath(filePath);
   try {
-    const buffer = await sharp(fullPath).rotate().toBuffer();
+    const image = sharp(fullPath);
+    const metadata = await image.metadata();
+    if ((metadata.width || 0) > MAX_IMAGE_DIMENSION || (metadata.height || 0) > MAX_IMAGE_DIMENSION) {
+      throw new Error('Image dimensions too large');
+    }
+    const buffer = await image.rotate().toBuffer();
     await sharp(buffer).toFile(fullPath);
   } catch {
     throw new Error('Le fichier n\'est pas une image valide');
   }
+};
+
+export const validateAndSavePhoto = async (fileBuffer: Buffer, userId: number, originalname: string): Promise<string> => {
+  const image = sharp(fileBuffer);
+  const metadata = await image.metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error('Le fichier n\'est pas une image valide');
+  }
+  if (metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION) {
+    throw new Error('Dimensions de l\'image trop grandes (max 10000x10000)');
+  }
+
+  const cleanBuffer = await image.rotate().toBuffer();
+
+  const userDir = path.join(PHOTOS_DIR, String(userId));
+  if (!fs.existsSync(userDir)) {
+    fs.mkdirSync(userDir, { recursive: true });
+  }
+
+  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+  const ext = path.extname(originalname).toLowerCase();
+  const filename = `photo-${uniqueSuffix}${ext}`;
+  const destPath = path.join(userDir, filename);
+
+  await sharp(cleanBuffer).toFile(destPath);
+
+  return filename;
 };
 
 export const getPhotoUrl = (userId: number, filename: string): string => {

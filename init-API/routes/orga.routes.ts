@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { OrgaController } from '../controllers/orga.controller.js';
-import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
+import { authMiddleware, optionalAuthMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
 import { validate } from '../middleware/validation.middleware.js';
 import { orgaLogoUpload } from '../config/multer.config.js';
@@ -12,7 +12,7 @@ const router = Router();
 router.post('/register', registerLimiter, validate('orgaRegister'), asyncHandler(OrgaController.register));
 router.post('/login', authLimiter, validate('orgaLogin'), asyncHandler(OrgaController.login));
 router.post('/refresh', authLimiter, asyncHandler(OrgaController.refreshToken));
-router.post('/logout', asyncHandler(OrgaController.logout));
+router.post('/logout', optionalAuthMiddleware, asyncHandler(OrgaController.logout));
 
 // Protected routes
 router.get(

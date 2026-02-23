@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { TokenModel } from '../models/token.model.js';
+import { withTransaction } from '../config/database.js';
 import { ValidationError, UnauthorizedError } from '../utils/errors.js';
 import type { UserType } from '../types/index.js';
 
@@ -28,33 +29,39 @@ export const AuthService = {
       throw new ValidationError('Refresh token requis');
     }
 
-    const tokenEntry = await TokenModel.findValidToken(cookieToken);
-    if (!tokenEntry) {
-      throw new UnauthorizedError('Refresh token invalide ou expiré');
-    }
+    return withTransaction(async (client) => {
+      const tokenEntry = await TokenModel.findValidTokenForUpdate(cookieToken, client);
+      if (!tokenEntry) {
+        throw new UnauthorizedError('Refresh token invalide ou expiré');
+      }
 
-    const entityId = tokenEntry.user_id || tokenEntry.orga_id;
-    const role = tokenEntry.user_type;
+      const entityId = tokenEntry.user_id || tokenEntry.orga_id;
+      const role = tokenEntry.user_type;
 
-    await TokenModel.delete(cookieToken);
+      await TokenModel.delete(cookieToken, client);
 
-    const accessToken = jwt.sign(
-      { id: entityId, role },
-      JWT_SECRET,
-      { expiresIn: '15m' }
-    );
+      const accessToken = jwt.sign(
+        { id: entityId, role },
+        JWT_SECRET,
+        { expiresIn: '15m' }
+      );
 
-    const newRefreshToken = crypto.randomBytes(64).toString('hex');
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 7);
-    await TokenModel.create(entityId!, newRefreshToken, expiry, role);
+      const newRefreshToken = crypto.randomBytes(64).toString('hex');
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + 7);
+      await TokenModel.create(entityId!, newRefreshToken, expiry, role, client);
 
-    return { accessToken, refreshToken: newRefreshToken };
+      return { accessToken, refreshToken: newRefreshToken };
+    });
   },
 
   async revokeRefreshToken(cookieToken: string | undefined): Promise<void> {
     if (cookieToken) {
       await TokenModel.delete(cookieToken);
     }
+  },
+
+  async revokeAllTokensForUser(entityId: number, role: UserType): Promise<void> {
+    await TokenModel.deleteAllForUser(entityId, role);
   }
 };

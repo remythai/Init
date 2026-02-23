@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => {
   process.env.DB_HOST = 'localhost';
   process.env.DB_NAME = 'testdb';
   process.env.DB_PASSWORD = 'testpass';
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     // MatchModel (only for simple controller methods)

@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => {
   process.env.DB_HOST = 'localhost';
   process.env.DB_NAME = 'testdb';
   process.env.DB_PASSWORD = 'testpass';
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     PhotoService: {
@@ -75,11 +75,12 @@ describe('PhotoController', () => {
       const photo = { id: 10, user_id: 1 };
       mocks.PhotoService.uploadPhoto.mockResolvedValueOnce(photo);
 
-      const req = mockReq({ body: { eventId: '5', isPrimary: 'false' }, file: { filename: 'photo.jpg' } });
+      const buf = Buffer.from('fake-image');
+      const req = mockReq({ body: { eventId: '5', isPrimary: 'false' }, file: { buffer: buf, originalname: 'photo.jpg' } });
       const res = mockRes();
       await PhotoController.uploadPhoto(req as any, res as any);
 
-      expect(mocks.PhotoService.uploadPhoto).toHaveBeenCalledWith(1, 'photo.jpg', '5', 'false');
+      expect(mocks.PhotoService.uploadPhoto).toHaveBeenCalledWith(1, buf, 'photo.jpg', '5', 'false');
       expect(mocks.successFn).toHaveBeenCalledWith(res, photo, 'Photo uploadée avec succès', 201);
     });
   });

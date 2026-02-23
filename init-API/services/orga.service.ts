@@ -6,6 +6,7 @@ import { normalizePhone } from '../utils/phone.js';
 import { getOrgaLogoUrl, deleteOrgaLogo, deleteOrgaDir, deleteEventDir } from '../config/multer.config.js';
 import { ValidationError, UnauthorizedError } from '../utils/errors.js';
 import { AuthService } from './auth.service.js';
+import logger from '../utils/logger.js';
 
 export const OrgaService = {
   async register(data: { name: string; mail: string; description?: string; tel?: string; password: string }) {
@@ -33,9 +34,11 @@ export const OrgaService = {
       }
     } catch {}
     if (!orga || !valid) {
+      logger.warn({ event: 'security.login_failed', type: 'orga', mail: mail.toLowerCase() }, 'Failed orga login attempt');
       throw new UnauthorizedError('Identifiants incorrects');
     }
 
+    logger.info({ event: 'security.login_success', type: 'orga', orgaId: orga.id }, 'Orga logged in');
     const tokens = await AuthService.generateTokens(orga.id, 'orga');
 
     return {
@@ -66,13 +69,18 @@ export const OrgaService = {
   },
 
   async deleteAccount(orgaId: number) {
+    logger.info({ event: 'security.account_deleted', type: 'orga', orgaId }, 'Orga account deleted');
     const events = await EventModel.findByOrgaId(orgaId) as Array<{ id: number }>;
-    for (const event of events) {
-      deleteEventDir(event.id);
-    }
-    deleteOrgaDir(orgaId);
     await TokenModel.deleteAllForUser(orgaId, 'orga');
     await OrgaModel.delete(orgaId);
+    try {
+      for (const event of events) {
+        deleteEventDir(event.id);
+      }
+      deleteOrgaDir(orgaId);
+    } catch (err) {
+      logger.error({ err, orgaId }, 'Failed to delete orga files');
+    }
   },
 
   async uploadLogo(orgaId: number, filename: string) {

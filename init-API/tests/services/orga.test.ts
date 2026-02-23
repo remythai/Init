@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockArgon2 = vi.hoisted(() => {
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     hash: vi.fn(),
@@ -47,6 +47,9 @@ vi.mock('../../config/multer.config.js', () => ({
   deleteOrgaDir: mockDeleteOrgaDir,
   deleteEventDir: mockDeleteEventDir,
 }));
+
+const mockLogger = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }));
+vi.mock('../../utils/logger.js', () => ({ default: mockLogger }));
 
 vi.mock('../../utils/errors.js', async () => {
   const actual = await vi.importActual<typeof import('../../utils/errors.js')>('../../utils/errors.js');
@@ -129,6 +132,29 @@ describe('OrgaService', () => {
       mockArgon2.verify.mockResolvedValueOnce(false);
       await expect(OrgaService.login('org@test.com', 'wrong')).rejects.toThrow('Identifiants incorrects');
     });
+
+    it('should log security.login_failed on failure', async () => {
+      mockOrgaModel.findByMail.mockResolvedValueOnce(undefined);
+      await expect(OrgaService.login('unknown@test.com', 'pass')).rejects.toThrow();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.login_failed', type: 'orga' }),
+        expect.any(String)
+      );
+    });
+
+    it('should log security.login_success on success', async () => {
+      mockOrgaModel.findByMail.mockResolvedValueOnce({ id: 10, nom: 'O', mail: 'o@t.com', description: 'd', password_hash: 'h' });
+      mockArgon2.verify.mockResolvedValueOnce(true);
+      mockAuthService.generateTokens.mockResolvedValueOnce({ accessToken: 'a', refreshToken: 'r' });
+
+      await OrgaService.login('o@t.com', 'pass');
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.login_success', type: 'orga', orgaId: 10 }),
+        expect.any(String)
+      );
+    });
   });
 
   describe('updateProfile', () => {
@@ -167,6 +193,33 @@ describe('OrgaService', () => {
       expect(mockDeleteOrgaDir).toHaveBeenCalledWith(10);
       expect(mockTokenModel.deleteAllForUser).toHaveBeenCalledWith(10, 'orga');
       expect(mockOrgaModel.delete).toHaveBeenCalledWith(10);
+    });
+
+    it('should log security.account_deleted', async () => {
+      mockEventModel.findByOrgaId.mockResolvedValueOnce([]);
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+      mockOrgaModel.delete.mockResolvedValueOnce(undefined);
+
+      await OrgaService.deleteAccount(10);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.account_deleted', type: 'orga', orgaId: 10 }),
+        expect.any(String)
+      );
+    });
+
+    it('should catch and log file cleanup failure', async () => {
+      mockEventModel.findByOrgaId.mockResolvedValueOnce([]);
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+      mockOrgaModel.delete.mockResolvedValueOnce(undefined);
+      mockDeleteOrgaDir.mockImplementationOnce(() => { throw new Error('ENOENT'); });
+
+      await OrgaService.deleteAccount(10);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ orgaId: 10 }),
+        expect.any(String)
+      );
     });
   });
 

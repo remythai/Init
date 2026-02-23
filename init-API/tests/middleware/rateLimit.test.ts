@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { authLimiter, registerLimiter, apiLimiter, uploadLimiter } from '../../middleware/rateLimit.middleware';
+import { authLimiter, registerLimiter, apiLimiter, uploadLimiter, swipeLimiter } from '../../middleware/rateLimit.middleware';
 
 describe('rateLimit.middleware', () => {
   it('should export authLimiter', () => {
@@ -20,5 +20,10 @@ describe('rateLimit.middleware', () => {
   it('should export uploadLimiter', () => {
     expect(uploadLimiter).toBeDefined();
     expect(typeof uploadLimiter).toBe('function');
+  });
+
+  it('should export swipeLimiter', () => {
+    expect(swipeLimiter).toBeDefined();
+    expect(typeof swipeLimiter).toBe('function');
   });
 });
