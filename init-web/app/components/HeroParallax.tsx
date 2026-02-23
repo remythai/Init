@@ -44,12 +44,11 @@ export default function HeroParallax() {
         >
           {t.hero.line1}
           <br />
-          <span className="inline-flex flex-wrap justify-center gap-2">
-            <span className="inline-block bg-[#FF4D6A] text-white px-5 rounded-full pb-1">{t.hero.love}</span>
-            <span className="inline-block bg-[#34D399] text-white px-5 rounded-full pb-1">{t.hero.friendship}</span>
-            <span className="inline-block bg-[#1271FF] text-white px-7 rounded-full pb-1">{t.hero.pro}</span>
+          <span className="flex flex-wrap justify-center gap-2">
+            <span className="inline-block bg-[#FF4D6A] text-white px-4 md:px-5 rounded-full pb-1">{t.hero.love}</span>
+            <span className="inline-block bg-[#34D399] text-white px-4 md:px-5 rounded-full pb-1">{t.hero.friendship}</span>
+            <span className="inline-block bg-[#1271FF] text-white px-4 md:px-7 rounded-full pb-1">{t.hero.pro}</span>
           </span>
-          <br />
           {t.hero.line3}
         </motion.h1>
 
