@@ -13,12 +13,9 @@ const rateLimitHandler = (limiterName: string) => (req: Request, _res: Response)
   }, 'Rate limit exceeded');
 };
 
-// Key by user ID when authenticated, fallback to IP for unauthenticated requests
+// Key by user ID — these limiters are always behind authMiddleware so req.user is set
 const userKeyGenerator = (req: Request): string => {
-  if (req.user) {
-    return `${req.user.role}:${req.user.id}`;
-  }
-  return req.ip || 'unknown';
+  return `${req.user!.role}:${req.user!.id}`;
 };
 
 // --- Unauthenticated routes (keyed by IP, stricter) ---
@@ -81,7 +78,7 @@ export const swipeLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => {
     rateLimitHandler('swipe')(req, res);
-    res.status(429).json({ error: 'Trop de swipes, veuillez réessayer dans 1 minute', code: 'RATE_LIMIT_EXCLUDED' });
+    res.status(429).json({ error: 'Trop de swipes, veuillez réessayer dans 1 minute', code: 'RATE_LIMIT_EXCEEDED' });
   }
 });
 
