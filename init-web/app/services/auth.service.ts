@@ -48,6 +48,8 @@ export interface Orga {
 }
 
 class AuthService {
+  private refreshPromise: Promise<string | null> | null = null;
+
   private getStorageItem(key: string): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(key);
@@ -213,6 +215,20 @@ class AuthService {
   }
 
   async refreshAccessToken(): Promise<string | null> {
+    // Mutex: if a refresh is already in flight, wait for it instead of firing a second one
+    // This prevents race conditions when multiple 401s trigger simultaneous refreshes
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this._doRefresh().finally(() => {
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
+  private async _doRefresh(): Promise<string | null> {
     const userType = this.getUserType();
 
     if (!userType) {
@@ -229,23 +245,31 @@ class AuthService {
         credentials: 'include',
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Refresh token failed');
+      if (response.status === 401 || response.status === 403) {
+        // Refresh token is truly invalid/expired — clear auth
+        this.clearAuth();
+        return null;
       }
 
+      if (!response.ok) {
+        // Rate limit (429), server error (500), etc. — don't clear auth, just fail silently
+        console.warn('Refresh failed with status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
       const newToken = data.data?.accessToken || data.accessToken || data.data?.token || data.token;
 
       if (!newToken) {
-        throw new Error('No token in refresh response');
+        console.warn('No token in refresh response');
+        return null;
       }
 
       this.setToken(newToken);
       return newToken;
     } catch (error) {
+      // Network error — don't clear auth, user might just be offline
       console.error('Refresh token error:', error);
-      this.clearAuth();
       return null;
     }
   }
@@ -268,7 +292,6 @@ class AuthService {
     });
 
     if (response.status === 401) {
-      console.log('Token expired, attempting refresh...');
       token = await this.refreshAccessToken();
 
       if (token) {
@@ -281,9 +304,9 @@ class AuthService {
           },
           credentials: 'include',
         });
-      } else {
-        throw new Error('Failed to refresh token');
       }
+      // Refresh failed — return the original 401 response so the caller can handle it
+      return response;
     }
 
     return response;
@@ -328,18 +351,22 @@ class AuthService {
         }
       }
 
-      if (!response.ok) {
-        console.log('Token invalid for userType:', userType);
+      if (response.status === 403) {
         this.clearAuth();
         return null;
       }
 
-      console.log('Token valid for userType:', userType);
+      if (!response.ok) {
+        // Server error / rate limit — don't clear auth
+        console.warn('Validation request failed with status:', response.status);
+        return userType;
+      }
+
       return userType;
     } catch (error) {
+      // Network error — don't log out the user
       console.error('Error validating token:', error);
-      this.clearAuth();
-      return null;
+      return userType;
     }
   }
 
@@ -481,18 +508,22 @@ class AuthService {
         }
       }
 
-      if (!response.ok) {
-        console.log('Token invalid, clearing auth');
+      if (response.status === 403) {
         this.clearAuth();
         return false;
       }
 
-      console.log('Token valid');
+      if (!response.ok) {
+        // Server error / rate limit — assume token is still valid
+        console.warn('Validation request failed with status:', response.status);
+        return true;
+      }
+
       return true;
     } catch (error) {
+      // Network error — don't log out the user
       console.error('Error checking token:', error);
-      this.clearAuth();
-      return false;
+      return true;
     }
   }
 }
