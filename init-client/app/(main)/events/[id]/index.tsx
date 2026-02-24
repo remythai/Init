@@ -1,5 +1,6 @@
-// events/[id]/index.tsx
+// app/(main)/events/[id]/index.tsx
 import { Event, EventDetail } from "@/components/EventDetails";
+import { authService } from "@/services/auth.service";
 import { eventService } from "@/services/event.service";
 import { transformEventResponse } from "@/utils/event.utils";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -9,26 +10,38 @@ import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 export default function EventDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  
+
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [userType, setUserType] = useState<"user" | "organizer" | null>(null);
 
   useEffect(() => {
-    loadEventDetails();
+    init();
   }, [id]);
+
+  const init = async () => {
+    try {
+      const role = await authService.getUserType();
+      const type = role === "orga" ? "organizer" : "user";
+      setUserType(type);
+    } catch {
+      setUserType("user");
+    }
+    loadEventDetails();
+  };
 
   const loadEventDetails = async () => {
     try {
       setLoading(true);
       const eventResponse = await eventService.getEventById(id as string);
-      
+
       console.log("🔍 Réponse complète de l'API:", JSON.stringify(eventResponse, null, 2));
-      
+
       const transformedEvent = transformEventResponse(eventResponse);
       setEvent(transformedEvent);
-      setIsRegistered(transformedEvent.isRegistered);
-      
+      setIsRegistered(transformedEvent.isRegistered ?? false);
+
       console.log("✅ isRegistered après transformation:", transformedEvent.isRegistered);
     } catch (error) {
       console.error("Erreur lors du chargement de l'événement:", error);
@@ -44,59 +57,33 @@ export default function EventDetailScreen() {
 
   const handleRegister = async (eventId: string, profileInfo: Record<string, any>) => {
     try {
-      await eventService.registerToEvent(eventId, {
-        profil_info: profileInfo
-      });
-      
+      await eventService.registerToEvent(eventId, { profil_info: profileInfo });
       setIsRegistered(true);
       await loadEventDetails();
-      
-      Alert.alert(
-        "Succès",
-        "Vous êtes maintenant inscrit à cet événement !"
-      );
+      Alert.alert("Succès", "Vous êtes maintenant inscrit à cet événement !");
     } catch (error: any) {
       console.error("Erreur lors de l'inscription:", error);
-      
       if (error.message?.includes("déjà inscrit")) {
         setIsRegistered(true);
         await loadEventDetails();
-        Alert.alert(
-          "Information",
-          "Vous êtes déjà inscrit à cet événement !"
-        );
+        Alert.alert("Information", "Vous êtes déjà inscrit à cet événement !");
       } else {
-        Alert.alert(
-          "Erreur",
-          error.message || "Impossible de s'inscrire à l'événement."
-        );
+        Alert.alert("Erreur", error.message || "Impossible de s'inscrire à l'événement.");
       }
     }
   };
-  
-  
 
   const handleUnregister = async (eventId: string) => {
     try {
       await eventService.unregisterFromEvent(eventId);
-      
       setIsRegistered(false);
       await loadEventDetails();
-      
-      Alert.alert(
-        "Désinscription réussie",
-        "Vous n'êtes plus inscrit à cet événement"
-      );
+      Alert.alert("Désinscription réussie", "Vous n'êtes plus inscrit à cet événement");
     } catch (error: any) {
       console.error("Erreur lors de la désinscription:", error);
-      Alert.alert(
-        "Erreur",
-        error.message || "Impossible de se désinscrire de l'événement."
-      );
+      Alert.alert("Erreur", error.message || "Impossible de se désinscrire de l'événement.");
     }
   };
-  
-  
 
   const handleEnterEvent = (event: Event) => {
     router.push(`/(main)/events/${event.id}/(event-tabs)/swiper`);
@@ -110,13 +97,12 @@ export default function EventDetailScreen() {
     );
   }
 
-  if (!event) {
-    return null;
-  }
+  if (!event) return null;
 
   return (
     <EventDetail
       event={{ ...event, isRegistered }}
+      userType={userType}
       onBack={() => router.back()}
       onRegister={handleRegister}
       onUnregister={handleUnregister}
