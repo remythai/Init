@@ -2,7 +2,7 @@ import { PhotoModel } from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
 import { getPhotoUrl, deletePhotoFile, validateAndSavePhoto } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
-import fs from 'fs';
+import logger from '../utils/logger.js';
 
 const MAX_PHOTOS_PER_CONTEXT = 6;
 
@@ -44,7 +44,6 @@ export const PhotoService = {
         displayOrder,
         isPrimary: shouldBePrimary
       });
-      return photo;
     } catch (error) {
       try {
         deletePhotoFile(filePath);
