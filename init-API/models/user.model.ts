@@ -23,6 +23,15 @@ export const UserModel = {
     return result.rows[0];
   },
 
+  async findByIdWithHash(id: number): Promise<UserRow | undefined> {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    return result.rows[0];
+  },
+
+  async updatePasswordHash(id: number, passwordHash: string): Promise<void> {
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+  },
+
   async findById(id: number): Promise<UserPublic | undefined> {
     const result = await pool.query(
       'SELECT id, firstname, lastname, mail, tel, birthday, created_at, updated_at FROM users WHERE id = $1',
@@ -59,6 +68,15 @@ export const UserModel = {
       values
     );
     return result.rows[0];
+  },
+
+  async setLogoutAt(id: number): Promise<void> {
+    await pool.query('UPDATE users SET logout_at = NOW() WHERE id = $1', [id]);
+  },
+
+  async getLogoutAt(id: number): Promise<Date | null> {
+    const result = await pool.query('SELECT logout_at FROM users WHERE id = $1', [id]);
+    return result.rows[0]?.logout_at ?? null;
   },
 
   async delete(id: number): Promise<void> {

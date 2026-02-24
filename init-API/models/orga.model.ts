@@ -53,6 +53,15 @@ export const OrgaModel = {
     return result.rows[0];
   },
 
+  async setLogoutAt(id: number): Promise<void> {
+    await pool.query('UPDATE orga SET logout_at = NOW() WHERE id = $1', [id]);
+  },
+
+  async getLogoutAt(id: number): Promise<Date | null> {
+    const result = await pool.query('SELECT logout_at FROM orga WHERE id = $1', [id]);
+    return result.rows[0]?.logout_at ?? null;
+  },
+
   async delete(id: number): Promise<void> {
     await pool.query('DELETE FROM orga WHERE id = $1', [id]);
   }

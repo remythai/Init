@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { MatchController } from '../controllers/match.controller.js';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
+import { swipeLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.post(
   '/events/:id/like',
   authMiddleware,
   requireRole('user'),
+  swipeLimiter,
   asyncHandler(MatchController.likeProfile)
 );
 
@@ -48,6 +50,7 @@ router.post(
   '/events/:id/pass',
   authMiddleware,
   requireRole('user'),
+  swipeLimiter,
   asyncHandler(MatchController.passProfile)
 );
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller.js';
-import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
+import { authMiddleware, optionalAuthMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
 import { validate } from '../middleware/validation.middleware.js';
 import { authLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
@@ -134,7 +134,7 @@ router.post('/refresh', authLimiter, asyncHandler(UserController.refreshToken));
  *             schema:
  *               $ref: '#/components/schemas/SuccessResponse'
  */
-router.post('/logout', asyncHandler(UserController.logout));
+router.post('/logout', optionalAuthMiddleware, asyncHandler(UserController.logout));
 
 /**
  * @swagger
@@ -243,6 +243,14 @@ router.put(
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
+router.put(
+  '/me/password',
+  authMiddleware,
+  requireRole('user'),
+  validate('userChangePassword'),
+  asyncHandler(UserController.changePassword)
+);
+
 router.delete(
   '/me',
   authMiddleware,

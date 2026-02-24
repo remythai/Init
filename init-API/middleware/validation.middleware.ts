@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import type { ZodSchema } from 'zod';
 import {
-  userRegisterSchema, userLoginSchema, userUpdateSchema,
+  userRegisterSchema, userLoginSchema, userUpdateSchema, userChangePasswordSchema,
   orgaRegisterSchema, orgaLoginSchema, orgaUpdateSchema
 } from '../schemas/index.js';
 
@@ -9,6 +9,7 @@ export const validationSchemas = {
   userRegister: userRegisterSchema,
   userLogin: userLoginSchema,
   userUpdate: userUpdateSchema,
+  userChangePassword: userChangePasswordSchema,
   orgaRegister: orgaRegisterSchema,
   orgaLogin: orgaLoginSchema,
   orgaUpdate: orgaUpdateSchema

@@ -50,6 +50,12 @@ export const userUpdateSchema = z.object({
   message: 'Aucun champ à mettre à jour fourni'
 });
 
+export const userChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Le mot de passe actuel est requis'),
+  newPassword: passwordSchema
+});
+
 export type UserRegisterInput = z.infer<typeof userRegisterSchema>;
 export type UserLoginInput = z.infer<typeof userLoginSchema>;
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
+export type UserChangePasswordInput = z.infer<typeof userChangePasswordSchema>;

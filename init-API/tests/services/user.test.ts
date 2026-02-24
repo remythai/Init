@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockArgon2 = vi.hoisted(() => {
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     hash: vi.fn(),
@@ -14,6 +14,9 @@ const mockUserModel = vi.hoisted(() => ({
   findByTel: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
+  findByIdWithHash: vi.fn(),
+  updatePasswordHash: vi.fn(),
+  setLogoutAt: vi.fn(),
 }));
 
 const mockTokenModel = vi.hoisted(() => ({
@@ -27,6 +30,7 @@ const mockAuthService = vi.hoisted(() => ({
 const mockNormalizePhone = vi.hoisted(() => vi.fn((p: string) => `+33${p.substring(1)}`));
 
 const mockDeleteUserPhotosDir = vi.hoisted(() => vi.fn());
+const mockWithTransaction = vi.hoisted(() => vi.fn());
 
 vi.mock('argon2', () => ({ default: mockArgon2 }));
 vi.mock('../../models/user.model.js', () => ({ UserModel: mockUserModel }));
@@ -34,6 +38,11 @@ vi.mock('../../models/token.model.js', () => ({ TokenModel: mockTokenModel }));
 vi.mock('../../services/auth.service.js', () => ({ AuthService: mockAuthService }));
 vi.mock('../../utils/phone.js', () => ({ normalizePhone: mockNormalizePhone }));
 vi.mock('../../config/multer.config.js', () => ({ deleteUserPhotosDir: mockDeleteUserPhotosDir }));
+vi.mock('../../config/database.js', () => ({ withTransaction: mockWithTransaction, default: {} }));
+const mockLogger = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }));
+vi.mock('../../utils/logger.js', () => ({
+  default: mockLogger,
+}));
 
 vi.mock('../../utils/errors.js', async () => {
   const actual = await vi.importActual<typeof import('../../utils/errors.js')>('../../utils/errors.js');
@@ -45,6 +54,7 @@ import { UserService } from '../../services/user.service';
 describe('UserService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWithTransaction.mockImplementation(async (cb: (client: unknown) => Promise<unknown>) => cb({}));
   });
 
   describe('register', () => {
@@ -144,6 +154,30 @@ describe('UserService', () => {
 
       await expect(UserService.login('0612345678', 'wrong')).rejects.toThrow('Identifiants incorrects');
     });
+
+    it('should log security.login_failed on failure', async () => {
+      mockUserModel.findByTel.mockResolvedValueOnce(undefined);
+
+      await expect(UserService.login('0600000000', 'wrong')).rejects.toThrow();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.login_failed', type: 'user' }),
+        expect.any(String)
+      );
+    });
+
+    it('should log security.login_success on success', async () => {
+      mockUserModel.findByTel.mockResolvedValueOnce({ id: 42, firstname: 'J', lastname: 'D', tel: '+33612345678', mail: 'j@t.com', password_hash: 'hash' });
+      mockArgon2.verify.mockResolvedValueOnce(true);
+      mockAuthService.generateTokens.mockResolvedValueOnce({ accessToken: 'a', refreshToken: 'r' });
+
+      await UserService.login('0612345678', 'Pass1!');
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.login_success', type: 'user', userId: 42 }),
+        expect.any(String)
+      );
+    });
   });
 
   describe('updateProfile', () => {
@@ -177,16 +211,81 @@ describe('UserService', () => {
     });
   });
 
+  describe('changePassword', () => {
+    it('should verify old password, hash new one, update, and revoke tokens', async () => {
+      mockUserModel.findByIdWithHash.mockResolvedValueOnce({
+        id: 42,
+        password_hash: 'old_hash',
+      });
+      mockArgon2.verify.mockResolvedValueOnce(true);
+      mockArgon2.hash.mockResolvedValueOnce('new_hash');
+      mockUserModel.updatePasswordHash.mockResolvedValueOnce(undefined);
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+      mockUserModel.setLogoutAt.mockResolvedValueOnce(undefined);
+
+      await UserService.changePassword(42, 'oldPass', 'newPass');
+
+      expect(mockUserModel.findByIdWithHash).toHaveBeenCalledWith(42);
+      expect(mockArgon2.verify).toHaveBeenCalledWith('old_hash', 'oldPass');
+      expect(mockArgon2.hash).toHaveBeenCalledWith('newPass');
+      expect(mockUserModel.updatePasswordHash).toHaveBeenCalledWith(42, 'new_hash');
+      expect(mockTokenModel.deleteAllForUser).toHaveBeenCalledWith(42, 'user');
+      expect(mockUserModel.setLogoutAt).toHaveBeenCalledWith(42);
+    });
+
+    it('should throw UnauthorizedError if user not found', async () => {
+      mockUserModel.findByIdWithHash.mockResolvedValueOnce(null);
+
+      await expect(UserService.changePassword(42, 'old', 'new')).rejects.toThrow('Utilisateur non trouvé');
+    });
+
+    it('should throw UnauthorizedError on wrong current password', async () => {
+      mockUserModel.findByIdWithHash.mockResolvedValueOnce({
+        id: 42,
+        password_hash: 'stored_hash',
+      });
+      mockArgon2.verify.mockResolvedValueOnce(false);
+
+      await expect(UserService.changePassword(42, 'wrong', 'new')).rejects.toThrow('Mot de passe actuel incorrect');
+    });
+  });
+
   describe('deleteAccount', () => {
-    it('should delete tokens, photos dir, and user', async () => {
+    it('should log security.account_deleted', async () => {
       mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
       mockUserModel.delete.mockResolvedValueOnce(undefined);
 
       await UserService.deleteAccount(42);
 
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'security.account_deleted', type: 'user', userId: 42 }),
+        expect.any(String)
+      );
+    });
+
+    it('should catch and log photo cleanup failure', async () => {
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+      mockUserModel.delete.mockResolvedValueOnce(undefined);
+      mockDeleteUserPhotosDir.mockImplementationOnce(() => { throw new Error('ENOENT'); });
+
+      await UserService.deleteAccount(42);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 42 }),
+        expect.any(String)
+      );
+    });
+
+    it('should delete tokens and user in transaction, then clean up photos', async () => {
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+      mockUserModel.delete.mockResolvedValueOnce(undefined);
+
+      await UserService.deleteAccount(42);
+
+      expect(mockWithTransaction).toHaveBeenCalledTimes(1);
       expect(mockTokenModel.deleteAllForUser).toHaveBeenCalledWith(42, 'user');
-      expect(mockDeleteUserPhotosDir).toHaveBeenCalledWith(42);
       expect(mockUserModel.delete).toHaveBeenCalledWith(42);
+      expect(mockDeleteUserPhotosDir).toHaveBeenCalledWith(42);
     });
   });
 });

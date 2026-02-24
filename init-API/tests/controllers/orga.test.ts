@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     OrgaService: {
@@ -14,11 +14,13 @@ const mocks = vi.hoisted(() => {
     },
     OrgaModel: {
       findById: vi.fn(),
+      setLogoutAt: vi.fn(),
     },
     AuthService: {
       rotateRefreshToken: vi.fn(),
       revokeRefreshToken: vi.fn(),
     },
+    disconnectUser: vi.fn(),
     successFn: vi.fn(),
     createdFn: vi.fn(),
     setRefreshCookie: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock('../../models/orga.model.js', () => ({ OrgaModel: mocks.OrgaModel }));
 vi.mock('../../services/auth.service.js', () => ({ AuthService: mocks.AuthService }));
 vi.mock('../../utils/responses.js', () => ({ success: mocks.successFn, created: mocks.createdFn }));
 vi.mock('../../utils/cookie.js', () => ({ setRefreshCookie: mocks.setRefreshCookie, clearRefreshCookie: mocks.clearRefreshCookie }));
+vi.mock('../../socket/emitters.js', () => ({ disconnectUser: mocks.disconnectUser }));
 
 vi.mock('../../utils/errors.js', async () => {
   const actual = await vi.importActual<typeof import('../../utils/errors.js')>('../../utils/errors.js');
@@ -187,16 +190,32 @@ describe('OrgaController', () => {
   });
 
   describe('logout', () => {
-    it('delegates to AuthService.revokeRefreshToken and clears cookie', async () => {
+    it('delegates to AuthService.revokeRefreshToken, sets logout_at, disconnects socket, and clears cookie', async () => {
       mocks.AuthService.revokeRefreshToken.mockResolvedValueOnce(undefined);
+      mocks.OrgaModel.setLogoutAt.mockResolvedValueOnce(undefined);
 
       const req = mockReq({ cookies: { refreshToken: 'some-token' } });
       const res = mockRes();
       await OrgaController.logout(req as any, res as any);
 
       expect(mocks.AuthService.revokeRefreshToken).toHaveBeenCalledWith('some-token');
+      expect(mocks.OrgaModel.setLogoutAt).toHaveBeenCalledWith(1);
+      expect(mocks.disconnectUser).toHaveBeenCalledWith(1);
       expect(mocks.clearRefreshCookie).toHaveBeenCalledWith(res);
       expect(mocks.successFn).toHaveBeenCalledWith(res, null, 'D\u00e9connexion r\u00e9ussie');
+    });
+
+    it('skips setLogoutAt and disconnectUser when no user on request', async () => {
+      mocks.AuthService.revokeRefreshToken.mockResolvedValueOnce(undefined);
+
+      const req = mockReq({ cookies: { refreshToken: 'some-token' }, user: undefined });
+      const res = mockRes();
+      await OrgaController.logout(req as any, res as any);
+
+      expect(mocks.AuthService.revokeRefreshToken).toHaveBeenCalledWith('some-token');
+      expect(mocks.OrgaModel.setLogoutAt).not.toHaveBeenCalled();
+      expect(mocks.disconnectUser).not.toHaveBeenCalled();
+      expect(mocks.clearRefreshCookie).toHaveBeenCalledWith(res);
     });
   });
 

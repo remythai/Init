@@ -1,6 +1,6 @@
 import { PhotoModel } from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
-import { getPhotoUrl, getPhotoPath, deletePhotoFile, stripExif } from '../config/multer.config.js';
+import { getPhotoUrl, deletePhotoFile, validateAndSavePhoto } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
 import fs from 'fs';
 
@@ -15,16 +15,11 @@ async function checkNotBlocked(eventId: number | undefined, userId: number): Pro
 }
 
 export const PhotoService = {
-  async uploadPhoto(
-    userId: number,
-    filename: string,
-    eventId?: string,
-    isPrimary?: string | boolean
-  ) {
+  async uploadPhoto(userId: number, fileBuffer: Buffer, originalname: string, eventId?: string, isPrimary?: string | boolean) {
     const parsedEventId = eventId ? parseInt(eventId) : undefined;
     await checkNotBlocked(parsedEventId, userId);
 
-    const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId ?? null);
+    const count = await PhotoModel.countByUserAndEvent(userId, parsedEventId || null);
     if (count >= MAX_PHOTOS_PER_CONTEXT) {
       throw new AppError(400, `Vous ne pouvez pas avoir plus de ${MAX_PHOTOS_PER_CONTEXT} photos`);
     }
@@ -32,20 +27,17 @@ export const PhotoService = {
     const displayOrder = count;
     const shouldBePrimary = count === 0 || isPrimary === 'true' || isPrimary === true;
 
-    const filePath = getPhotoUrl(userId, filename);
-    const localPath = getPhotoPath(userId, filename);
-
+    let filename: string;
     try {
-      await stripExif(localPath);
-    } catch (error) {
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
-      }
+      filename = await validateAndSavePhoto(fileBuffer, userId, originalname);
+    } catch {
       throw new AppError(400, 'Le fichier n\'est pas une image valide');
     }
 
+    const filePath = getPhotoUrl(userId, filename);
+
     try {
-      const photo = await PhotoModel.create({
+      return await PhotoModel.create({
         userId,
         filePath,
         eventId: parsedEventId,
@@ -54,8 +46,10 @@ export const PhotoService = {
       });
       return photo;
     } catch (error) {
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
+      try {
+        deletePhotoFile(filePath);
+      } catch (e) {
+        logger.error({ err: e }, 'Error cleaning up file');
       }
       throw error;
     }

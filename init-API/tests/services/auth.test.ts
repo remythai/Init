@@ -11,12 +11,12 @@ const mockCrypto = vi.hoisted(() => ({
 const mockTokenModel = vi.hoisted(() => ({
   create: vi.fn(),
   findValidToken: vi.fn(),
+  findValidTokenForUpdate: vi.fn(),
   delete: vi.fn(),
+  deleteAllForUser: vi.fn(),
 }));
 
-vi.hoisted(() => {
-  process.env.JWT_SECRET = 'testsecret';
-});
+const mockWithTransaction = vi.hoisted(() => vi.fn());
 
 vi.mock('jsonwebtoken', () => ({
   default: mockJwt,
@@ -30,6 +30,11 @@ vi.mock('../../models/token.model.js', () => ({
   TokenModel: mockTokenModel,
 }));
 
+vi.mock('../../config/database.js', () => ({
+  withTransaction: mockWithTransaction,
+  default: {},
+}));
+
 vi.mock('../../utils/errors.js', async () => {
   const actual = await vi.importActual<typeof import('../../utils/errors.js')>('../../utils/errors.js');
   return actual;
@@ -40,6 +45,10 @@ import { AuthService } from '../../services/auth.service';
 describe('AuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Make withTransaction execute the callback immediately with a mock client
+    mockWithTransaction.mockImplementation(async (cb: (client: unknown) => Promise<unknown>) => {
+      return cb({});
+    });
   });
 
   describe('generateTokens', () => {
@@ -55,7 +64,7 @@ describe('AuthService', () => {
       expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
       expect(mockJwt.sign).toHaveBeenCalledWith(
         { id: 42, role: 'user' },
-        'testsecret',
+        expect.any(String),
         { expiresIn: '15m' }
       );
       expect(mockCrypto.randomBytes).toHaveBeenCalledWith(64);
@@ -79,7 +88,7 @@ describe('AuthService', () => {
       expect(result).toEqual({ accessToken: 'orga-access-token', refreshToken: 'orga-refresh-token' });
       expect(mockJwt.sign).toHaveBeenCalledWith(
         { id: 10, role: 'orga' },
-        'testsecret',
+        expect.any(String),
         { expiresIn: '15m' }
       );
       expect(mockTokenModel.create).toHaveBeenCalledWith(
@@ -92,8 +101,8 @@ describe('AuthService', () => {
   });
 
   describe('rotateRefreshToken', () => {
-    it('should validate, delete old token, create new one, and return both tokens', async () => {
-      mockTokenModel.findValidToken.mockResolvedValueOnce({
+    it('should validate, delete old token, create new one within transaction, and return both tokens', async () => {
+      mockTokenModel.findValidTokenForUpdate.mockResolvedValueOnce({
         user_id: 42,
         orga_id: null,
         user_type: 'user',
@@ -108,23 +117,20 @@ describe('AuthService', () => {
       const result = await AuthService.rotateRefreshToken('old-refresh-token');
 
       expect(result).toEqual({ accessToken: 'new-access-token', refreshToken: 'new-refresh-token' });
-      expect(mockTokenModel.findValidToken).toHaveBeenCalledWith('old-refresh-token');
-      expect(mockTokenModel.delete).toHaveBeenCalledWith('old-refresh-token');
-      expect(mockJwt.sign).toHaveBeenCalledWith(
-        { id: 42, role: 'user' },
-        'testsecret',
-        { expiresIn: '15m' }
-      );
+      expect(mockWithTransaction).toHaveBeenCalledTimes(1);
+      expect(mockTokenModel.findValidTokenForUpdate).toHaveBeenCalledWith('old-refresh-token', expect.anything());
+      expect(mockTokenModel.delete).toHaveBeenCalledWith('old-refresh-token', expect.anything());
       expect(mockTokenModel.create).toHaveBeenCalledWith(
         42,
         'new-refresh-token',
         expect.any(Date),
-        'user'
+        'user',
+        expect.anything()
       );
     });
 
     it('should work with orga token', async () => {
-      mockTokenModel.findValidToken.mockResolvedValueOnce({
+      mockTokenModel.findValidTokenForUpdate.mockResolvedValueOnce({
         user_id: null,
         orga_id: 10,
         user_type: 'orga',
@@ -141,7 +147,7 @@ describe('AuthService', () => {
       expect(result).toEqual({ accessToken: 'orga-access-token', refreshToken: 'orga-refresh-token' });
       expect(mockJwt.sign).toHaveBeenCalledWith(
         { id: 10, role: 'orga' },
-        'testsecret',
+        expect.any(String),
         { expiresIn: '15m' }
       );
     });
@@ -153,7 +159,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedError when token is invalid', async () => {
-      mockTokenModel.findValidToken.mockResolvedValueOnce(null);
+      mockTokenModel.findValidTokenForUpdate.mockResolvedValueOnce(null);
 
       await expect(
         AuthService.rotateRefreshToken('bad-token')
@@ -174,6 +180,16 @@ describe('AuthService', () => {
       await AuthService.revokeRefreshToken(undefined);
 
       expect(mockTokenModel.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('revokeAllTokensForUser', () => {
+    it('should delete all tokens for user', async () => {
+      mockTokenModel.deleteAllForUser.mockResolvedValueOnce(undefined);
+
+      await AuthService.revokeAllTokensForUser(42, 'user');
+
+      expect(mockTokenModel.deleteAllForUser).toHaveBeenCalledWith(42, 'user');
     });
   });
 });

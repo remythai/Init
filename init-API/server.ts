@@ -38,7 +38,11 @@ const httpServer = createServer(app);
 const io = initializeSocket(httpServer);
 
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production'
+    ? { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } }
+    : false,
+}));
 app.use(cookieParser());
 app.use(pinoHttp({ logger }));
 app.use(express.json({ limit: '100kb' }));
@@ -60,24 +64,26 @@ app.use(cors({
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 }));
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'API Documentation',
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    filter: true,
-    syntaxHighlight: {
-      activate: true,
-      theme: 'monokai'
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      syntaxHighlight: {
+        activate: true,
+        theme: 'monokai'
+      }
     }
-  }
-}));
+  }));
 
-app.get('/api-docs.json', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
+  app.get('/api-docs.json', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  });
+}
 
 app.use('/api', apiLimiter);
 

@@ -5,9 +5,13 @@
 .vscode/
 node_modules
 
+.claude/
 CLAUDE.md
 MIGRATION_TS.md
 PLANS.md
+MAIL_BILLETTERIES.md
+MONETISATION.md
+persona.md
 retour
 test.txt
 

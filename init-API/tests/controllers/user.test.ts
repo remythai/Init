@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  process.env.JWT_SECRET = 'testsecret';
+  process.env.JWT_SECRET = 'testsecret_long_enough_for_32chars!';
 
   return {
     UserService: {
       register: vi.fn(),
       login: vi.fn(),
       updateProfile: vi.fn(),
+      changePassword: vi.fn(),
       deleteAccount: vi.fn(),
     },
     UserModel: {
       findById: vi.fn(),
+      setLogoutAt: vi.fn(),
     },
     AuthService: {
       rotateRefreshToken: vi.fn(),
       revokeRefreshToken: vi.fn(),
     },
+    disconnectUser: vi.fn(),
     successFn: vi.fn(),
     createdFn: vi.fn(),
     setRefreshCookie: vi.fn(),
@@ -29,6 +32,7 @@ vi.mock('../../models/user.model.js', () => ({ UserModel: mocks.UserModel }));
 vi.mock('../../services/auth.service.js', () => ({ AuthService: mocks.AuthService }));
 vi.mock('../../utils/responses.js', () => ({ success: mocks.successFn, created: mocks.createdFn }));
 vi.mock('../../utils/cookie.js', () => ({ setRefreshCookie: mocks.setRefreshCookie, clearRefreshCookie: mocks.clearRefreshCookie }));
+vi.mock('../../socket/emitters.js', () => ({ disconnectUser: mocks.disconnectUser }));
 
 vi.mock('../../utils/errors.js', async () => {
   const actual = await vi.importActual<typeof import('../../utils/errors.js')>('../../utils/errors.js');
@@ -128,26 +132,31 @@ describe('UserController', () => {
   });
 
   describe('logout', () => {
-    it('delegates to AuthService.revokeRefreshToken and clears cookie', async () => {
+    it('delegates to AuthService.revokeRefreshToken, sets logout_at, disconnects socket, and clears cookie', async () => {
       mocks.AuthService.revokeRefreshToken.mockResolvedValueOnce(undefined);
+      mocks.UserModel.setLogoutAt.mockResolvedValueOnce(undefined);
 
       const req = mockReq({ cookies: { refreshToken: 'some-token' } });
       const res = mockRes();
       await UserController.logout(req as any, res as any);
 
       expect(mocks.AuthService.revokeRefreshToken).toHaveBeenCalledWith('some-token');
+      expect(mocks.UserModel.setLogoutAt).toHaveBeenCalledWith(1);
+      expect(mocks.disconnectUser).toHaveBeenCalledWith(1);
       expect(mocks.clearRefreshCookie).toHaveBeenCalledWith(res);
       expect(mocks.successFn).toHaveBeenCalledWith(res, null, 'D\u00e9connexion r\u00e9ussie');
     });
 
-    it('passes undefined when no cookie', async () => {
+    it('passes undefined when no cookie and skips setLogoutAt when no user', async () => {
       mocks.AuthService.revokeRefreshToken.mockResolvedValueOnce(undefined);
 
-      const req = mockReq({ cookies: {} });
+      const req = mockReq({ cookies: {}, user: undefined });
       const res = mockRes();
       await UserController.logout(req as any, res as any);
 
       expect(mocks.AuthService.revokeRefreshToken).toHaveBeenCalledWith(undefined);
+      expect(mocks.UserModel.setLogoutAt).not.toHaveBeenCalled();
+      expect(mocks.disconnectUser).not.toHaveBeenCalled();
     });
   });
 
@@ -194,6 +203,30 @@ describe('UserController', () => {
       const req = mockReq({ user: { id: 42 }, body: {} });
       const res = mockRes();
       await expect(UserController.updateProfile(req as any, res as any)).rejects.toThrow('Aucune donn\u00e9e');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('delegates to UserService.changePassword, clears cookie, and returns success', async () => {
+      mocks.UserService.changePassword.mockResolvedValueOnce(undefined);
+
+      const req = mockReq({ body: { currentPassword: 'OldPass1!', newPassword: 'NewPass1!' } });
+      const res = mockRes();
+      await UserController.changePassword(req as any, res as any);
+
+      expect(mocks.UserService.changePassword).toHaveBeenCalledWith(1, 'OldPass1!', 'NewPass1!');
+      expect(mocks.clearRefreshCookie).toHaveBeenCalledWith(res);
+      expect(mocks.successFn).toHaveBeenCalledWith(res, null, 'Mot de passe modifié, veuillez vous reconnecter');
+    });
+
+    it('propagates UnauthorizedError from service', async () => {
+      mocks.UserService.changePassword.mockRejectedValueOnce(
+        new (await import('../../utils/errors.js')).UnauthorizedError('Mot de passe actuel incorrect')
+      );
+
+      const req = mockReq({ body: { currentPassword: 'wrong', newPassword: 'NewPass1!' } });
+      const res = mockRes();
+      await expect(UserController.changePassword(req as any, res as any)).rejects.toThrow('Mot de passe actuel incorrect');
     });
   });
 

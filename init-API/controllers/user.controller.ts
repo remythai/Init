@@ -5,6 +5,7 @@ import { success, created } from '../utils/responses.js';
 import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../services/user.service.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
+import { disconnectUser } from '../socket/emitters.js';
 
 export const UserController = {
   async register(req: Request, res: Response): Promise<void> {
@@ -27,6 +28,10 @@ export const UserController = {
 
   async logout(req: Request, res: Response): Promise<void> {
     await AuthService.revokeRefreshToken(req.cookies?.refreshToken);
+    if (req.user) {
+      await UserModel.setLogoutAt(req.user.id);
+      disconnectUser(req.user.id);
+    }
     clearRefreshCookie(res);
     success(res, null, 'Déconnexion réussie');
   },
@@ -44,8 +49,15 @@ export const UserController = {
     success(res, user, 'Profil mis à jour');
   },
 
+  async changePassword(req: Request, res: Response): Promise<void> {
+    await UserService.changePassword(req.user!.id, req.body.currentPassword, req.body.newPassword);
+    clearRefreshCookie(res);
+    success(res, null, 'Mot de passe modifié, veuillez vous reconnecter');
+  },
+
   async deleteAccount(req: Request, res: Response): Promise<void> {
     await UserService.deleteAccount(req.user!.id);
+    clearRefreshCookie(res);
     success(res, null, 'Compte supprimé');
   }
 };

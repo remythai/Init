@@ -10,7 +10,7 @@ export const socketAuthMiddleware = (socket: Socket, next: (err?: Error) => void
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: number; role?: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ['HS256'] }) as { id: number; role?: string };
     (socket as AuthenticatedSocket).user = {
       id: decoded.id,
       type: (decoded.role || 'user') as UserType

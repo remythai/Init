@@ -5,6 +5,8 @@ import { normalizePhone } from '../utils/phone.js';
 import { deleteUserPhotosDir } from '../config/multer.config.js';
 import { ValidationError, UnauthorizedError } from '../utils/errors.js';
 import { AuthService } from './auth.service.js';
+import { withTransaction } from '../config/database.js';
+import logger from '../utils/logger.js';
 
 export const UserService = {
   async register(data: { firstname: string; lastname: string; mail?: string; tel: string; birthday: string; password: string }) {
@@ -29,9 +31,11 @@ export const UserService = {
       }
     } catch {}
     if (!user || !valid) {
+      logger.warn({ event: 'security.login_failed', type: 'user', tel: normalizePhone(tel) }, 'Failed login attempt');
       throw new UnauthorizedError('Identifiants incorrects');
     }
 
+    logger.info({ event: 'security.login_success', type: 'user', userId: user.id }, 'User logged in');
     const tokens = await AuthService.generateTokens(user.id, 'user');
 
     return {
@@ -62,9 +66,33 @@ export const UserService = {
     return UserModel.update(userId, updates);
   },
 
-  async deleteAccount(userId: number) {
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    const user = await UserModel.findByIdWithHash(userId);
+    if (!user) {
+      throw new UnauthorizedError('Utilisateur non trouvé');
+    }
+
+    const valid = await argon2.verify(user.password_hash, currentPassword);
+    if (!valid) {
+      throw new UnauthorizedError('Mot de passe actuel incorrect');
+    }
+
+    const newHash = await argon2.hash(newPassword);
+    await UserModel.updatePasswordHash(userId, newHash);
     await TokenModel.deleteAllForUser(userId, 'user');
-    deleteUserPhotosDir(userId);
-    await UserModel.delete(userId);
+    await UserModel.setLogoutAt(userId);
+  },
+
+  async deleteAccount(userId: number) {
+    logger.info({ event: 'security.account_deleted', type: 'user', userId }, 'User account deleted');
+    await withTransaction(async (client) => {
+      await TokenModel.deleteAllForUser(userId, 'user');
+      await UserModel.delete(userId);
+    });
+    try {
+      deleteUserPhotosDir(userId);
+    } catch (err) {
+      logger.error({ err, userId }, 'Failed to delete user photos directory');
+    }
   }
 };

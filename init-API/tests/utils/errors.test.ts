@@ -1,4 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockLogger = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+}));
+
+vi.mock('../../utils/logger.js', () => ({ default: mockLogger }));
+
 import {
   AppError, ValidationError, UnauthorizedError, ForbiddenError,
   NotFoundError, ConflictError, EventExpiredError, UserBlockedError,
@@ -130,8 +140,13 @@ function mockRes() {
 }
 
 describe('errorHandler', () => {
-  const req = {} as any;
   const next = vi.fn();
+  let req: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    req = { path: '/api/test', method: 'GET', ip: '127.0.0.1', user: { id: 42 } };
+  });
 
   it('should handle multer LIMIT_FILE_SIZE', () => {
     const res = mockRes();
@@ -237,14 +252,51 @@ describe('errorHandler', () => {
 
   it('should handle unknown errors as 500', () => {
     const res = mockRes();
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     errorHandler(new Error('crash'), req, res, next);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
       error: 'Une erreur interne est survenue',
       code: 'INTERNAL_ERROR'
     });
-    spy.mockRestore();
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should log security.access_denied for 401 errors', () => {
+    const res = mockRes();
+    errorHandler(new UnauthorizedError('Token invalide'), req, res, next);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'security.access_denied',
+        status: 401,
+        path: '/api/test',
+        method: 'GET',
+        ip: '127.0.0.1',
+        userId: 42,
+      }),
+      'Access denied'
+    );
+  });
+
+  it('should log security.access_denied for 403 errors', () => {
+    const res = mockRes();
+    errorHandler(new ForbiddenError('Accès refusé'), req, res, next);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'security.access_denied',
+        status: 403,
+        path: '/api/test',
+      }),
+      'Access denied'
+    );
+  });
+
+  it('should not log security.access_denied for 404 errors', () => {
+    const res = mockRes();
+    errorHandler(new NotFoundError('Not found'), req, res, next);
+
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });
 

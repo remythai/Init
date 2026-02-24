@@ -8,7 +8,7 @@ export const PhotoController = {
     if (!req.file) {
       throw new AppError(400, 'Aucun fichier fourni');
     }
-    const photo = await PhotoService.uploadPhoto(req.user!.id, req.file.filename, req.body.eventId, req.body.isPrimary);
+    const photo = await PhotoService.uploadPhoto(req.user!.id, req.file.buffer, req.file.originalname, req.body.eventId, req.body.isPrimary);
     success(res, photo, 'Photo uploadée avec succès', 201);
   },
 

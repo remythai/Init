@@ -405,6 +405,60 @@ describe('validation.middleware', () => {
     });
   });
 
+  describe('validate - userChangePassword', () => {
+    const middleware = validate('userChangePassword');
+
+    it('should pass valid change password data', () => {
+      const req = mockReq({ currentPassword: 'OldPass1!', newPassword: 'NewPass1!' });
+      const res = mockRes();
+
+      middleware(req, res, next);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('should fail when currentPassword is missing', () => {
+      const req = mockReq({ newPassword: 'NewPass1!' });
+      const res = mockRes();
+
+      middleware(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        details: expect.objectContaining({
+          currentPassword: expect.any(String)
+        })
+      }));
+    });
+
+    it('should fail when newPassword is too weak (no uppercase)', () => {
+      const req = mockReq({ currentPassword: 'OldPass1!', newPassword: 'newpass1!' });
+      const res = mockRes();
+
+      middleware(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        details: expect.objectContaining({
+          newPassword: expect.stringContaining('majuscule')
+        })
+      }));
+    });
+
+    it('should fail when newPassword is too short', () => {
+      const req = mockReq({ currentPassword: 'OldPass1!', newPassword: 'Pa1!' });
+      const res = mockRes();
+
+      middleware(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        details: expect.objectContaining({
+          newPassword: expect.stringContaining('au moins 8')
+        })
+      }));
+    });
+  });
+
   describe('validate - phone format', () => {
     const middleware = validate('userRegister');
 
