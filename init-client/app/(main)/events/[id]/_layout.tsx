@@ -1,21 +1,29 @@
-//app/(main)/events/[id]/_layout.tsx
+// app/(main)/events/[id]/_layout.tsx
 import { authService } from '@/services/auth.service';
 import { eventService } from '@/services/event.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function EventLayout() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const segments = useSegments();
   const pathname = usePathname();
-  
-  const [userType, setUserType] = useState<"user" | "organizer" | null>(null);
+
+  const [userType, setUserType] = useState<'user' | 'organizer' | null>(null);
+  const [pendingReports, setPendingReports] = useState(0);
   const isInEventTabs = segments.includes('(event-tabs)');
-  
   const isInEventConversation = pathname.match(/\/events\/[^/]+\/\(event-tabs\)\/messagery\/[^/]+$/) !== null;
+  const isInManagementPage = (
+    pathname.includes('/edit') ||
+    pathname.includes('/settings') ||
+    pathname.includes('/statistics') ||
+    pathname.includes('/participants') ||
+    pathname.includes('/whitelist') ||
+    pathname.includes('/reports')
+  );
 
   useEffect(() => {
     checkUserType();
@@ -24,10 +32,30 @@ export default function EventLayout() {
   const checkUserType = async () => {
     try {
       const role = await authService.getUserType();
-      setUserType(role === "orga" ? "organizer" : "user");
-    } catch (error) {
-      console.error("Erreur lors de la récupération du type d'utilisateur:", error);
-      setUserType("user");
+      const type = role === 'orga' ? 'organizer' : 'user';
+      setUserType(type);
+
+      if (type === 'organizer') {
+        loadPendingReports();
+      }
+    } catch {
+      setUserType('user');
+    }
+  };
+
+  const loadPendingReports = async () => {
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = await authService.getToken();
+      const resp = await fetch(`${API_URL}/api/events/${id}/reports?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setPendingReports(data.data?.stats?.pending || 0);
+      }
+    } catch {
+      // silent
     }
   };
 
@@ -36,36 +64,21 @@ export default function EventLayout() {
       "Supprimer l'événement",
       "Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.",
       [
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: "Annuler",
-          style: "cancel"
-        },
-        {
-          text: "Supprimer",
-          style: "destructive",
+          text: 'Supprimer',
+          style: 'destructive',
           onPress: async () => {
             try {
-              await eventService.deleteEvent(id as string);
-              
-              Alert.alert(
-                "Succès",
-                "L'événement a été supprimé avec succès",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => router.push('/events')
-                  }
-                ]
-              );
+              await eventService.deleteEvent(id);
+              Alert.alert('Succès', "L'événement a été supprimé", [
+                { text: 'OK', onPress: () => router.push('/events') },
+              ]);
             } catch (error: any) {
-              console.error("Erreur suppression événement:", error);
-              Alert.alert(
-                "Erreur",
-                error.message || "Impossible de supprimer l'événement"
-              );
+              Alert.alert('Erreur', error.message || "Impossible de supprimer l'événement");
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -73,69 +86,73 @@ export default function EventLayout() {
   const handleReportEvent = () => {
     Alert.alert(
       "Signaler l'événement",
-      "Pour quelle raison souhaitez-vous signaler cet événement ?",
+      'Pour quelle raison souhaitez-vous signaler cet événement ?',
       [
-        {
-          text: "Annuler",
-          style: "cancel"
-        },
-        {
-          text: "Contenu inapproprié",
-          onPress: () => submitReport("inappropriate")
-        },
-        {
-          text: "Fausses informations",
-          onPress: () => submitReport("false_info")
-        },
-        {
-          text: "Spam",
-          onPress: () => submitReport("spam")
-        }
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Contenu inapproprié', onPress: () => submitReport('inappropriate') },
+        { text: 'Fausses informations', onPress: () => submitReport('false_info') },
+        { text: 'Spam', onPress: () => submitReport('spam') },
       ]
     );
   };
 
-  const submitReport = async (reason: string) => {
-    try {
-      // todo
-      
-      Alert.alert(
-        "Signalement envoyé",
-        "Merci pour votre signalement. Notre équipe va l'examiner."
-      );
-    } catch (error: any) {
-      console.error("Erreur signalement:", error);
-      Alert.alert(
-        "Erreur",
-        "Impossible d'envoyer le signalement"
-      );
-    }
+  const submitReport = async (_reason: string) => {
+    Alert.alert('Signalement envoyé', "Merci pour votre signalement. Notre équipe va l'examiner.");
   };
+
+  const showHeader = !isInEventTabs && !isInEventConversation && !isInManagementPage;
 
   return (
     <View style={styles.container}>
-      {/* Cache le header dans les event-tabs ET dans les conversations */}
-      {!isInEventTabs && !isInEventConversation && (
+      {showHeader && (
         <View style={styles.header}>
-          <Pressable 
-            onPress={() => router.push('/events')}
-            style={styles.headerButton}
-          >
+          <Pressable onPress={() => router.push('/events')} style={styles.headerButton}>
             <MaterialIcons name="arrow-back" size={24} color="#303030" />
           </Pressable>
-          
-          {userType === "organizer" ? (
-            <Pressable 
-              onPress={handleDeleteEvent}
-              style={styles.headerButton}
-            >
-              <MaterialIcons name="delete" size={24} color="#dc2626" />
-            </Pressable>
+
+          {userType === 'organizer' ? (
+            /* Orga: show management action buttons */
+            <View style={styles.headerRight}>
+              <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/edit`)}
+                style={styles.headerButton}
+              >
+                <MaterialIcons name="edit" size={22} color="#1271FF" />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/statistics`)}
+                style={styles.headerButton}
+              >
+                <MaterialIcons name="bar-chart" size={22} color="#303030" />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/participants`)}
+                style={styles.headerButton}
+              >
+                <MaterialIcons name="people" size={22} color="#303030" />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/reports`)}
+                style={styles.headerButton}
+              >
+                <View>
+                  <MaterialIcons name="flag" size={22} color={pendingReports > 0 ? '#dc2626' : '#303030'} />
+                  {pendingReports > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pendingReports > 9 ? '9+' : pendingReports}</Text>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/settings`)}
+                style={styles.headerButton}
+              >
+                <MaterialIcons name="settings" size={22} color="#303030" />
+              </Pressable>
+            </View>
           ) : (
-            <Pressable 
-              onPress={handleReportEvent}
-              style={styles.headerButton}
-            >
+            <Pressable onPress={handleReportEvent} style={styles.headerButton}>
               <MaterialIcons name="flag" size={24} color="#303030" />
             </Pressable>
           )}
@@ -144,22 +161,20 @@ export default function EventLayout() {
 
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
-        <Stack.Screen 
-          name="(event-tabs)" 
-          options={{ 
-            headerShown: false,
-          }} 
-        />
+        <Stack.Screen name="edit/index" />
+        <Stack.Screen name="settings/index" />
+        <Stack.Screen name="statistics/index" />
+        <Stack.Screen name="participants/index" />
+        <Stack.Screen name="whitelist/index" />
+        <Stack.Screen name="reports/index" />
+        <Stack.Screen name="(event-tabs)" options={{ headerShown: false }} />
       </Stack>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -171,8 +186,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  headerButton: { padding: 8, borderRadius: 8 },
+  badge: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#dc2626', borderRadius: 8,
+    minWidth: 16, height: 16,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 3,
   },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 });
