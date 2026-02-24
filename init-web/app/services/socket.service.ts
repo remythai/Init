@@ -126,6 +126,14 @@ class SocketService {
       }
     });
 
+    // Update auth token before each reconnection attempt so we use the latest token
+    this.socket.io.on('reconnect_attempt', () => {
+      const freshToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (freshToken && this.socket) {
+        this.socket.auth = { token: freshToken };
+      }
+    });
+
     return this.socket;
   }
 

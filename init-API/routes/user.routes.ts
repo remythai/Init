@@ -3,7 +3,7 @@ import { UserController } from '../controllers/user.controller.js';
 import { authMiddleware, optionalAuthMiddleware, requireRole } from '../middleware/auth.middleware.js';
 import { asyncHandler } from '../utils/errors.js';
 import { validate } from '../middleware/validation.middleware.js';
-import { authLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
+import { authLimiter, refreshLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
@@ -108,7 +108,7 @@ router.post('/login', authLimiter, validate('userLogin'), asyncHandler(UserContr
  *       401:
  *         description: Refresh token invalide ou expiré
  */
-router.post('/refresh', authLimiter, asyncHandler(UserController.refreshToken));
+router.post('/refresh', refreshLimiter, asyncHandler(UserController.refreshToken));
 
 /**
  * @swagger

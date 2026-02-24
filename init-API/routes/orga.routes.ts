@@ -4,14 +4,14 @@ import { authMiddleware, optionalAuthMiddleware, requireRole } from '../middlewa
 import { asyncHandler } from '../utils/errors.js';
 import { validate } from '../middleware/validation.middleware.js';
 import { orgaLogoUpload } from '../config/multer.config.js';
-import { authLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
+import { authLimiter, refreshLimiter, registerLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
 // Public routes
 router.post('/register', registerLimiter, validate('orgaRegister'), asyncHandler(OrgaController.register));
 router.post('/login', authLimiter, validate('orgaLogin'), asyncHandler(OrgaController.login));
-router.post('/refresh', authLimiter, asyncHandler(OrgaController.refreshToken));
+router.post('/refresh', refreshLimiter, asyncHandler(OrgaController.refreshToken));
 router.post('/logout', optionalAuthMiddleware, asyncHandler(OrgaController.logout));
 
 // Protected routes
