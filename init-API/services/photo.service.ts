@@ -2,11 +2,11 @@ import { PhotoModel } from '../models/photo.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
 import { getPhotoUrl, deletePhotoFile, validateAndSavePhoto } from '../config/multer.config.js';
 import { AppError } from '../utils/errors.js';
-import logger from '../utils/logger.js';
+import fs from 'fs';
 
 const MAX_PHOTOS_PER_CONTEXT = 6;
 
-async function checkNotBlocked(eventId: number | null | undefined, userId: number): Promise<void> {
+async function checkNotBlocked(eventId: number | undefined, userId: number): Promise<void> {
   if (!eventId) return;
   const isBlocked = await BlockedUserModel.isBlocked(eventId, userId);
   if (isBlocked) {
@@ -44,6 +44,7 @@ export const PhotoService = {
         displayOrder,
         isPrimary: shouldBePrimary
       });
+      return photo;
     } catch (error) {
       try {
         deletePhotoFile(filePath);
@@ -56,30 +57,34 @@ export const PhotoService = {
 
   async getPhotos(userId: number, eventId?: string) {
     if (eventId) {
-      return PhotoModel.findByUserAndEvent(userId, parseInt(eventId));
+      return await PhotoModel.findByUserAndEvent(userId, parseInt(eventId));
     }
-    return PhotoModel.findByUserId(userId);
+    return await PhotoModel.findByUserId(userId);
   },
 
   async getAllPhotos(userId: number) {
     const photos = await PhotoModel.findAllByUserId(userId);
 
-    const grouped: { general: typeof photos; events: Record<number, { event_name: string | undefined; photos: typeof photos }> } = {
+    const grouped: {
+      general: unknown[];
+      events: Record<string, { event_name: string; photos: unknown[] }>;
+    } = {
       general: [],
       events: {}
     };
 
-    photos.forEach(photo => {
+    photos.forEach((photo) => {
       if (!photo.event_id) {
         grouped.general.push(photo);
       } else {
-        if (!grouped.events[photo.event_id]) {
-          grouped.events[photo.event_id] = {
-            event_name: photo.event_name,
+        const eventId = photo.event_id;
+        if (!grouped.events[eventId]) {
+          grouped.events[eventId] = {
+            event_name: photo.event_name || '',
             photos: []
           };
         }
-        grouped.events[photo.event_id].photos.push(photo);
+        grouped.events[eventId].photos.push(photo);
       }
     });
 
@@ -95,7 +100,7 @@ export const PhotoService = {
       throw new AppError(403, 'Vous ne pouvez pas supprimer cette photo');
     }
 
-    await checkNotBlocked(photo.event_id, userId);
+    await checkNotBlocked(photo.event_id ?? undefined, userId);
 
     await PhotoModel.delete(photoId);
     deletePhotoFile(photo.file_path);
@@ -120,9 +125,9 @@ export const PhotoService = {
       throw new AppError(403, 'Vous ne pouvez pas modifier cette photo');
     }
 
-    await checkNotBlocked(photo.event_id, userId);
+    await checkNotBlocked(photo.event_id ?? undefined, userId);
 
-    return PhotoModel.setPrimary(photoId);
+    return await PhotoModel.setPrimary(photoId);
   },
 
   async reorderPhotos(userId: number, photoIds: number[], eventId?: number) {
@@ -139,11 +144,11 @@ export const PhotoService = {
       }
     }
 
-    await PhotoModel.reorder(userId, eventId || null, photoIds);
+    await PhotoModel.reorder(userId, eventId ?? null, photoIds);
 
     return eventId
-      ? PhotoModel.findByUserAndEvent(userId, eventId)
-      : PhotoModel.findByUserId(userId);
+      ? await PhotoModel.findByUserAndEvent(userId, eventId)
+      : await PhotoModel.findByUserId(userId);
   },
 
   async copyPhotosToEvent(userId: number, eventId: number, photoIds?: number[]) {
@@ -181,7 +186,7 @@ export const PhotoService = {
       const photo = await PhotoModel.create({
         userId,
         filePath: source.file_path,
-        eventId: parseInt(String(eventId)),
+        eventId,
         displayOrder: existingCount + i,
         isPrimary: i === 0 && existingCount === 0
       });

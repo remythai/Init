@@ -2,11 +2,14 @@
 
 import { ReactNode } from 'react';
 import { UnreadMessagesProvider } from '../contexts/UnreadMessagesContext';
+import { LangProvider } from '../contexts/LangContext';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <UnreadMessagesProvider>
-      {children}
-    </UnreadMessagesProvider>
+    <LangProvider>
+      <UnreadMessagesProvider>
+        {children}
+      </UnreadMessagesProvider>
+    </LangProvider>
   );
 }

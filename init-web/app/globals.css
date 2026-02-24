@@ -32,6 +32,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-roboto), Arial, Helvetica, sans-serif;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
 }
 
 /* Typing indicator animation */
@@ -136,6 +142,26 @@ body {
 
 .hero-scroll-infinite {
   animation: hero-scroll 12s linear infinite;
+}
+
+/* Horizontal slider animation */
+@keyframes scroll-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.slider-scroll-left {
+  animation: scroll-left 30s linear infinite;
+}
+
+/* Fade mask for horizontal slider edges */
+.mask-fade-x {
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
 }
 
 /* Safe area for devices with notches */
