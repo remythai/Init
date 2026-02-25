@@ -84,6 +84,7 @@ export const OrgaService = {
   },
 
   async uploadLogo(orgaId: number, filename: string) {
+    deleteOrgaLogo(orgaId);
     const logoPath = getOrgaLogoUrl(orgaId, filename);
     const orga = await OrgaModel.update(orgaId, { logo_path: logoPath });
     return { logo_path: orga!.logo_path };
