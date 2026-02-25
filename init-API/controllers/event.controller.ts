@@ -217,7 +217,7 @@ export const EventController = {
       throw new ForbiddenError('Vous ne pouvez modifier que vos propres événements');
     }
 
-    deleteEventBanner(eventId);
+    deleteEventBanner(eventId, req.file.filename);
     const bannerPath = getEventBannerUrl(eventId, req.file.filename);
 
     const updatedEvent = await EventModel.update(eventId, { banner_path: bannerPath });
