@@ -8,41 +8,43 @@ import type { AuthUser } from '../types/index.js';
 const JWT_SECRET = process.env.JWT_SECRET!;
 
 export const authMiddleware: RequestHandler = async (req, _res, next) => {
-  const header = req.headers['authorization'];
-
-  if (!header) {
-    throw new UnauthorizedError('Token non fourni');
-  }
-
-  const parts = header.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    throw new UnauthorizedError('Format du token invalide');
-  }
-
-  const token = parts[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as AuthUser;
+    const header = req.headers['authorization'];
+
+    if (!header) {
+      return next(new UnauthorizedError('Token non fourni'));
+    }
+
+    const parts = header.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+      return next(new UnauthorizedError('Format du token invalide'));
+    }
+
+    const token = parts[1];
+
+    let decoded: AuthUser;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as AuthUser;
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        return next(new UnauthorizedError('Token expiré'));
+      }
+      return next(new UnauthorizedError('Token invalide'));
+    }
 
     const iat = (decoded as unknown as { iat?: number }).iat;
     if (iat) {
       const model = decoded.role === 'orga' ? OrgaModel : UserModel;
       const logoutAt = await model.getLogoutAt(decoded.id);
       if (logoutAt && iat < Math.floor(logoutAt.getTime() / 1000)) {
-        throw new UnauthorizedError('Session invalidée');
+        return next(new UnauthorizedError('Session invalidée'));
       }
     }
 
     req.user = decoded;
     next();
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      throw error;
-    }
-    if (error instanceof jwt.TokenExpiredError) {
-      throw new UnauthorizedError('Token expiré');
-    }
-    throw new UnauthorizedError('Token invalide');
+    next(new UnauthorizedError('Erreur d\'authentification'));
   }
 };
 
@@ -63,11 +65,11 @@ export const optionalAuthMiddleware: RequestHandler = (req, _res, next) => {
 export const requireRole = (...roles: string[]): RequestHandler => {
   return (req, _res, next) => {
     if (!req.user) {
-      throw new UnauthorizedError('Authentification requise');
+      return next(new UnauthorizedError('Authentification requise'));
     }
 
     if (!roles.includes(req.user.role)) {
-      throw new ForbiddenError('Accès refusé pour ce rôle');
+      return next(new ForbiddenError('Accès refusé pour ce rôle'));
     }
 
     next();

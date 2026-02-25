@@ -144,6 +144,10 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
+  if (reason && typeof reason === 'object' && 'isOperational' in reason && (reason as any).isOperational) {
+    logger.error({ err: reason }, 'Unhandled operational rejection (non-fatal)');
+    return;
+  }
   logger.fatal({ err: reason }, 'Unhandled Rejection');
   shutdown('unhandledRejection');
 });
