@@ -433,7 +433,7 @@ class AuthService {
   }
 
   async uploadOrgaLogo(file: File): Promise<string> {
-    const token = this.getToken();
+    let token = this.getToken();
     if (!token) {
       throw new Error('No token available');
     }
@@ -441,7 +441,7 @@ class AuthService {
     const formData = new FormData();
     formData.append('logo', file);
 
-    const response = await fetch(`${API_URL}/api/orga/logo`, {
+    let response = await fetch(`${API_URL}/api/orga/logo`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -449,6 +449,20 @@ class AuthService {
       credentials: 'include',
       body: formData,
     });
+
+    if (response.status === 401) {
+      token = await this.refreshAccessToken();
+      if (token) {
+        response = await fetch(`${API_URL}/api/orga/logo`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+          body: formData,
+        });
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
