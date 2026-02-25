@@ -447,7 +447,7 @@ class EventService {
   }
 
   async uploadEventBanner(eventId: string, file: File): Promise<string> {
-    const token = authService.getToken();
+    let token = authService.getToken();
     if (!token) {
       throw new Error('No token available');
     }
@@ -455,7 +455,7 @@ class EventService {
     const formData = new FormData();
     formData.append('banner', file);
 
-    const response = await fetch(`${API_URL}/api/events/${eventId}/banner`, {
+    let response = await fetch(`${API_URL}/api/events/${eventId}/banner`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -463,6 +463,20 @@ class EventService {
       credentials: 'include',
       body: formData,
     });
+
+    if (response.status === 401) {
+      token = await authService.refreshAccessToken();
+      if (token) {
+        response = await fetch(`${API_URL}/api/events/${eventId}/banner`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+          body: formData,
+        });
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

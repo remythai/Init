@@ -115,7 +115,7 @@ export default function ImageUploader({
               alt={label}
               fill
               className="object-cover"
-              unoptimized={displayImage.startsWith("data:")}
+              unoptimized
             />
             {uploading && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
