@@ -93,32 +93,33 @@ describe('runMigrations', () => {
     expect(mockClient.release).toHaveBeenCalledTimes(2);
   });
 
-  it('should mark baseline as applied on existing database and run subsequent migrations', async () => {
+  it('should mark all migrations as applied on existing database', async () => {
     mockPool.query
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied (none)
       .mockResolvedValueOnce({ rows: [{ exists: true }] }) // isExistingDatabase -> users exist
-      .mockResolvedValueOnce(undefined); // INSERT baseline
+      .mockResolvedValueOnce(undefined) // INSERT 0001
+      .mockResolvedValueOnce(undefined); // INSERT 0002
 
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readdirSync).mockReturnValue([
       '0001_baseline.sql' as unknown as import('fs').Dirent,
       '0002_add_bio.sql' as unknown as import('fs').Dirent,
     ]);
-    vi.mocked(fs.readFileSync)
-      .mockReturnValueOnce('ALTER TABLE users ADD COLUMN bio TEXT;');
-
-    mockClient.query.mockResolvedValue(undefined);
 
     await runMigrations();
 
-    // Baseline marked via pool.query INSERT
+    // All migrations marked via pool.query INSERT
     expect(mockPool.query).toHaveBeenCalledWith(
       'INSERT INTO schema_migrations (name) VALUES ($1)',
       ['0001_baseline.sql']
     );
-    // Only migration 0002 applied via client (4 queries)
-    expect(mockClient.query).toHaveBeenCalledTimes(4);
+    expect(mockPool.query).toHaveBeenCalledWith(
+      'INSERT INTO schema_migrations (name) VALUES ($1)',
+      ['0002_add_bio.sql']
+    );
+    // No migrations applied via client (all already in DB)
+    expect(mockClient.query).not.toHaveBeenCalled();
   });
 
   it('should skip already applied migrations', async () => {

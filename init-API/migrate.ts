@@ -51,11 +51,13 @@ export async function runMigrations(): Promise<void> {
   }
 
   // Detect existing database without schema_migrations history
+  // Mark ALL existing migrations as applied (they were applied via init SQL scripts)
   if (applied.size === 0 && await isExistingDatabase()) {
-    const baseline = files[0];
-    await pool.query('INSERT INTO schema_migrations (name) VALUES ($1)', [baseline]);
-    logger.info({ migration: baseline }, 'Existing database detected, baseline marked as applied');
-    applied.add(baseline);
+    for (const file of files) {
+      await pool.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+      logger.info({ migration: file }, 'Existing database detected, migration marked as applied');
+      applied.add(file);
+    }
   }
 
   let count = 0;
