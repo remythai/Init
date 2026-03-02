@@ -505,31 +505,31 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#303030] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12">
+        <div className="w-full py-4 md:py-6 flex items-center justify-between">
           <Link href="/">
             <Image
-              src="/initLogoGray.png"
+              src="/LogoPng.png"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-8 md:h-12 w-auto"
+              className="h-7 md:h-9 w-auto"
             />
           </Link>
-          <div className="flex items-center gap-2 md:gap-4">
-            <Link
-              href="/profile"
-              className="flex items-center gap-1 md:gap-2 text-white/70 hover:text-white transition-colors"
-            >
-              <User className="w-4 h-4 md:w-5 md:h-5" />
-              <span className="hidden md:inline">Mon Profil</span>
-            </Link>
+          <div className="flex items-center gap-3 md:gap-4">
             <button
               onClick={handleLogout}
-              className="text-white/70 hover:text-white text-xs md:text-sm transition-colors"
+              className="font-poppins text-sm text-[#303030]/60 hover:text-[#303030] transition-colors"
             >
-              Deconnexion
+              Déconnexion
             </button>
+            <Link
+              href="/profile"
+              className="bg-black text-white hover:bg-black/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5 group"
+            >
+              <User className="w-3.5 h-3.5" />
+              Profil
+            </Link>
           </div>
         </div>
       </header>
