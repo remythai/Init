@@ -4,17 +4,18 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Edit2, Save, X, Camera, ArrowLeft, Upload, Loader2 } from "lucide-react";
-import { authService, User, Orga } from "../services/auth.service";
+import { Edit2, Save, X, ArrowLeft, User } from "lucide-react";
+import { authService, User as UserType, Orga } from "../services/auth.service";
 import { Photo, photoService } from "../services/photo.service";
 import BottomNavigation from "../components/BottomNavigation";
 import DesktopNav from "../components/DesktopNav";
+import ThemeToggle from "../components/ThemeToggle";
 import PhotoManager from "../components/PhotoManager";
 import ImageUploader from "../components/ImageUploader";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-type UserProfile = User;
+type UserProfile = UserType;
 type OrgaProfile = Orga;
 
 function isUserProfile(profile: UserProfile | OrgaProfile): profile is UserProfile {
@@ -58,26 +59,20 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-
       const validatedType = await authService.validateAndGetUserType();
-
       if (!validatedType) {
         router.push("/auth");
         return;
       }
       setProfileType(validatedType);
-
-      // Only load photos for users (not orgas)
-      if ((validatedType || "user") === 'user') {
+      if (validatedType === 'user') {
         loadPrimaryPhoto();
       }
-
       const profileData = await authService.getCurrentProfile();
       if (!profileData) {
         setLoading(false);
         return;
       }
-
       setProfile(profileData);
       setEditedProfile(profileData);
     } catch (err) {
@@ -90,48 +85,23 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (!profile || !editedProfile || !profileType) return;
-
     try {
       setSaving(true);
       setError("");
-
       const updates: Partial<UserProfile | OrgaProfile> = {};
-
       if (profileType === 'user' && isUserProfile(profile) && isUserProfile(editedProfile)) {
-        if (editedProfile.firstname !== profile.firstname) {
-          (updates as Partial<UserProfile>).firstname = editedProfile.firstname;
-        }
-        if (editedProfile.lastname !== profile.lastname) {
-          (updates as Partial<UserProfile>).lastname = editedProfile.lastname;
-        }
-        if (editedProfile.tel !== profile.tel) {
-          (updates as Partial<UserProfile>).tel = editedProfile.tel;
-        }
-        if (editedProfile.mail !== profile.mail) {
-          (updates as Partial<UserProfile>).mail = editedProfile.mail;
-        }
+        if (editedProfile.firstname !== profile.firstname) (updates as Partial<UserProfile>).firstname = editedProfile.firstname;
+        if (editedProfile.lastname !== profile.lastname) (updates as Partial<UserProfile>).lastname = editedProfile.lastname;
+        if (editedProfile.tel !== profile.tel) (updates as Partial<UserProfile>).tel = editedProfile.tel;
+        if (editedProfile.mail !== profile.mail) (updates as Partial<UserProfile>).mail = editedProfile.mail;
       } else if (profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile)) {
-        if (editedProfile.nom !== profile.nom) {
-          (updates as Partial<OrgaProfile>).nom = editedProfile.nom;
-        }
-        if (editedProfile.mail !== profile.mail) {
-          (updates as Partial<OrgaProfile>).mail = editedProfile.mail;
-        }
-        if (editedProfile.tel !== profile.tel) {
-          (updates as Partial<OrgaProfile>).tel = editedProfile.tel;
-        }
-        if (editedProfile.description !== profile.description) {
-          (updates as Partial<OrgaProfile>).description = editedProfile.description;
-        }
+        if (editedProfile.nom !== profile.nom) (updates as Partial<OrgaProfile>).nom = editedProfile.nom;
+        if (editedProfile.mail !== profile.mail) (updates as Partial<OrgaProfile>).mail = editedProfile.mail;
+        if (editedProfile.tel !== profile.tel) (updates as Partial<OrgaProfile>).tel = editedProfile.tel;
+        if (editedProfile.description !== profile.description) (updates as Partial<OrgaProfile>).description = editedProfile.description;
       }
-
-      if (Object.keys(updates).length === 0) {
-        setIsEditing(false);
-        return;
-      }
-
+      if (Object.keys(updates).length === 0) { setIsEditing(false); return; }
       const updatedProfile = await authService.updateCurrentProfile(updates);
-
       if (updatedProfile) {
         setProfile(updatedProfile);
         setEditedProfile(updatedProfile);
@@ -145,11 +115,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCancel = () => {
-    setEditedProfile(profile);
-    setIsEditing(false);
-    setError("");
-  };
+  const handleCancel = () => { setEditedProfile(profile); setIsEditing(false); setError(""); };
 
   const calculateAge = (birthday?: string): number | null => {
     if (!birthday) return null;
@@ -157,364 +123,312 @@ export default function ProfilePage() {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
   };
 
   const getDisplayName = () => {
     if (!profile) return "";
-    if (isUserProfile(profile)) {
-      return profile.firstname;
-    }
-    return profile.nom;
+    return isUserProfile(profile) ? profile.firstname : profile.nom;
   };
 
   const getAvatarInitial = () => {
     if (!profile) return "";
-    if (isUserProfile(profile)) {
-      return profile.firstname.charAt(0).toUpperCase();
-    }
-    return profile.nom.charAt(0).toUpperCase();
+    return isUserProfile(profile) ? profile.firstname.charAt(0).toUpperCase() : profile.nom.charAt(0).toUpperCase();
   };
 
-  const handleLogout = async () => {
-    await authService.logout();
-    router.push("/");
-  };
+  const handleLogout = async () => { await authService.logout(); router.push("/"); };
 
+  // ─── Shared header (same as events/messages) ───
+  const renderHeader = () => (
+    <header className="fixed top-0 left-0 right-0 z-50">
+      <div className="absolute inset-0 bg-page pointer-events-none" />
+      <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
+        <Link href="/">
+          <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
+          <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
+        </Link>
+        <DesktopNav />
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="md:hidden"><ThemeToggle /></div>
+          <button
+            onClick={handleLogout}
+            className="font-poppins text-sm text-secondary hover:text-primary transition-colors"
+          >
+            Déconnexion
+          </button>
+          <Link
+            href="/events"
+            className="md:hidden bg-accent-solid text-accent-solid-text hover:opacity-90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Events
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+
+  // ─── Loading ───
   if (loading) {
     return (
-      <div className="min-h-screen bg-page flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-secondary">Chargement du profil...</p>
-        </div>
+      <div className="min-h-screen bg-page">
+        {renderHeader()}
+        <main className="pt-20 md:pt-24 flex items-center justify-center" style={{ minHeight: "calc(100vh - 80px)" }}>
+          <div className="text-center">
+            <div className="w-10 h-10 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-muted text-sm">Chargement du profil...</p>
+          </div>
+        </main>
+        <BottomNavigation userType="user" />
       </div>
     );
   }
 
   if (!profile || !editedProfile || !profileType) {
     return (
-      <div className="min-h-screen bg-page flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-secondary mb-4">Impossible de charger le profil</p>
-          <button
-            onClick={() => router.push("/auth")}
-            className="bg-accent-solid text-accent-solid-text px-6 py-3 rounded-lg"
-          >
-            Se reconnecter
-          </button>
-        </div>
+      <div className="min-h-screen bg-page">
+        {renderHeader()}
+        <main className="pt-20 md:pt-24 flex items-center justify-center" style={{ minHeight: "calc(100vh - 80px)" }}>
+          <div className="text-center">
+            <p className="text-secondary mb-4">Impossible de charger le profil</p>
+            <button onClick={() => router.push("/auth")} className="bg-accent-solid text-accent-solid-text px-6 py-3 rounded-full text-sm font-medium">
+              Se reconnecter
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
 
   const age = isUserProfile(profile) ? calculateAge(profile.birthday) : null;
 
+  const inputClass = "w-full px-4 py-3 bg-input border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:opacity-50 text-sm";
+
   return (
     <div className="min-h-screen bg-page">
-      {/* Header */}
-      <header className="bg-accent-solid text-accent-solid-text">
-        <div className="max-w-4xl mx-auto px-3 md:px-8 py-3 md:py-4">
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <Link href="/events" className="flex items-center gap-1 md:gap-2 text-accent-solid-text/70 hover:text-accent-solid-text transition-colors">
-              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-              <span className="text-sm md:text-base">Retour</span>
-            </Link>
-            <DesktopNav />
-            <button
-              onClick={handleLogout}
-              className="text-accent-solid-text/70 hover:text-accent-solid-text text-xs md:text-sm transition-colors"
-            >
-              Deconnexion
-            </button>
-          </div>
+      {renderHeader()}
 
-          <div className="flex items-center justify-between">
-            <h1 className="font-poppins text-lg md:text-xl font-semibold">
-              {profileType === 'user' ? "Mon Profil" : "Profil de l'Organisation"}
-            </h1>
+      <main className="pt-20 md:pt-24 pb-24 md:pb-8">
+        <div className="max-w-2xl mx-auto px-4 md:px-6">
 
-            {!isEditing ? (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1 md:gap-2 bg-card/20 hover:bg-card/30 px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-sm md:text-base"
-              >
-                <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
-                <span>Modifier</span>
-              </button>
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="p-1.5 md:p-2 bg-card/20 hover:bg-card/30 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <X className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-1 md:gap-2 bg-card text-primary px-3 md:px-4 py-1.5 md:py-2 rounded-lg hover:bg-hover transition-colors disabled:opacity-50 text-sm md:text-base"
-                >
-                  <Save className="w-3 h-3 md:w-4 md:h-4" />
-                  <span>{saving ? "..." : "Enregistrer"}</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Avatar */}
-          <div className="flex justify-center py-6 md:py-8">
-            <div className="relative">
-              {profileType === 'orga' && isOrgaProfile(profile) && profile.logo_path ? (
-                <img
-                  src={`${API_URL}${profile.logo_path}`}
-                  alt={getDisplayName()}
-                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-white/20"
-                />
-              ) : primaryPhoto ? (
-                <img
-                  src={photoService.getPhotoUrl(primaryPhoto.file_path)}
-                  alt={getDisplayName()}
-                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-white/20"
-                />
-              ) : (
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-card rounded-full flex items-center justify-center">
-                  <span className="text-3xl md:text-4xl font-bold text-primary">
-                    {getAvatarInitial()}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-3 md:px-8 -mt-8 pb-24">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
-
-        {/* User Profile */}
-        {profileType === 'user' && isUserProfile(profile) && isUserProfile(editedProfile) && (
-          <>
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs text-secondary mb-1">Prenom</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedProfile.firstname}
-                      onChange={(e) =>
-                        setEditedProfile({ ...editedProfile, firstname: e.target.value })
-                      }
-                      disabled={saving}
-                      className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                    />
-                  ) : (
-                    <p className="font-semibold text-primary">{profile.firstname}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs text-secondary mb-1">Nom</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedProfile.lastname}
-                      onChange={(e) =>
-                        setEditedProfile({ ...editedProfile, lastname: e.target.value })
-                      }
-                      disabled={saving}
-                      className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                    />
-                  ) : (
-                    <p className="font-semibold text-primary">{profile.lastname}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-xs text-secondary mb-1">Telephone</label>
-                {isEditing ? (
-                  <input
-                    type="tel"
-                    value={editedProfile.tel}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, tel: e.target.value })
-                    }
-                    disabled={saving}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                  />
+          {/* Avatar + Name card */}
+          <div className="bg-card rounded-2xl shadow-sm p-6 md:p-8 mb-4">
+            <div className="flex flex-col items-center">
+              {/* Avatar */}
+              <div className="relative mb-4">
+                {profileType === 'orga' && isOrgaProfile(profile) && profile.logo_path ? (
+                  <img src={`${API_URL}${profile.logo_path}`} alt={getDisplayName()} className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-border" />
+                ) : primaryPhoto ? (
+                  <img src={photoService.getPhotoUrl(primaryPhoto.file_path)} alt={getDisplayName()} className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-border" />
                 ) : (
-                  <p className="font-semibold text-primary">{profile.tel}</p>
+                  <div className="w-24 h-24 md:w-28 md:h-28 bg-badge rounded-full flex items-center justify-center border-4 border-border">
+                    <span className="text-3xl md:text-4xl font-bold text-primary">{getAvatarInitial()}</span>
+                  </div>
                 )}
               </div>
 
-              <div className="mt-6">
-                <label className="block text-xs text-secondary mb-1">Email</label>
-                {isEditing ? (
-                  <input
-                    type="email"
-                    value={editedProfile.mail || ""}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, mail: e.target.value })
-                    }
-                    disabled={saving}
-                    placeholder="email@exemple.com"
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                  />
-                ) : (
-                  <p className="font-semibold text-primary">{profile.mail || "Non renseigne"}</p>
-                )}
-              </div>
-
-              {age !== null && (
-                <div className="mt-6">
-                  <label className="block text-xs text-secondary mb-1">Age</label>
-                  <p className="font-semibold text-primary">{age} ans</p>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <h3 className="font-semibold text-lg text-primary mb-4">Mes photos</h3>
-              <PhotoManager onPhotosChange={handlePhotosChange} />
-            </div>
-
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <h3 className="font-semibold text-lg text-primary mb-3">Centres d'interet</h3>
-              <p className="text-muted italic">Cette fonctionnalite sera bientot disponible</p>
-            </div>
-
-            <div className="bg-card rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-lg text-primary mb-3">Questions de personnalite</h3>
-              <p className="text-muted italic">Cette fonctionnalite sera bientot disponible</p>
-            </div>
-          </>
-        )}
-
-        {/* Orga Profile */}
-        {profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile) && (
-          <>
-            {/* Logo Upload Section */}
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <h3 className="font-semibold text-lg text-primary mb-4">Logo de l'organisation</h3>
-              <ImageUploader
-                currentImage={profile.logo_path ? `${API_URL}${profile.logo_path}` : undefined}
-                onUpload={async (file) => {
-                  const logoPath = await authService.uploadOrgaLogo(file);
-                  setProfile({ ...profile, logo_path: logoPath });
-                  setEditedProfile({ ...editedProfile, logo_path: logoPath });
-                }}
-                onDelete={async () => {
-                  await authService.deleteOrgaLogo();
-                  setProfile({ ...profile, logo_path: undefined });
-                  setEditedProfile({ ...editedProfile, logo_path: undefined });
-                }}
-                aspectRatio="square"
-                label="Logo"
-              />
-              <p className="text-xs text-secondary mt-2">
-                Ce logo sera affiche sur votre profil et sur les evenements que vous creez.
+              {/* Name + Age */}
+              <h1 className="font-poppins text-xl md:text-2xl font-bold text-primary">
+                {isUserProfile(profile) ? `${profile.firstname} ${profile.lastname}` : profile.nom}
+              </h1>
+              {age !== null && <p className="text-secondary text-sm mt-1">{age} ans</p>}
+              <p className="text-muted text-xs mt-1">
+                {profileType === 'user' ? "Utilisateur" : "Organisateur"}
               </p>
-            </div>
 
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <div className="mb-6">
-                <label className="block text-xs text-secondary mb-1">Nom de l'organisation</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedProfile.nom}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, nom: e.target.value })
-                    }
-                    disabled={saving}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                  />
+              {/* Edit / Save / Cancel */}
+              <div className="mt-5">
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 bg-accent-solid text-accent-solid-text hover:opacity-90 px-5 py-2.5 rounded-full text-sm font-medium transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Modifier le profil
+                  </button>
                 ) : (
-                  <p className="font-semibold text-primary">{profile.nom}</p>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-xs text-secondary mb-1">Email</label>
-                {isEditing ? (
-                  <input
-                    type="email"
-                    value={editedProfile.mail}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, mail: e.target.value })
-                    }
-                    disabled={saving}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                  />
-                ) : (
-                  <p className="font-semibold text-primary">{profile.mail}</p>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-xs text-secondary mb-1">Telephone</label>
-                {isEditing ? (
-                  <input
-                    type="tel"
-                    value={editedProfile.tel || ""}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, tel: e.target.value })
-                    }
-                    disabled={saving}
-                    placeholder="Telephone"
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
-                  />
-                ) : (
-                  <p className="font-semibold text-primary">{profile.tel || "Non renseigne"}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs text-secondary mb-1">Description</label>
-                {isEditing ? (
-                  <textarea
-                    value={editedProfile.description || ""}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, description: e.target.value })
-                    }
-                    disabled={saving}
-                    rows={4}
-                    placeholder="Description de l'organisation..."
-                    className="w-full px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge resize-none break-words hyphens-auto"
-                    style={{ wordBreak: 'break-word' }}
-                  />
-                ) : (
-                  <p className="font-semibold text-primary">{profile.description || "Aucune description"}</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="flex items-center gap-2 border border-border text-secondary hover:text-primary px-5 py-2.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex items-center gap-2 bg-[#1271FF] text-white hover:bg-[#1271FF]/90 px-5 py-2.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" />
+                      {saving ? "..." : "Enregistrer"}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="bg-card rounded-xl shadow-sm p-6 mb-4">
-              <h3 className="font-semibold text-lg text-primary mb-3">Evenements crees</h3>
-              <p className="text-muted italic">Cette fonctionnalite sera bientot disponible</p>
+          {/* Error */}
+          {error && (
+            <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-4 text-sm">
+              {error}
             </div>
+          )}
 
-            <div className="bg-card rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-lg text-primary mb-3">Statistiques</h3>
-              <p className="text-muted italic">Cette fonctionnalite sera bientot disponible</p>
-            </div>
-          </>
-        )}
+          {/* User Profile Fields */}
+          {profileType === 'user' && isUserProfile(profile) && isUserProfile(editedProfile) && (
+            <>
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-5">Informations personnelles</h3>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-xs font-medium text-secondary mb-1.5">Prénom</label>
+                      {isEditing ? (
+                        <input type="text" value={editedProfile.firstname} onChange={(e) => setEditedProfile({ ...editedProfile, firstname: e.target.value })} disabled={saving} className={inputClass} />
+                      ) : (
+                        <p className="text-primary font-medium">{profile.firstname}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary mb-1.5">Nom</label>
+                      {isEditing ? (
+                        <input type="text" value={editedProfile.lastname} onChange={(e) => setEditedProfile({ ...editedProfile, lastname: e.target.value })} disabled={saving} className={inputClass} />
+                      ) : (
+                        <p className="text-primary font-medium">{profile.lastname}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Téléphone</label>
+                    {isEditing ? (
+                      <input type="tel" value={editedProfile.tel} onChange={(e) => setEditedProfile({ ...editedProfile, tel: e.target.value })} disabled={saving} className={inputClass} />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.tel}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Email</label>
+                    {isEditing ? (
+                      <input type="email" value={editedProfile.mail || ""} onChange={(e) => setEditedProfile({ ...editedProfile, mail: e.target.value })} disabled={saving} placeholder="email@exemple.com" className={inputClass} />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.mail || "Non renseigné"}</p>
+                    )}
+                  </div>
+                  {age !== null && (
+                    <div>
+                      <label className="block text-xs font-medium text-secondary mb-1.5">Âge</label>
+                      <p className="text-primary font-medium">{age} ans</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-4">Mes photos</h3>
+                <PhotoManager onPhotosChange={handlePhotosChange} />
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-3">Centres d'intérêt</h3>
+                <p className="text-muted text-sm italic">Cette fonctionnalité sera bientôt disponible</p>
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6">
+                <h3 className="font-poppins font-semibold text-primary mb-3">Questions de personnalité</h3>
+                <p className="text-muted text-sm italic">Cette fonctionnalité sera bientôt disponible</p>
+              </div>
+            </>
+          )}
+
+          {/* Orga Profile Fields */}
+          {profileType === 'orga' && isOrgaProfile(profile) && isOrgaProfile(editedProfile) && (
+            <>
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-4">Logo de l'organisation</h3>
+                <ImageUploader
+                  currentImage={profile.logo_path ? `${API_URL}${profile.logo_path}` : undefined}
+                  onUpload={async (file) => {
+                    const logoPath = await authService.uploadOrgaLogo(file);
+                    setProfile({ ...profile, logo_path: logoPath });
+                    setEditedProfile({ ...editedProfile, logo_path: logoPath });
+                  }}
+                  onDelete={async () => {
+                    await authService.deleteOrgaLogo();
+                    setProfile({ ...profile, logo_path: undefined });
+                    setEditedProfile({ ...editedProfile, logo_path: undefined });
+                  }}
+                  aspectRatio="square"
+                  label="Logo"
+                />
+                <p className="text-xs text-secondary mt-2">
+                  Ce logo sera affiché sur votre profil et sur les événements que vous créez.
+                </p>
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-5">Informations de l'organisation</h3>
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Nom de l'organisation</label>
+                    {isEditing ? (
+                      <input type="text" value={editedProfile.nom} onChange={(e) => setEditedProfile({ ...editedProfile, nom: e.target.value })} disabled={saving} className={inputClass} />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.nom}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Email</label>
+                    {isEditing ? (
+                      <input type="email" value={editedProfile.mail} onChange={(e) => setEditedProfile({ ...editedProfile, mail: e.target.value })} disabled={saving} className={inputClass} />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.mail}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Téléphone</label>
+                    {isEditing ? (
+                      <input type="tel" value={editedProfile.tel || ""} onChange={(e) => setEditedProfile({ ...editedProfile, tel: e.target.value })} disabled={saving} placeholder="Téléphone" className={inputClass} />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.tel || "Non renseigné"}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary mb-1.5">Description</label>
+                    {isEditing ? (
+                      <textarea
+                        value={editedProfile.description || ""}
+                        onChange={(e) => setEditedProfile({ ...editedProfile, description: e.target.value })}
+                        disabled={saving}
+                        rows={4}
+                        placeholder="Description de l'organisation..."
+                        className={`${inputClass} resize-none break-words hyphens-auto`}
+                        style={{ wordBreak: 'break-word' }}
+                      />
+                    ) : (
+                      <p className="text-primary font-medium">{profile.description || "Aucune description"}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-4">
+                <h3 className="font-poppins font-semibold text-primary mb-3">Événements créés</h3>
+                <p className="text-muted text-sm italic">Cette fonctionnalité sera bientôt disponible</p>
+              </div>
+
+              <div className="bg-card rounded-2xl shadow-sm p-6">
+                <h3 className="font-poppins font-semibold text-primary mb-3">Statistiques</h3>
+                <p className="text-muted text-sm italic">Cette fonctionnalité sera bientôt disponible</p>
+              </div>
+            </>
+          )}
+        </div>
       </main>
 
-      {/* Bottom Navigation for users */}
       <BottomNavigation userType={profileType} />
     </div>
   );
