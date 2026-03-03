@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face {
   font-family: 'ZT Grafton';
   src: url('/fonts/ZTGrafton-Regular.ttf') format('truetype');
@@ -10,22 +12,72 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F5F5F5;
+  --foreground: #303030;
+  --page-bg: #F5F5F5;
+  --card-bg: #ffffff;
+  --text-primary: #303030;
+  --text-secondary: rgba(48, 48, 48, 0.6);
+  --text-muted: rgba(48, 48, 48, 0.4);
+  --border-color: #e5e5e5;
+  --input-bg: #f0f0f0;
+  --nav-bg: #F5F5F5;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --received-msg-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --badge-bg: #f3f4f6;
+  --accent-solid: #303030;
+  --accent-solid-text: #ffffff;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
+}
+
+.dark {
+  --background: #303030;
+  --foreground: #ededed;
+  --page-bg: #303030;
+  --card-bg: #3a3a3a;
+  --text-primary: #ededed;
+  --text-secondary: rgba(237, 237, 237, 0.6);
+  --text-muted: rgba(237, 237, 237, 0.4);
+  --border-color: #4a4a4a;
+  --input-bg: #444444;
+  --nav-bg: #303030;
+  --hover-bg: rgba(255, 255, 255, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --received-msg-bg: #444444;
+  --modal-bg: #3a3a3a;
+  --badge-bg: #484848;
+  --accent-solid: #ededed;
+  --accent-solid-text: #303030;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-page: var(--page-bg);
+  --color-card: var(--card-bg);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-border: var(--border-color);
+  --color-input: var(--input-bg);
+  --color-nav: var(--nav-bg);
+  --color-hover: var(--hover-bg);
+  --color-shadow: var(--shadow-color);
+  --color-overlay: var(--overlay-bg);
+  --color-received-msg: var(--received-msg-bg);
+  --color-modal: var(--modal-bg);
+  --color-badge: var(--badge-bg);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-solid-text: var(--accent-solid-text);
   --font-poppins: var(--font-poppins);
   --font-roboto: var(--font-roboto);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
@@ -167,7 +219,7 @@ body::-webkit-scrollbar {
 /* Thin scrollbar for conversations list */
 .conversations-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .conversations-scrollbar::-webkit-scrollbar {
@@ -180,12 +232,12 @@ body::-webkit-scrollbar {
 }
 
 .conversations-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .conversations-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Slide-down animation for event group expand */

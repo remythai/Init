@@ -16,6 +16,7 @@ import {
 } from "../services/event.service";
 import BottomNavigation from "../components/BottomNavigation";
 import DesktopNav from "../components/DesktopNav";
+import ThemeToggle from "../components/ThemeToggle";
 import FiltersSidebar from "./components/FiltersSidebar";
 
 const EventsMap = dynamic(
@@ -23,10 +24,10 @@ const EventsMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-[600px] bg-white rounded-xl flex items-center justify-center">
+      <div className="w-full h-[600px] bg-card rounded-xl flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-400 text-sm">Chargement de la carte...</p>
+          <p className="text-muted text-sm">Chargement de la carte...</p>
         </div>
       </div>
     ),
@@ -576,41 +577,37 @@ export default function EventsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+      <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des événements...</p>
+          <p className="text-secondary">Chargement des événements...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-page">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50">
-        <div className="absolute inset-0 bg-[#F5F5F5] pointer-events-none" />
+        <div className="absolute inset-0 bg-page pointer-events-none" />
         <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
           <Link href="/">
-            <Image
-              src="/LogoPng.png"
-              alt="Init Logo"
-              width={200}
-              height={80}
-              className="h-7 md:h-9 w-auto"
-            />
+            <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
+            <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
           </Link>
           <DesktopNav />
           <div className="flex items-center gap-3 md:gap-4">
+            <div className="md:hidden"><ThemeToggle /></div>
             <button
               onClick={handleLogout}
-              className="font-poppins text-sm text-[#303030]/60 hover:text-[#303030] transition-colors"
+              className="font-poppins text-sm text-secondary hover:text-primary transition-colors"
             >
               Déconnexion
             </button>
             <Link
               href="/profile"
-              className="md:hidden bg-black text-white hover:bg-black/90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5 group"
+              className="md:hidden bg-accent-solid text-accent-solid-text hover:opacity-90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5 group"
             >
               <User className="w-3.5 h-3.5" />
               Profil
@@ -635,43 +632,43 @@ export default function EventsPage() {
           <div className="flex flex-col md:flex-row gap-3 mb-4">
             <div className="flex flex-col md:flex-row gap-3 flex-1">
               <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                 <input
                   type="text"
                   placeholder="Rechercher un evenement..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] placeholder-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-card rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted"
                 />
               </div>
               <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                 <input
                   type="text"
                   placeholder="Lieu..."
                   value={locationQuery}
                   onChange={(e) => setLocationQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] placeholder-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-card rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted"
                 />
               </div>
             </div>
             <div className="flex gap-3 self-start">
               <button
                 onClick={() => setViewMode(v => v === "grid" ? "map" : "grid")}
-                className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors flex-shrink-0"
+                className="w-12 h-12 bg-card rounded-full shadow-sm flex items-center justify-center hover:bg-hover transition-colors flex-shrink-0"
                 title={viewMode === "grid" ? "Vue carte" : "Vue grille"}
               >
                 {viewMode === "grid" ? (
-                  <Map className="w-5 h-5 text-[#303030]" />
+                  <Map className="w-5 h-5 text-primary" />
                 ) : (
-                  <LayoutGrid className="w-5 h-5 text-[#303030]" />
+                  <LayoutGrid className="w-5 h-5 text-primary" />
                 )}
               </button>
               <button
                 onClick={() => setIsAdvancedOpen(true)}
-                className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors relative flex-shrink-0 min-[1500px]:hidden"
+                className="w-12 h-12 bg-card rounded-full shadow-sm flex items-center justify-center hover:bg-hover transition-colors relative flex-shrink-0 min-[1500px]:hidden"
               >
-                <Filter className="w-5 h-5 text-[#303030]" />
+                <Filter className="w-5 h-5 text-primary" />
                 {hasActiveFilters && (
                   <span className="absolute top-2 right-2 w-2 h-2 bg-[#1271FF] rounded-full"></span>
                 )}
@@ -714,9 +711,9 @@ export default function EventsPage() {
               {viewMode === "map" ? (
                 <div className="h-[600px] rounded-xl overflow-hidden relative">
                   {isGeocoding && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2 flex items-center gap-2">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-card/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2 flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#1271FF]/30 border-t-[#1271FF] rounded-full animate-spin"></div>
-                      <span className="text-sm text-gray-600">Geolocalisation des evenements...</span>
+                      <span className="text-sm text-secondary">Geolocalisation des evenements...</span>
                     </div>
                   )}
                   <EventsMap
@@ -724,8 +721,8 @@ export default function EventsPage() {
                     onEventClick={(id) => router.push(`/events/${id}`)}
                   />
                   {filteredEvents.filter(e => !e.location).length > 0 && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2">
-                      <span className="text-xs text-gray-500">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-card/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2">
+                      <span className="text-xs text-secondary">
                         {filteredEvents.filter(e => !e.location).length} evenement(s) sans lieu non affiche(s)
                       </span>
                     </div>
@@ -733,7 +730,7 @@ export default function EventsPage() {
                 </div>
               ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-600 text-lg">
+                  <p className="text-secondary text-lg">
                     {searchQuery || locationQuery
                       ? "Aucun evenement ne correspond a votre recherche"
                       : activeFilter === "registered"
@@ -756,7 +753,7 @@ export default function EventsPage() {
                   {filteredEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
                       {/* Event Image */}
@@ -791,28 +788,28 @@ export default function EventsPage() {
 
                       {/* Event Content */}
                       <div className="p-4">
-                        <h3 className="font-poppins font-semibold text-lg text-[#303030] mb-3">
+                        <h3 className="font-poppins font-semibold text-lg text-primary mb-3">
                           {event.name}
                         </h3>
 
                         <div className="space-y-2">
                           {event.hasPhysicalEvent && (
                             <>
-                              <div className="flex items-center gap-2 text-gray-600">
+                              <div className="flex items-center gap-2 text-secondary">
                                 <Calendar className="w-4 h-4" />
                                 <span className="text-sm">{event.physicalDate}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-gray-600">
+                              <div className="flex items-center gap-2 text-secondary">
                                 <MapPin className="w-4 h-4" />
                                 <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
                               </div>
                             </>
                           )}
-                          <div className="flex items-center gap-2 text-gray-600">
+                          <div className="flex items-center gap-2 text-secondary">
                             <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
                             <span className="text-sm">{event.appDate}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-600">
+                          <div className="flex items-center gap-2 text-secondary">
                             <Users className="w-4 h-4" />
                             <span className="text-sm">
                               {event.participants}/{event.maxParticipants} participants
@@ -836,7 +833,7 @@ export default function EventsPage() {
                           <Link
                             href={`/events/${event.id}/environment/swiper`}
                             onClick={(e) => e.stopPropagation()}
-                            className="block w-full mt-4 bg-[#303030] hover:bg-[#404040] text-white py-3 rounded-lg font-medium transition-colors text-center"
+                            className="block w-full mt-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
                           >
                             Acceder a l'environnement
                           </Link>
@@ -865,20 +862,20 @@ export default function EventsPage() {
       {isAdvancedOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-overlay"
             onClick={() => setIsAdvancedOpen(false)}
           />
-          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] flex flex-col">
+          <div className="relative bg-modal w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex-shrink-0 flex items-center justify-between p-5 border-b">
-              <h2 className="font-poppins text-xl font-semibold text-[#303030]">
+            <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-border">
+              <h2 className="font-poppins text-xl font-semibold text-primary">
                 Filtres
               </h2>
               <button
                 onClick={() => setIsAdvancedOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-hover rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-[#303030]" />
+                <X className="w-5 h-5 text-primary" />
               </button>
             </div>
 
@@ -887,16 +884,16 @@ export default function EventsPage() {
               {/* All / Registered toggle */}
               {userType === "user" && (
                 <div>
-                  <label className="block text-sm font-semibold text-[#303030] mb-3">
+                  <label className="block text-sm font-semibold text-primary mb-3">
                     Affichage
                   </label>
-                  <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+                  <div className="inline-flex bg-badge rounded-lg p-0.5">
                     <button
                       onClick={() => setActiveFilter("all")}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                         activeFilter === "all"
-                          ? "bg-[#303030] text-white shadow-sm"
-                          : "text-[#303030] hover:bg-gray-200"
+                          ? "bg-accent-solid text-accent-solid-text shadow-sm"
+                          : "text-primary hover:bg-hover"
                       }`}
                     >
                       Tous
@@ -905,8 +902,8 @@ export default function EventsPage() {
                       onClick={() => setActiveFilter("registered")}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                         activeFilter === "registered"
-                          ? "bg-[#303030] text-white shadow-sm"
-                          : "text-[#303030] hover:bg-gray-200"
+                          ? "bg-accent-solid text-accent-solid-text shadow-sm"
+                          : "text-primary hover:bg-hover"
                       }`}
                     >
                       Mes events
@@ -917,7 +914,7 @@ export default function EventsPage() {
 
               {/* Theme Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-3">
+                <label className="block text-sm font-semibold text-primary mb-3">
                   Type d'événement
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -927,8 +924,8 @@ export default function EventsPage() {
                       onClick={() => setSelectedTheme(theme.value)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                         selectedTheme === theme.value
-                          ? "bg-[#303030] text-white"
-                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                          ? "bg-accent-solid text-accent-solid-text"
+                          : "bg-badge text-primary hover:bg-hover"
                       }`}
                     >
                       {theme.label}
@@ -941,19 +938,19 @@ export default function EventsPage() {
               <div>
                 <button
                   onClick={() => setOnlyAvailable(!onlyAvailable)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-lg"
                 >
                   <div>
-                    <p className="font-semibold text-[#303030]">
+                    <p className="font-semibold text-primary">
                       Places disponibles uniquement
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-secondary">
                       Masquer les evenements complets
                     </p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      onlyAvailable ? "bg-[#1271FF]" : "bg-gray-300"
+                      onlyAvailable ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -967,7 +964,7 @@ export default function EventsPage() {
 
               {/* Date Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-3">
+                <label className="block text-sm font-semibold text-primary mb-3">
                   Date
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -977,8 +974,8 @@ export default function EventsPage() {
                       onClick={() => setDateFilter(filter.value)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                         dateFilter === filter.value
-                          ? "bg-[#303030] text-white"
-                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                          ? "bg-accent-solid text-accent-solid-text"
+                          : "bg-badge text-primary hover:bg-hover"
                       }`}
                     >
                       {filter.label}
@@ -989,7 +986,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex-shrink-0 flex gap-3 p-5 border-t">
+            <div className="flex-shrink-0 flex gap-3 p-5 border-t border-border">
               <button
                 onClick={() => {
                   setSelectedTheme("all");
@@ -997,13 +994,13 @@ export default function EventsPage() {
                   setDateFilter("all");
                   setActiveFilter("all");
                 }}
-                className="flex-1 py-3 rounded-lg border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-lg border border-border text-primary font-medium hover:bg-hover transition-colors"
               >
                 Réinitialiser
               </button>
               <button
                 onClick={() => setIsAdvancedOpen(false)}
-                className="flex-1 py-3 rounded-lg bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors"
+                className="flex-1 py-3 rounded-lg bg-accent-solid text-accent-solid-text font-medium hover:bg-accent-solid/80 transition-colors"
               >
                 Appliquer
               </button>
@@ -1016,21 +1013,21 @@ export default function EventsPage() {
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-overlay"
             onClick={() => !creating && setIsCreateOpen(false)}
           />
-          <div className="relative bg-white w-full md:max-w-2xl md:rounded-2xl rounded-t-3xl max-h-[92vh] overflow-hidden">
+          <div className="relative bg-modal w-full md:max-w-2xl md:rounded-2xl rounded-t-3xl max-h-[92vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="font-poppins text-xl font-semibold text-[#303030]">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <h2 className="font-poppins text-xl font-semibold text-primary">
                 Créer un événement
               </h2>
               <button
                 onClick={() => !creating && setIsCreateOpen(false)}
                 disabled={creating}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                className="p-2 hover:bg-hover rounded-full transition-colors disabled:opacity-50"
               >
-                <X className="w-5 h-5 text-[#303030]" />
+                <X className="w-5 h-5 text-primary" />
               </button>
             </div>
 
@@ -1045,7 +1042,7 @@ export default function EventsPage() {
 
               {/* Name */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Nom de l'événement *
                 </label>
                 <input
@@ -1055,16 +1052,16 @@ export default function EventsPage() {
                   placeholder="Ex: Soirée Networking"
                   maxLength={100}
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                 />
-                <p className={`text-xs mt-1 text-right ${formData.name.length >= 90 ? 'text-orange-500' : 'text-gray-400'}`}>
+                <p className={`text-xs mt-1 text-right ${formData.name.length >= 90 ? 'text-orange-500' : 'text-muted'}`}>
                   {formData.name.length}/100
                 </p>
               </div>
 
               {/* Theme */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Thème
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1076,8 +1073,8 @@ export default function EventsPage() {
                       disabled={creating}
                       className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                         formData.theme === theme
-                          ? "bg-[#303030] text-white"
-                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                          ? "bg-accent-solid text-accent-solid-text"
+                          : "bg-badge text-primary hover:bg-hover"
                       } disabled:opacity-50`}
                     >
                       {theme}
@@ -1088,7 +1085,7 @@ export default function EventsPage() {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Description *
                 </label>
                 <textarea
@@ -1098,10 +1095,10 @@ export default function EventsPage() {
                   rows={3}
                   maxLength={1000}
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-gray-100 break-words hyphens-auto"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none disabled:bg-badge break-words hyphens-auto"
                   style={{ wordBreak: 'break-word' }}
                 />
-                <p className={`text-xs mt-1 text-right ${formData.description.length >= 900 ? 'text-orange-500' : 'text-gray-400'}`}>
+                <p className={`text-xs mt-1 text-right ${formData.description.length >= 900 ? 'text-orange-500' : 'text-muted'}`}>
                   {formData.description.length}/1000
                 </p>
               </div>
@@ -1114,16 +1111,16 @@ export default function EventsPage() {
               </div>
 
               {/* App Availability Dates (Required) */}
-              <div className="space-y-3 pt-4 border-t">
-                <h3 className="font-semibold text-[#303030]">
+              <div className="space-y-3 pt-4 border-t border-border">
+                <h3 className="font-semibold text-primary">
                   Disponibilite de l'app *
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-secondary">
                   Periode pendant laquelle les utilisateurs peuvent acceder au swiper, matcher et discuter.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                    <label className="block text-sm font-semibold text-primary mb-2">
                       Debut de disponibilite *
                     </label>
                     <input
@@ -1131,11 +1128,11 @@ export default function EventsPage() {
                       value={formData.app_start_at}
                       onChange={(e) => setFormData({ ...formData, app_start_at: e.target.value })}
                       disabled={creating}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                    <label className="block text-sm font-semibold text-primary mb-2">
                       Fin de disponibilite *
                     </label>
                     <input
@@ -1143,29 +1140,29 @@ export default function EventsPage() {
                       value={formData.app_end_at}
                       onChange={(e) => setFormData({ ...formData, app_end_at: e.target.value })}
                       disabled={creating}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Physical Event Toggle */}
-              <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, has_physical_event: !formData.has_physical_event })}
                   disabled={creating}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Evenement physique</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-primary">Evenement physique</p>
+                    <p className="text-sm text-secondary">
                       {formData.has_physical_event ? "L'evenement a un lieu et une date" : "Pas de lieu ni de date physique"}
                     </p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      formData.has_physical_event ? "bg-[#1271FF]" : "bg-gray-300"
+                      formData.has_physical_event ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -1178,13 +1175,13 @@ export default function EventsPage() {
 
                 {/* Physical Event Dates and Location */}
                 {formData.has_physical_event && (
-                  <div className="space-y-4 p-4 bg-gray-50 rounded-xl">
-                    <p className="text-sm text-gray-600">
+                  <div className="space-y-4 p-4 bg-badge rounded-xl">
+                    <p className="text-sm text-secondary">
                       Quand et ou se deroule l'evenement physique.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-[#303030] mb-2">
+                        <label className="block text-sm font-semibold text-primary mb-2">
                           Debut de l'evenement *
                         </label>
                         <input
@@ -1192,11 +1189,11 @@ export default function EventsPage() {
                           value={formData.start_at}
                           onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
                           disabled={creating}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                          className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge bg-card"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-[#303030] mb-2">
+                        <label className="block text-sm font-semibold text-primary mb-2">
                           Fin de l'evenement *
                         </label>
                         <input
@@ -1204,18 +1201,18 @@ export default function EventsPage() {
                           value={formData.end_at}
                           onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
                           disabled={creating}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                          className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge bg-card"
                         />
                       </div>
                     </div>
 
                     {/* Location inside physical event section */}
                     <div className="relative">
-                      <label className="block text-sm font-semibold text-[#303030] mb-2">
+                      <label className="block text-sm font-semibold text-primary mb-2">
                         Lieu *
                       </label>
                       <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                         <input
                           type="text"
                           value={formData.location}
@@ -1227,7 +1224,7 @@ export default function EventsPage() {
                           }}
                           placeholder="Commencez a taper une adresse..."
                           disabled={creating}
-                          className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100 bg-white"
+                          className="w-full pl-12 pr-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge bg-card"
                         />
                         {loadingSuggestions && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -1238,16 +1235,16 @@ export default function EventsPage() {
 
                       {/* Address Suggestions */}
                       {showSuggestions && addressSuggestions.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
                           {addressSuggestions.map((suggestion) => (
                             <button
                               key={suggestion.place_id}
                               type="button"
                               onClick={() => selectAddress(suggestion)}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-0"
+                              className="w-full px-4 py-3 text-left hover:bg-hover flex items-start gap-3 border-b border-border last:border-0"
                             >
-                              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-[#303030] line-clamp-2">
+                              <MapPin className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-primary line-clamp-2">
                                 {suggestion.display_name}
                               </span>
                             </button>
@@ -1262,7 +1259,7 @@ export default function EventsPage() {
 
               {/* Max Participants */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Nombre maximum de participants *
                 </label>
                 <input
@@ -1272,30 +1269,30 @@ export default function EventsPage() {
                   placeholder="Ex: 50"
                   min="1"
                   disabled={creating}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                 />
               </div>
 
               {/* Access Settings */}
-              <div className="space-y-3 pt-4 border-t">
-                <h3 className="font-semibold text-[#303030]">Parametres d'acces</h3>
+              <div className="space-y-3 pt-4 border-t border-border">
+                <h3 className="font-semibold text-primary">Parametres d'acces</h3>
 
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, is_public: !formData.is_public })}
                   disabled={creating}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Evenement public</p>
-                    <p className="text-sm text-gray-600">Visible par tous les utilisateurs</p>
+                    <p className="font-medium text-primary">Evenement public</p>
+                    <p className="text-sm text-secondary">Visible par tous les utilisateurs</p>
                     <p className={`text-xs font-semibold mt-1 ${formData.is_public ? "text-green-600" : "text-red-500"}`}>
                       {formData.is_public ? "✓ PUBLIC - Visible dans la liste" : "✗ PRIVE - Non visible"}
                     </p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      formData.is_public ? "bg-[#1271FF]" : "bg-gray-300"
+                      formData.is_public ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -1310,15 +1307,15 @@ export default function EventsPage() {
                   type="button"
                   onClick={() => setFormData({ ...formData, has_whitelist: !formData.has_whitelist })}
                   disabled={creating}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Liste blanche</p>
-                    <p className="text-sm text-gray-600">Restreindre l'acces a certaines personnes</p>
+                    <p className="font-medium text-primary">Liste blanche</p>
+                    <p className="text-sm text-secondary">Restreindre l'acces a certaines personnes</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      formData.has_whitelist ? "bg-[#1271FF]" : "bg-gray-300"
+                      formData.has_whitelist ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -1333,15 +1330,15 @@ export default function EventsPage() {
                   type="button"
                   onClick={() => setFormData({ ...formData, has_link_access: !formData.has_link_access })}
                   disabled={creating}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Acces par lien</p>
-                    <p className="text-sm text-gray-600">Autoriser l'inscription via un lien</p>
+                    <p className="font-medium text-primary">Acces par lien</p>
+                    <p className="text-sm text-secondary">Autoriser l'inscription via un lien</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      formData.has_link_access ? "bg-[#1271FF]" : "bg-gray-300"
+                      formData.has_link_access ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -1356,15 +1353,15 @@ export default function EventsPage() {
                   type="button"
                   onClick={() => setFormData({ ...formData, has_password_access: !formData.has_password_access })}
                   disabled={creating}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 bg-badge rounded-xl disabled:opacity-50"
                 >
                   <div className="text-left">
-                    <p className="font-medium text-[#303030]">Acces par mot de passe</p>
-                    <p className="text-sm text-gray-600">Proteger l'evenement par mot de passe</p>
+                    <p className="font-medium text-primary">Acces par mot de passe</p>
+                    <p className="text-sm text-secondary">Proteger l'evenement par mot de passe</p>
                   </div>
                   <div
                     className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      formData.has_password_access ? "bg-[#1271FF]" : "bg-gray-300"
+                      formData.has_password_access ? "bg-[#1271FF]" : "bg-muted"
                     }`}
                   >
                     <div
@@ -1377,7 +1374,7 @@ export default function EventsPage() {
 
                 {formData.has_password_access && (
                   <div>
-                    <label className="block text-sm font-semibold text-[#303030] mb-2">
+                    <label className="block text-sm font-semibold text-primary mb-2">
                       Mot de passe d'acces *
                     </label>
                     <input
@@ -1386,16 +1383,16 @@ export default function EventsPage() {
                       onChange={(e) => setFormData({ ...formData, access_password: e.target.value })}
                       placeholder="Entrez un mot de passe"
                       disabled={creating}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                      className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                     />
                   </div>
                 )}
               </div>
 
               {/* Custom Fields */}
-              <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-[#303030]">Champs personnalises</h3>
+                  <h3 className="font-semibold text-primary">Champs personnalises</h3>
                   <button
                     type="button"
                     onClick={() => setShowCustomFieldForm(true)}
@@ -1412,11 +1409,11 @@ export default function EventsPage() {
                     {customFields.map((field, index) => (
                       <div
                         key={getFieldId(field.label)}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-badge rounded-lg"
                       >
                         <div>
-                          <p className="font-medium text-[#303030]">{field.label}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className="font-medium text-primary">{field.label}</p>
+                          <p className="text-xs text-secondary">
                             {fieldTypes.find((t) => t.value === field.type)?.label} {field.required && "- Requis"}
                           </p>
                         </div>
@@ -1424,14 +1421,14 @@ export default function EventsPage() {
                           <button
                             type="button"
                             onClick={() => handleEditCustomField(index)}
-                            className="p-1 text-gray-600 hover:text-[#1271FF]"
+                            className="p-1 text-secondary hover:text-[#1271FF]"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteCustomField(index)}
-                            className="p-1 text-gray-600 hover:text-red-500"
+                            className="p-1 text-secondary hover:text-red-500"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1442,18 +1439,18 @@ export default function EventsPage() {
                 )}
 
                 {customFields.length === 0 && (
-                  <p className="text-sm text-gray-400 italic">
+                  <p className="text-sm text-muted italic">
                     Ajoutez des champs pour collecter des informations supplementaires
                   </p>
                 )}
               </div>
 
               {/* Advanced Settings */}
-              <div className="space-y-3 pt-4 border-t">
-                <h3 className="font-semibold text-[#303030]">Parametres avances</h3>
+              <div className="space-y-3 pt-4 border-t border-border">
+                <h3 className="font-semibold text-primary">Parametres avances</h3>
 
                 <div>
-                  <label className="block text-sm font-semibold text-[#303030] mb-2">
+                  <label className="block text-sm font-semibold text-primary mb-2">
                     Cooldown (en heures)
                   </label>
                   <input
@@ -1463,9 +1460,9 @@ export default function EventsPage() {
                     placeholder="Ex: 24"
                     min="0"
                     disabled={creating}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-gray-100"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] disabled:bg-badge"
                   />
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-secondary mt-1">
                     Delai avant de pouvoir s'inscrire a nouveau
                   </p>
                 </div>
@@ -1473,18 +1470,18 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3 p-5 border-t">
+            <div className="flex gap-3 p-5 border-t border-border">
               <button
                 onClick={() => setIsCreateOpen(false)}
                 disabled={creating}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl border border-border text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={handleCreateEvent}
                 disabled={creating}
-                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-accent-solid text-accent-solid-text font-medium hover:bg-accent-solid/80 transition-colors disabled:opacity-50"
               >
                 {creating ? "Creation..." : "Creer l'evenement"}
               </button>
@@ -1497,7 +1494,7 @@ export default function EventsPage() {
       {showCustomFieldForm && (
         <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-overlay"
             onClick={() => {
               setShowCustomFieldForm(false);
               setEditingFieldIndex(null);
@@ -1509,10 +1506,10 @@ export default function EventsPage() {
               });
             }}
           />
-          <div className="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
+          <div className="relative bg-modal w-full md:max-w-lg md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="font-poppins text-xl font-semibold text-[#303030]">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <h2 className="font-poppins text-xl font-semibold text-primary">
                 {editingFieldIndex !== null ? "Modifier" : "Ajouter"} un champ
               </h2>
               <button
@@ -1526,9 +1523,9 @@ export default function EventsPage() {
                     options: [],
                   });
                 }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-hover rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-[#303030]" />
+                <X className="w-5 h-5 text-primary" />
               </button>
             </div>
 
@@ -1536,7 +1533,7 @@ export default function EventsPage() {
             <div className="p-5 space-y-5 overflow-y-auto max-h-[60vh]">
               {/* Field Label (Question) */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Question *
                 </label>
                 <input
@@ -1546,14 +1543,14 @@ export default function EventsPage() {
                     setCurrentField({ ...currentField, label: e.target.value })
                   }
                   placeholder="Ex: Quel est votre profil LinkedIn ?"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                 />
-                <p className="text-xs text-gray-500 mt-1">Cette question sera affichee aux participants</p>
+                <p className="text-xs text-secondary mt-1">Cette question sera affichee aux participants</p>
               </div>
 
               {/* Field Type */}
               <div>
-                <label className="block text-sm font-semibold text-[#303030] mb-2">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Type de champ *
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1567,7 +1564,7 @@ export default function EventsPage() {
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         currentField.type === type.value
                           ? "bg-[#1271FF] text-white"
-                          : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                          : "bg-badge text-primary hover:bg-hover"
                       }`}
                     >
                       {type.label}
@@ -1582,15 +1579,15 @@ export default function EventsPage() {
                 onClick={() =>
                   setCurrentField({ ...currentField, required: !currentField.required })
                 }
-                className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                className="w-full flex items-center justify-between p-4 bg-badge rounded-xl"
               >
                 <div className="text-left">
-                  <p className="font-medium text-[#303030]">Champ requis</p>
-                  <p className="text-sm text-gray-600">Obligatoire lors de l'inscription</p>
+                  <p className="font-medium text-primary">Champ requis</p>
+                  <p className="text-sm text-secondary">Obligatoire lors de l'inscription</p>
                 </div>
                 <div
                   className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                    currentField.required ? "bg-[#1271FF]" : "bg-gray-300"
+                    currentField.required ? "bg-[#1271FF]" : "bg-muted"
                   }`}
                 >
                   <div
@@ -1603,8 +1600,8 @@ export default function EventsPage() {
 
               {/* Options for select/radio/multiselect */}
               {needsOptions && (
-                <div className="space-y-3 pt-4 border-t">
-                  <label className="block text-sm font-semibold text-[#303030]">
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <label className="block text-sm font-semibold text-primary">
                     Choix possibles *
                   </label>
 
@@ -1613,9 +1610,9 @@ export default function EventsPage() {
                       {currentField.options.map((option, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-badge rounded-lg"
                         >
-                          <p className="font-medium text-[#303030]">{option}</p>
+                          <p className="font-medium text-primary">{option}</p>
                           <button
                             type="button"
                             onClick={() => handleRemoveOption(index)}
@@ -1635,7 +1632,7 @@ export default function EventsPage() {
                       onChange={(e) => setNewOption(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddOption())}
                       placeholder="Ajouter un choix..."
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
+                      className="flex-1 px-3 py-2 border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-sm"
                     />
                     <button
                       type="button"
@@ -1650,7 +1647,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3 p-5 border-t">
+            <div className="flex gap-3 p-5 border-t border-border">
               <button
                 onClick={() => {
                   setShowCustomFieldForm(false);
@@ -1662,13 +1659,13 @@ export default function EventsPage() {
                     options: [],
                   });
                 }}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-border text-primary font-medium hover:bg-hover transition-colors"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSaveCustomField}
-                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors"
+                className="flex-1 py-3 rounded-xl bg-accent-solid text-accent-solid-text font-medium hover:bg-accent-solid/80 transition-colors"
               >
                 {editingFieldIndex !== null ? "Modifier" : "Ajouter"}
               </button>

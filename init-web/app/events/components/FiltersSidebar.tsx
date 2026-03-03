@@ -36,13 +36,13 @@ export default function FiltersSidebar({
       {/* All / Registered toggle */}
       {userType === "user" && (
         <div className="flex items-center gap-1.5">
-          <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+          <div className="inline-flex bg-badge rounded-lg p-0.5">
             <button
               onClick={() => setActiveFilter("all")}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                 activeFilter === "all"
-                  ? "bg-[#303030] text-white shadow-sm"
-                  : "text-[#303030] hover:bg-gray-200"
+                  ? "bg-accent-solid text-accent-solid-text shadow-sm"
+                  : "text-primary hover:bg-hover"
               }`}
             >
               Tous
@@ -51,8 +51,8 @@ export default function FiltersSidebar({
               onClick={() => setActiveFilter("registered")}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                 activeFilter === "registered"
-                  ? "bg-[#303030] text-white shadow-sm"
-                  : "text-[#303030] hover:bg-gray-200"
+                  ? "bg-accent-solid text-accent-solid-text shadow-sm"
+                  : "text-primary hover:bg-hover"
               }`}
             >
               Mes events
@@ -61,7 +61,7 @@ export default function FiltersSidebar({
         </div>
       )}
 
-      {userType === "user" && <div className="w-px h-7 bg-gray-300" />}
+      {userType === "user" && <div className="w-px h-7 bg-border" />}
 
       {/* Theme filter */}
       <div className="flex items-center gap-1.5">
@@ -72,8 +72,8 @@ export default function FiltersSidebar({
               onClick={() => setSelectedTheme(theme.value)}
               className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 selectedTheme === theme.value
-                  ? "bg-[#303030] text-white"
-                  : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                  ? "bg-accent-solid text-accent-solid-text"
+                  : "bg-badge text-primary hover:bg-hover"
               }`}
             >
               {theme.label}
@@ -82,7 +82,7 @@ export default function FiltersSidebar({
         </div>
       </div>
 
-      <div className="w-px h-7 bg-gray-300" />
+      <div className="w-px h-7 bg-border" />
 
       {/* Date filter */}
       <div className="flex items-center gap-1.5">
@@ -93,8 +93,8 @@ export default function FiltersSidebar({
               onClick={() => setDateFilter(filter.value)}
               className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 dateFilter === filter.value
-                  ? "bg-[#303030] text-white"
-                  : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+                  ? "bg-accent-solid text-accent-solid-text"
+                  : "bg-badge text-primary hover:bg-hover"
               }`}
             >
               {filter.label}
@@ -103,7 +103,7 @@ export default function FiltersSidebar({
         </div>
       </div>
 
-      <div className="w-px h-7 bg-gray-300" />
+      <div className="w-px h-7 bg-border" />
 
       {/* Availability */}
       <button
@@ -111,7 +111,7 @@ export default function FiltersSidebar({
         className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
           onlyAvailable
             ? "bg-[#1271FF] text-white"
-            : "bg-gray-100 text-[#303030] hover:bg-gray-200"
+            : "bg-badge text-primary hover:bg-hover"
         }`}
       >
         Places dispo
@@ -120,10 +120,10 @@ export default function FiltersSidebar({
       {/* Reset */}
       {hasActiveFilters && (
         <>
-          <div className="w-px h-7 bg-gray-300" />
+          <div className="w-px h-7 bg-border" />
           <button
             onClick={onReset}
-            className="text-sm font-medium text-gray-400 hover:text-[#303030] transition-colors whitespace-nowrap"
+            className="text-sm font-medium text-muted hover:text-primary transition-colors whitespace-nowrap"
           >
             Reinitialiser
           </button>
