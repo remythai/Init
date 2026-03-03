@@ -157,13 +157,6 @@ export default function ProfilePage() {
           >
             Déconnexion
           </button>
-          <Link
-            href="/events"
-            className="md:hidden bg-accent-solid text-accent-solid-text hover:opacity-90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Events
-          </Link>
         </div>
       </div>
     </header>

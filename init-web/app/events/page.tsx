@@ -605,13 +605,6 @@ export default function EventsPage() {
             >
               Déconnexion
             </button>
-            <Link
-              href="/profile"
-              className="md:hidden bg-accent-solid text-accent-solid-text hover:opacity-90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5 group"
-            >
-              <User className="w-3.5 h-3.5" />
-              Profil
-            </Link>
           </div>
         </div>
       </header>
