@@ -8,6 +8,7 @@ import { Edit2, Save, X, Camera, ArrowLeft, Upload, Loader2 } from "lucide-react
 import { authService, User, Orga } from "../services/auth.service";
 import { Photo, photoService } from "../services/photo.service";
 import BottomNavigation from "../components/BottomNavigation";
+import DesktopNav from "../components/DesktopNav";
 import PhotoManager from "../components/PhotoManager";
 import ImageUploader from "../components/ImageUploader";
 
@@ -224,6 +225,7 @@ export default function ProfilePage() {
               <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Retour</span>
             </Link>
+            <DesktopNav variant="dark" />
             <button
               onClick={handleLogout}
               className="text-white/70 hover:text-white text-xs md:text-sm transition-colors"

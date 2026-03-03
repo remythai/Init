@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, MapPin, Calendar, Users, MoreVertical, X, Plus, Trash2, Edit2, User } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Search, MapPin, Calendar, Users, Filter, X, Plus, Trash2, Edit2, User, Map, LayoutGrid } from "lucide-react";
 import { authService } from "../services/auth.service";
 import {
   eventService,
@@ -14,6 +15,23 @@ import {
   getFieldId,
 } from "../services/event.service";
 import BottomNavigation from "../components/BottomNavigation";
+import DesktopNav from "../components/DesktopNav";
+import FiltersSidebar from "./components/FiltersSidebar";
+
+const EventsMap = dynamic(
+  () => import("./components/EventsMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[600px] bg-white rounded-xl flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-400 text-sm">Chargement de la carte...</p>
+        </div>
+      </div>
+    ),
+  }
+);
 
 export default function EventsPage() {
   const router = useRouter();
@@ -73,6 +91,13 @@ export default function EventsPage() {
 
   // Date filter
   const [dateFilter, setDateFilter] = useState<string>("all");
+
+  // View mode & location search
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [locationQuery, setLocationQuery] = useState("");
+  const [geocodedLocations, setGeocodedLocations] = useState<Record<string, { lat: number; lng: number } | null>>({});
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const geocodeCache = useRef<globalThis.Map<string, { lat: number; lng: number } | null>>(new globalThis.Map());
 
   // Success message
   const [successMessage, setSuccessMessage] = useState("");
@@ -244,7 +269,6 @@ export default function EventsPage() {
   };
 
   const checkAuthAndLoadEvents = async () => {
-    // Validate token and get user type - this also clears invalid auth
     const validatedType = await authService.validateAndGetUserType();
 
     if (!validatedType) {
@@ -252,7 +276,6 @@ export default function EventsPage() {
       return;
     }
 
-    console.log("Validated user type:", validatedType);
     setUserType(validatedType);
     await loadEvents(validatedType);
   };
@@ -270,12 +293,11 @@ export default function EventsPage() {
           upcoming: true,
           limit: 50,
         });
-        console.log("Public events response:", response);
         setEvents(transformEventResponses(response.events || []));
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur lors du chargement";
-      setError(message);
+      console.error("Failed to load events:", err);
+      setError("Impossible de charger les événements.");
     } finally {
       setLoading(false);
     }
@@ -471,8 +493,9 @@ export default function EventsPage() {
     const matchesFilter = activeFilter === "all" ? true : event.isRegistered;
     const matchesSearch =
       event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.theme.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      event.theme.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLocation = !locationQuery ||
+      (event.location?.toLowerCase().includes(locationQuery.toLowerCase()) ?? false);
     const matchesTheme =
       selectedTheme === "all" ||
       event.theme.toLowerCase() === selectedTheme.toLowerCase();
@@ -486,10 +509,70 @@ export default function EventsPage() {
         event.appDate.toLowerCase().includes("aujourd");
     }
 
-    return matchesFilter && matchesSearch && matchesTheme && matchesAvailability && matchesDate;
+    return matchesFilter && matchesSearch && matchesLocation && matchesTheme && matchesAvailability && matchesDate;
   });
 
   const hasActiveFilters = selectedTheme !== "all" || onlyAvailable || dateFilter !== "all";
+
+  // Geocoding for map view
+  const geocodeEvents = useCallback(async (eventsToGeocode: Event[]) => {
+    const uniqueLocations = [...new Set(
+      eventsToGeocode
+        .map(e => e.location)
+        .filter((loc): loc is string => !!loc && loc.trim() !== "" && !geocodeCache.current.has(loc))
+    )];
+
+    if (uniqueLocations.length === 0) {
+      const result: Record<string, { lat: number; lng: number } | null> = {};
+      geocodeCache.current.forEach((value, key) => { result[key] = value; });
+      setGeocodedLocations(result);
+      return;
+    }
+
+    setIsGeocoding(true);
+
+    for (const location of uniqueLocations) {
+      try {
+        const response = await fetch(`/api/geocode?q=${encodeURIComponent(location)}`);
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          geocodeCache.current.set(location, {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon),
+          });
+        } else {
+          geocodeCache.current.set(location, null);
+        }
+      } catch {
+        geocodeCache.current.set(location, null);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1100));
+    }
+
+    const result: Record<string, { lat: number; lng: number } | null> = {};
+    geocodeCache.current.forEach((value, key) => { result[key] = value; });
+    setGeocodedLocations(result);
+    setIsGeocoding(false);
+  }, []);
+
+  useEffect(() => {
+    if (viewMode === "map") {
+      geocodeEvents(filteredEvents);
+    }
+  }, [viewMode, filteredEvents, geocodeEvents]);
+
+  const mapEvents = filteredEvents
+    .filter(e => e.location && geocodedLocations[e.location])
+    .map(e => ({
+      id: e.id,
+      name: e.name,
+      location: e.location!,
+      lat: geocodedLocations[e.location!]!.lat,
+      lng: geocodedLocations[e.location!]!.lng,
+      theme: e.theme,
+      participants: e.participants,
+      maxParticipants: e.maxParticipants,
+    }));
 
   if (loading) {
     return (
@@ -505,8 +588,9 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12">
-        <div className="w-full py-4 md:py-6 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <div className="absolute inset-0 bg-[#F5F5F5] pointer-events-none" />
+        <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
           <Link href="/">
             <Image
               src="/LogoPng.png"
@@ -516,6 +600,7 @@ export default function EventsPage() {
               className="h-7 md:h-9 w-auto"
             />
           </Link>
+          <DesktopNav />
           <div className="flex items-center gap-3 md:gap-4">
             <button
               onClick={handleLogout}
@@ -525,7 +610,7 @@ export default function EventsPage() {
             </button>
             <Link
               href="/profile"
-              className="bg-black text-white hover:bg-black/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5 group"
+              className="md:hidden bg-black text-white hover:bg-black/90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5 group"
             >
               <User className="w-3.5 h-3.5" />
               Profil
@@ -543,40 +628,78 @@ export default function EventsPage() {
 
       {/* Main Content */}
       <main className="pt-14 md:pt-16 pb-32">
-        <div className="max-w-7xl mx-auto px-3 md:px-8">
-          {/* Page Title */}
-          <div className="py-6 md:py-8">
-            <h1 className="font-poppins text-2xl md:text-3xl font-bold text-[#303030]">
-              {userType === "orga" ? "Mes événements" : "Événements"}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {userType === "orga"
-                ? "Gérez vos événements"
-                : "Découvrez les événements près de chez vous"}
-            </p>
+        <div className="mx-auto px-4 md:px-10 lg:px-16">
+          <div className="py-6 md:py-8" />
+
+          {/* Search Bars + View Toggle */}
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <div className="flex flex-col md:flex-row gap-3 flex-1">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un evenement..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] placeholder-gray-400"
+                />
+              </div>
+              <div className="flex-1 relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Lieu..."
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] placeholder-gray-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 self-start">
+              <button
+                onClick={() => setViewMode(v => v === "grid" ? "map" : "grid")}
+                className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors flex-shrink-0"
+                title={viewMode === "grid" ? "Vue carte" : "Vue grille"}
+              >
+                {viewMode === "grid" ? (
+                  <Map className="w-5 h-5 text-[#303030]" />
+                ) : (
+                  <LayoutGrid className="w-5 h-5 text-[#303030]" />
+                )}
+              </button>
+              <button
+                onClick={() => setIsAdvancedOpen(true)}
+                className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors relative flex-shrink-0 min-[1500px]:hidden"
+              >
+                <Filter className="w-5 h-5 text-[#303030]" />
+                {hasActiveFilters && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#1271FF] rounded-full"></span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="flex gap-3 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Rechercher un événement..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white rounded-full border-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-[#303030] placeholder-gray-400"
-              />
-            </div>
-            <button
-              onClick={() => setIsAdvancedOpen(true)}
-              className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors relative"
-            >
-              <MoreVertical className="w-5 h-5 text-[#303030]" />
-              {hasActiveFilters && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#1271FF] rounded-full"></span>
-              )}
-            </button>
+          {/* Filters Bar — only visible above 1500px */}
+          <div className="hidden min-[1500px]:block mb-6">
+            <FiltersSidebar
+              selectedTheme={selectedTheme}
+              setSelectedTheme={setSelectedTheme}
+              themes={themes}
+              onlyAvailable={onlyAvailable}
+              setOnlyAvailable={setOnlyAvailable}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              dateFilters={dateFilters}
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+              userType={userType}
+              onReset={() => {
+                setSelectedTheme("all");
+                setOnlyAvailable(false);
+                setDateFilter("all");
+                setActiveFilter("all");
+              }}
+            />
           </div>
 
           {/* Error Message */}
@@ -586,154 +709,147 @@ export default function EventsPage() {
             </div>
           )}
 
-          {/* Events Grid */}
-          {filteredEvents.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-gray-600 text-lg">
-                {searchQuery
-                  ? "Aucun événement ne correspond à votre recherche"
-                  : activeFilter === "registered"
-                  ? "Vous n'êtes inscrit à aucun événement"
-                  : userType === "orga"
-                  ? "Vous n'avez pas encore créé d'événement"
-                  : "Aucun événement disponible"}
-              </p>
-              {userType === "orga" && (
-                <button
-                  onClick={() => setIsCreateOpen(true)}
-                  className="mt-4 bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 py-3 rounded-full font-medium transition-colors"
-                >
-                  Créer mon premier événement
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/events/${event.id}`)}
-                >
-                  {/* Event Image */}
-                  <div className="relative h-48">
-                    <img
-                      src={event.image}
-                      alt={event.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 left-3 right-3 flex justify-between">
-                      <span
-                        className={`${getThemeColor(event.theme)} text-white text-xs font-semibold px-3 py-1.5 rounded-md`}
-                      >
-                        {event.theme}
+          {/* Content Area */}
+          <div>
+              {viewMode === "map" ? (
+                <div className="h-[600px] rounded-xl overflow-hidden relative">
+                  {isGeocoding && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2 flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-[#1271FF]/30 border-t-[#1271FF] rounded-full animate-spin"></div>
+                      <span className="text-sm text-gray-600">Geolocalisation des evenements...</span>
+                    </div>
+                  )}
+                  <EventsMap
+                    events={mapEvents}
+                    onEventClick={(id) => router.push(`/events/${id}`)}
+                  />
+                  {filteredEvents.filter(e => !e.location).length > 0 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-4 py-2">
+                      <span className="text-xs text-gray-500">
+                        {filteredEvents.filter(e => !e.location).length} evenement(s) sans lieu non affiche(s)
                       </span>
-                      {event.isRegistered && (
-                        <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md">
-                          Inscrit
-                        </span>
-                      )}
                     </div>
-                    {/* Orga Logo Badge */}
-                    {event.orgaLogo && (
-                      <div className="absolute bottom-3 right-3">
-                        <img
-                          src={event.orgaLogo}
-                          alt={event.orgaName || 'Organisateur'}
-                          className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Event Content */}
-                  <div className="p-4">
-                    <h3 className="font-poppins font-semibold text-lg text-[#303030] mb-3">
-                      {event.name}
-                    </h3>
-
-                    <div className="space-y-2">
-                      {event.hasPhysicalEvent && (
-                        <>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-sm">{event.physicalDate}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
-                          </div>
-                        </>
-                      )}
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
-                        <span className="text-sm">{event.appDate}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Users className="w-4 h-4" />
-                        <span className="text-sm">
-                          {event.participants}/{event.maxParticipants} participants
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="mt-4">
-                      <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#1271FF] rounded-full transition-all"
-                          style={{
-                            width: `${(event.participants / event.maxParticipants) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Enter Button for registered events */}
-                    {event.isRegistered && (
-                      <Link
-                        href={`/events/${event.id}/environment/swiper`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="block w-full mt-4 bg-[#303030] hover:bg-[#404040] text-white py-3 rounded-lg font-medium transition-colors text-center"
-                      >
-                        Accéder à l'environnement
-                      </Link>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              ) : filteredEvents.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-600 text-lg">
+                    {searchQuery || locationQuery
+                      ? "Aucun evenement ne correspond a votre recherche"
+                      : activeFilter === "registered"
+                      ? "Vous n'etes inscrit a aucun evenement"
+                      : userType === "orga"
+                      ? "Vous n'avez pas encore cree d'evenement"
+                      : "Aucun evenement disponible"}
+                  </p>
+                  {userType === "orga" && (
+                    <button
+                      onClick={() => setIsCreateOpen(true)}
+                      className="mt-4 bg-[#1271FF] hover:bg-[#0d5dd8] text-white px-6 py-3 rounded-full font-medium transition-colors"
+                    >
+                      Creer mon premier evenement
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredEvents.map((event) => (
+                    <div
+                      key={event.id}
+                      className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => router.push(`/events/${event.id}`)}
+                    >
+                      {/* Event Image */}
+                      <div className="relative h-48">
+                        <img
+                          src={event.image}
+                          alt={event.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 left-3 right-3 flex justify-between">
+                          <span
+                            className={`${getThemeColor(event.theme)} text-white text-xs font-semibold px-3 py-1.5 rounded-md`}
+                          >
+                            {event.theme}
+                          </span>
+                          {event.isRegistered && (
+                            <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md">
+                              Inscrit
+                            </span>
+                          )}
+                        </div>
+                        {event.orgaLogo && (
+                          <div className="absolute bottom-3 right-3">
+                            <img
+                              src={event.orgaLogo}
+                              alt={event.orgaName || 'Organisateur'}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Event Content */}
+                      <div className="p-4">
+                        <h3 className="font-poppins font-semibold text-lg text-[#303030] mb-3">
+                          {event.name}
+                        </h3>
+
+                        <div className="space-y-2">
+                          {event.hasPhysicalEvent && (
+                            <>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-sm">{event.physicalDate}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <MapPin className="w-4 h-4" />
+                                <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
+                              </div>
+                            </>
+                          )}
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
+                            <span className="text-sm">{event.appDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span className="text-sm">
+                              {event.participants}/{event.maxParticipants} participants
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-4">
+                          <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#1271FF] rounded-full transition-all"
+                              style={{
+                                width: `${(event.participants / event.maxParticipants) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {event.isRegistered && (
+                          <Link
+                            href={`/events/${event.id}/environment/swiper`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="block w-full mt-4 bg-[#303030] hover:bg-[#404040] text-white py-3 rounded-lg font-medium transition-colors text-center"
+                          >
+                            Acceder a l'environnement
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+          </div>
         </div>
       </main>
 
-      {/* Filter Tabs (for users) */}
-      {userType === "user" && (
-        <div className="fixed bottom-24 md:bottom-28 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-40">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg flex max-w-md mx-auto">
-            <button
-              onClick={() => setActiveFilter("all")}
-              className={`flex-1 py-3 px-6 rounded-full text-sm font-medium transition-all ${
-                activeFilter === "all"
-                  ? "bg-[#303030] text-white"
-                  : "text-[#303030] hover:bg-gray-100"
-              }`}
-            >
-              Tous les événements
-            </button>
-            <button
-              onClick={() => setActiveFilter("registered")}
-              className={`flex-1 py-3 px-6 rounded-full text-sm font-medium transition-all ${
-                activeFilter === "registered"
-                  ? "bg-[#303030] text-white"
-                  : "text-[#303030] hover:bg-gray-100"
-              }`}
-            >
-              Mes événements
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Floating Action Button (for organizers) - Like mobile CreateEventDialog */}
       {userType === "orga" && (
@@ -756,7 +872,7 @@ export default function EventsPage() {
             {/* Modal Header */}
             <div className="flex-shrink-0 flex items-center justify-between p-5 border-b">
               <h2 className="font-poppins text-xl font-semibold text-[#303030]">
-                Recherche avancée
+                Filtres
               </h2>
               <button
                 onClick={() => setIsAdvancedOpen(false)}
@@ -768,6 +884,37 @@ export default function EventsPage() {
 
             {/* Modal Body */}
             <div className="flex-1 p-5 space-y-6 overflow-y-auto">
+              {/* All / Registered toggle */}
+              {userType === "user" && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#303030] mb-3">
+                    Affichage
+                  </label>
+                  <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+                    <button
+                      onClick={() => setActiveFilter("all")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        activeFilter === "all"
+                          ? "bg-[#303030] text-white shadow-sm"
+                          : "text-[#303030] hover:bg-gray-200"
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter("registered")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        activeFilter === "registered"
+                          ? "bg-[#303030] text-white shadow-sm"
+                          : "text-[#303030] hover:bg-gray-200"
+                      }`}
+                    >
+                      Mes events
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Theme Filter */}
               <div>
                 <label className="block text-sm font-semibold text-[#303030] mb-3">
@@ -848,6 +995,7 @@ export default function EventsPage() {
                   setSelectedTheme("all");
                   setOnlyAvailable(false);
                   setDateFilter("all");
+                  setActiveFilter("all");
                 }}
                 className="flex-1 py-3 rounded-lg border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
               >

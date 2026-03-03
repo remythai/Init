@@ -164,6 +164,46 @@ body::-webkit-scrollbar {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
 }
 
+/* Thin scrollbar for conversations list */
+.conversations-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.conversations-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 4px;
+}
+
+.conversations-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversations-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+.conversations-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Slide-down animation for event group expand */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+
 /* Safe area for devices with notches */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
