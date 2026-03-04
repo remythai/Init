@@ -9,7 +9,7 @@ export default function MainLayout() {
   const segments = useSegments();
 
   const isInEventTabs = segments.includes('(event-tabs)');
-  const isInEventDetail = pathname.match(/\/events\/[^/]+$/) !== null;
+  const isInEventDetail = pathname.match(/\/events\/[^/]+/) !== null;
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
 
   const shouldHideNavigation = isInEventTabs || isInEventDetail || isInConversation;
