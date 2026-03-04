@@ -71,7 +71,7 @@ export default function ParticipantsScreen() {
       });
       if (!resp.ok) throw new Error('Erreur chargement');
       const data = await resp.json();
-      setParticipants(data.data?.participants || []);
+      setParticipants(data.data || []);
     } catch (err: any) {
       Alert.alert('Erreur', err.message);
     } finally {

@@ -162,11 +162,11 @@ export default function EventLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="edit/index" />
-        <Stack.Screen name="settings/index" />
-        <Stack.Screen name="statistics/index" />
-        <Stack.Screen name="participants/index" />
-        <Stack.Screen name="whitelist/index" />
-        <Stack.Screen name="reports/index" />
+        <Stack.Screen name="settings/index" options={{ headerShown: false }}/>
+        <Stack.Screen name="statistics/index" options={{ headerShown: false }}/>
+        <Stack.Screen name="participants/index" options={{ headerShown: false }}/>
+        <Stack.Screen name="whitelist/index" options={{ headerShown: false }}/>
+        <Stack.Screen name="reports/index" options={{ headerShown: false }}/>
         <Stack.Screen name="(event-tabs)" options={{ headerShown: false }} />
       </Stack>
     </View>
