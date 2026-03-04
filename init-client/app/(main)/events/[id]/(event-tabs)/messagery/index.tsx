@@ -1,158 +1,231 @@
 // app/(main)/events/[id]/(event-tabs)/messagery/index.tsx
-import { MaterialIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { matchService, Match } from '@/services/match.service';
 import { useEvent } from '@/context/EventContext';
+import { matchService } from '@/services/match.service';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+function getPhotoUri(filePath?: string): string | null {
+  if (!filePath) return null;
+  return filePath.startsWith('http') ? filePath : `${API_URL}${filePath}`;
+}
+
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function EventMessageryScreen() {
   const router = useRouter();
   const { id: eventIdParam } = useLocalSearchParams<{ id: string }>();
   const { currentEventId, setCurrentEventId } = useEvent();
-  
-  // ✅ Priorité : params d'URL > context
   const eventId = eventIdParam ? parseInt(eventIdParam) : currentEventId || 0;
-  
-  const [matches, setMatches] = useState<Match[]>([]);
+
+  const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  console.log('📨 Messagery index - eventIdParam:', eventIdParam, 'currentEventId:', currentEventId, 'eventId:', eventId);
-
-  // ✅ Synchroniser le context avec l'URL
-  useEffect(() => {
-    if (eventId && eventId !== currentEventId) {
-      console.log('🔄 Syncing context eventId:', eventId);
-      setCurrentEventId(eventId);
-    }
-  }, [eventId, currentEventId, setCurrentEventId]);
-
-  useEffect(() => {
-    if (!eventId) {
-      console.warn('⚠️ No eventId in messagery/index');
-      setLoading(false);
-      return;
-    }
-
-    const loadMatches = async () => {
-      try {
-        console.log('📡 Loading matches for event:', eventId);
-        setLoading(true);
-        const data = await matchService.getEventMatches(eventId);
-        console.log('✅ Matches loaded:', data?.length || 0);
-        setMatches(data || []);
-      } catch (error: any) {
-        console.error('❌ Matches error:', error.message);
-        setMatches([]);
-      } finally {
-        setLoading(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (eventId && eventId !== currentEventId) {
+        setCurrentEventId(eventId);
       }
-    };
+      if (!eventId) {
+        setLoading(false);
+        return;
+      }
+      const loadConversations = async () => {
+        try {
+          setLoading(true);
+          const data = await matchService.getEventConversations(String(eventId));
+          setConversations(data?.conversations || []);
+        } catch (error: any) {
+          console.error('❌ Conversations error:', error.message);
+          setConversations([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadConversations();
+    }, [eventId])
+  );
 
-    loadMatches();
-  }, [eventId]);
-
-  const handleMatchPress = (matchId: number) => {
-    console.log('💬 Opening chat:', matchId, 'eventId:', eventId);
-    // ✅ Navigation avec l'ID explicite dans l'URL
+  const handleMatchPress = (matchId: number, conv: any) => {
     router.push(`/(main)/events/${eventId}/(event-tabs)/messagery/${matchId}`);
   };
 
-  if (loading) {
-    return (
-      <ScrollView style={styles.matchesContainer}>
-        <View style={styles.matchesPadding}>
-          <Text style={styles.matchesTitle}>Chargement event {eventId}...</Text>
-        </View>
-      </ScrollView>
-    );
-  }
-
   if (!eventId) {
     return (
-      <ScrollView style={styles.matchesContainer}>
-        <View style={styles.matchesPadding}>
-          <Text style={styles.matchesTitle}>Erreur: ID événement manquant</Text>
-          <TouchableOpacity 
-            style={styles.errorButton}
-            onPress={() => router.replace('/(main)/events')}
-          >
-            <Text style={styles.errorButtonText}>Retour aux événements</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <View style={styles.center}>
+        <Text style={styles.errorText}>Erreur: ID événement manquant</Text>
+        <TouchableOpacity style={styles.errorButton} onPress={() => router.replace('/(main)/events')}>
+          <Text style={styles.errorButtonText}>Retour aux événements</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
-    <ScrollView style={styles.matchesContainer} contentContainerStyle={styles.matchesContent}>
-      <View style={styles.matchesPadding}>
-        <Text style={styles.matchesTitle}>Conversations ({matches.length})</Text>
-        {matches.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="chat-bubble-outline" size={64} color="#BDBDBD" />
-            <Text style={styles.emptyStateText}>Aucun match</Text>
-            <Text style={styles.emptySubtitle}>Swipe pour matcher !</Text>
-          </View>
-        ) : (
-          <View style={styles.matchesList}>
-            {matches.map((match) => (
-              <TouchableOpacity
-                key={match.match_id}
-                onPress={() => handleMatchPress(match.match_id)}
-                style={styles.matchCard}
-              >
-                <View style={styles.matchCardContent}>
-                  <View style={styles.matchAvatar}>
-                    <Text style={styles.matchAvatarText}>{match.firstname[0]}{match.lastname[0]}</Text>
-                  </View>
-                  <View style={styles.matchInfo}>
-                    <View style={styles.matchHeader}>
-                      <Text style={styles.matchName}>{match.firstname} {match.lastname}</Text>
-                      <Text style={styles.matchTime}>{new Date(match.created_at).toLocaleDateString('fr-FR')}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={styles.headerSub}>Vos conversations avec vos matchs</Text>
       </View>
-    </ScrollView>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#1271FF" />
+          <Text style={styles.loadingText}>Chargement...</Text>
+        </View>
+      ) : conversations.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <MaterialIcons name="chat-bubble-outline" size={48} color="#9ca3af" />
+          </View>
+          <Text style={styles.emptyTitle}>Pas encore de matchs</Text>
+          <Text style={styles.emptySub}>Commencez à swiper pour matcher avec d'autres participants !</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          {conversations.map((conv) => {
+            const photo = conv.user?.photos?.[0]?.file_path
+              ? getPhotoUri(conv.user.photos[0].file_path)
+              : null;
+            const isDisabled = conv.is_blocked || conv.is_other_user_blocked;
+            const unread = conv.unread_count || 0;
+
+            return (
+              <TouchableOpacity
+                key={conv.match_id}
+                onPress={() => handleMatchPress(conv.match_id, conv)}
+                style={[styles.convItem, isDisabled && styles.convItemDisabled]}
+                activeOpacity={0.7}
+              >
+                {/* Avatar */}
+                <View style={styles.avatarWrapper}>
+                  {photo ? (
+                    <Image source={{ uri: photo }} style={styles.avatar} />
+                  ) : (
+                    <View style={styles.avatarFallback}>
+                      <Text style={styles.avatarFallbackText}>
+                        {conv.user?.firstname?.[0] || '?'}
+                      </Text>
+                    </View>
+                  )}
+                  {unread > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Info */}
+                <View style={styles.convInfo}>
+                  <View style={styles.convTop}>
+                    <Text style={styles.convName} numberOfLines={1}>
+                      {conv.user?.firstname} {conv.user?.lastname?.charAt(0)}.
+                    </Text>
+                    {conv.last_message?.sent_at && (
+                      <Text style={styles.convTime}>{formatTime(conv.last_message.sent_at)}</Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[styles.convLast, unread > 0 && styles.convLastUnread]}
+                    numberOfLines={1}
+                  >
+                    {conv.last_message
+                      ? conv.last_message.is_mine
+                        ? `Vous : ${conv.last_message.content}`
+                        : conv.last_message.content
+                      : "Nouveau match ! Dites bonjour 👋"}
+                  </Text>
+                </View>
+
+                {/* Arrow */}
+                <MaterialIcons name="chevron-right" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  matchesContainer: { flex: 1, backgroundColor: '#F5F5F5' },
-  matchesContent: { paddingBottom: 80 },
-  matchesPadding: { padding: 16 },
-  matchesTitle: { fontWeight: '600', fontSize: 20, color: '#303030', marginBottom: 16 },
-  matchesList: { gap: 12 },
-  matchCard: {
-    backgroundColor: 'white', borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
-  },
-  matchCardContent: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  matchAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' },
-  matchAvatarText: { color: '#303030', fontWeight: '600', fontSize: 16 },
-  matchInfo: { flex: 1 },
-  matchHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 },
-  matchName: { fontWeight: '600', color: '#303030' },
-  matchTime: { fontSize: 12, color: '#9E9E9E' },
-  matchEvent: { fontSize: 12, color: '#757575', marginBottom: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyStateText: { color: '#9E9E9E', textAlign: 'center', fontSize: 16, marginTop: 16 },
-  emptySubtitle: { color: '#BDBDBD', textAlign: 'center', fontSize: 14, marginTop: 4 },
-  errorButton: {
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loadingText: { marginTop: 12, color: '#9ca3af', fontSize: 14 },
+
+  header: {
     backgroundColor: '#303030',
-    padding: 16,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+
+  list: { flex: 1 },
+  listContent: { paddingBottom: 80 },
+
+  convItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    gap: 12,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  errorButtonText: {
-    color: 'white',
-    fontWeight: '600',
+  convItemDisabled: { opacity: 0.55 },
+
+  avatarWrapper: { position: 'relative' },
+  avatar: { width: 56, height: 56, borderRadius: 28 },
+  avatarFallback: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center',
   },
+  avatarFallbackText: { fontSize: 20, fontWeight: '700', color: '#303030' },
+  badge: {
+    position: 'absolute', top: -2, right: -2,
+    minWidth: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#1271FF',
+    borderWidth: 2, borderColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+
+  convInfo: { flex: 1, minWidth: 0 },
+  convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
+  convName: { fontWeight: '600', color: '#303030', fontSize: 15, flex: 1 },
+  convTime: { fontSize: 12, color: '#9ca3af', marginLeft: 8 },
+  convLast: { fontSize: 13, color: '#9ca3af' },
+  convLastUnread: { color: '#303030', fontWeight: '500' },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  emptyIcon: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: '#303030', marginBottom: 8 },
+  emptySub: { fontSize: 14, color: '#9ca3af', textAlign: 'center', lineHeight: 20 },
+
+  errorText: { color: '#dc2626', fontSize: 15, marginBottom: 16 },
+  errorButton: { backgroundColor: '#303030', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
+  errorButtonText: { color: '#fff', fontWeight: '600' },
 });

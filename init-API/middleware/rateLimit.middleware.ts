@@ -78,7 +78,7 @@ export const swipeLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => {
     rateLimitHandler('swipe')(req, res);
-    res.status(429).json({ error: 'Trop de swipes, veuillez réessayer dans 1 minute', code: 'RATE_LIMIT_EXCEEDED' });
+    res.status(429).json({ error: 'Trop de swipes, veuillez réessayer dans 1 minute', code: 'RATE_LIMIT_EXCLUDED' });
   }
 });
 

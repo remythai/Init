@@ -1,17 +1,17 @@
 // components/AuthPage.tsx
+import { DatePicker } from "@/components/DatePicker";
+import { AuthButton, AuthError, AuthInput } from "@/components/auth";
+import { ThemedText } from "@/components/themed-text";
 import { useState } from "react";
 import {
-  View,
-  ScrollView,
-  StyleSheet,
   Image,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
-import { ThemedText } from "@/components/themed-text";
-import { AuthInput, AuthButton, AuthError } from "@/components/auth";
-import { DatePicker } from "@/components/DatePicker";
 
 interface AuthPageProps {
   onAuth: (
@@ -306,7 +306,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}

@@ -190,8 +190,8 @@ export default function ProfilePage() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white/60">Chargement du profil...</p>
+          <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Chargement du profil...</p>
         </div>
       </div>
     );
@@ -200,7 +200,7 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-white/60">Erreur lors du chargement du profil</p>
+        <p className="text-muted">Erreur lors du chargement du profil</p>
       </div>
     );
   }
@@ -215,28 +215,28 @@ export default function ProfilePage() {
               <img
                 src={photoService.getPhotoUrl(primaryPhoto.file_path)}
                 alt={profile.firstname}
-                className="w-32 h-32 rounded-full object-cover border-4 border-white/20"
+                className="w-32 h-32 rounded-full object-cover border-4 border-border"
               />
             ) : (
               <img
                 src={profile.image}
                 alt={profile.firstname}
-                className="w-32 h-32 rounded-full object-cover border-4 border-white/20"
+                className="w-32 h-32 rounded-full object-cover border-4 border-border"
               />
             )}
           </div>
-          <h1 className="font-poppins text-2xl font-bold text-white mt-4">
+          <h1 className="font-poppins text-2xl font-bold text-primary mt-4">
             {profile.firstname} {profile.lastname}, {profile.age}
           </h1>
         </div>
 
         {/* Blocked Warning */}
         {isBlocked && (
-          <div className="bg-red-500/20 border border-red-500/50 rounded-2xl p-4 mb-4 flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
+          <div className="bg-red-50 dark:bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4 flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
             <div>
-              <p className="text-red-300 font-semibold">Profil bloque</p>
-              <p className="text-red-300/80 text-sm">
+              <p className="text-red-500 font-semibold">Profil bloque</p>
+              <p className="text-red-500/80 text-sm">
                 Vous avez ete retire de cet evenement. Vous ne pouvez plus modifier votre profil ni vos photos.
               </p>
             </div>
@@ -244,10 +244,10 @@ export default function ProfilePage() {
         )}
 
         {/* Photos */}
-        <div className="bg-white/10 rounded-2xl p-5 mb-4">
-          <h2 className="font-semibold text-white mb-4">Mes photos</h2>
+        <div className="bg-badge rounded-2xl p-5 mb-4">
+          <h2 className="font-semibold text-primary mb-4">Mes photos</h2>
           {isBlocked ? (
-            <p className="text-white/60 italic text-sm">Modification des photos desactivee</p>
+            <p className="text-muted italic text-sm">Modification des photos desactivee</p>
           ) : (
             <PhotoManager
               eventId={eventId}
@@ -260,22 +260,22 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="flex justify-center mb-4">
-          <div className="bg-white/10 rounded-2xl p-4 text-center min-w-[140px]">
-            <p className="text-3xl font-bold text-white">{matchCount}</p>
-            <p className="text-white/60 text-sm">Matchs sur cet evenement</p>
+          <div className="bg-badge rounded-2xl p-4 text-center min-w-[140px]">
+            <p className="text-3xl font-bold text-primary">{matchCount}</p>
+            <p className="text-muted text-sm">Matchs sur cet evenement</p>
           </div>
         </div>
 
         {/* Profile Info Card */}
         {customFields.length > 0 && (
-          <div className="bg-white/10 rounded-2xl p-5 mb-4">
+          <div className="bg-badge rounded-2xl p-5 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-white">Mon profil evenement</h2>
+              <h2 className="font-semibold text-primary">Mon profil evenement</h2>
               {!editing ? (
                 !isBlocked && (
                   <button
                     onClick={() => setEditing(true)}
-                    className="text-[#1271FF] hover:text-[#0d5dd8] transition-colors"
+                    className="text-[#1271FF] hover:bg-[#1271FF]/80 transition-colors"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
@@ -285,14 +285,14 @@ export default function ProfilePage() {
                   <button
                     onClick={handleCancel}
                     disabled={saving}
-                    className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                    className="text-red-500 hover:text-red-400 transition-colors disabled:opacity-50"
                   >
                     <X className="w-5 h-5" />
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="text-green-400 hover:text-green-300 transition-colors disabled:opacity-50"
+                    className="text-green-500 hover:text-green-400 transition-colors disabled:opacity-50"
                   >
                     <Check className="w-5 h-5" />
                   </button>
@@ -306,15 +306,15 @@ export default function ProfilePage() {
                   const fieldId = getFieldId(field.label);
                   return (
                   <div key={fieldId}>
-                    <label className="block text-base font-semibold text-white mb-2">
+                    <label className="block text-base font-semibold text-primary mb-2">
                       {field.label}
-                      {field.required && <span className="text-red-400 ml-1">*</span>}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
                     </label>
                     {(field.type === "text" || field.type === "email" || field.type === "phone" || field.type === "number") && (
                       <>
                         <input
                           type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
-                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                          className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                           placeholder={getFieldPlaceholder(field)}
                           value={editedProfilInfo[fieldId] !== undefined ? String(editedProfilInfo[fieldId]) : ""}
                           maxLength={field.type === "text" ? 150 : undefined}
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                           }
                         />
                         {field.type === "text" && (
-                          <p className={`text-xs mt-1 text-right ${String(editedProfilInfo[fieldId] || "").length >= 140 ? 'text-orange-400' : 'text-white/40'}`}>
+                          <p className={`text-xs mt-1 text-right ${String(editedProfilInfo[fieldId] || "").length >= 140 ? 'text-orange-500' : 'text-muted'}`}>
                             {String(editedProfilInfo[fieldId] || "").length}/150
                           </p>
                         )}
@@ -335,7 +335,7 @@ export default function ProfilePage() {
                     {field.type === "textarea" && (
                       <>
                         <textarea
-                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words hyphens-auto"
+                          className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words hyphens-auto"
                           style={{ wordBreak: 'break-word' }}
                           placeholder={getFieldPlaceholder(field)}
                           value={(editedProfilInfo[fieldId] as string) || ""}
@@ -347,7 +347,7 @@ export default function ProfilePage() {
                             }))
                           }
                         />
-                        <p className={`text-xs mt-1 text-right ${((editedProfilInfo[fieldId] as string) || "").length >= 450 ? 'text-orange-400' : 'text-white/40'}`}>
+                        <p className={`text-xs mt-1 text-right ${((editedProfilInfo[fieldId] as string) || "").length >= 450 ? 'text-orange-500' : 'text-muted'}`}>
                           {((editedProfilInfo[fieldId] as string) || "").length}/500
                         </p>
                       </>
@@ -355,7 +355,7 @@ export default function ProfilePage() {
                     {field.type === "date" && (
                       <input
                         type="date"
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
+                        className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
                         value={(editedProfilInfo[fieldId] as string) || ""}
                         onChange={(e) =>
                           setEditedProfilInfo((prev) => ({
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div
                           className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                            editedProfilInfo[fieldId] ? "bg-[#1271FF] border-[#1271FF]" : "border-white/40"
+                            editedProfilInfo[fieldId] ? "bg-[#1271FF] border-[#1271FF]" : "border-muted"
                           }`}
                           onClick={() =>
                             setEditedProfilInfo((prev) => ({
@@ -391,7 +391,7 @@ export default function ProfilePage() {
                             className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
                               editedProfilInfo[fieldId] === option
                                 ? "bg-[#1271FF] text-white border-[#1271FF]"
-                                : "border-white/20 text-white/80 hover:border-white/40"
+                                : "border-border text-secondary hover:border-border"
                             }`}
                             onClick={() =>
                               setEditedProfilInfo((prev) => ({
@@ -417,7 +417,7 @@ export default function ProfilePage() {
                               className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
                                 isSelected
                                   ? "bg-[#1271FF] text-white border-[#1271FF]"
-                                  : "border-white/20 text-white/80 hover:border-white/40"
+                                  : "border-border text-secondary hover:border-border"
                               }`}
                               onClick={() => {
                                 setEditedProfilInfo((prev) => {
@@ -434,10 +434,10 @@ export default function ProfilePage() {
                             >
                               <div
                                 className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                  isSelected ? "bg-white border-white" : "border-white/40"
+                                  isSelected ? "bg-[#1271FF] border-[#1271FF]" : "border-muted"
                                 }`}
                               >
-                                {isSelected && <Check className="w-3 h-3 text-[#1271FF]" />}
+                                {isSelected && <Check className="w-3 h-3 text-white" />}
                               </div>
                               {option}
                             </button>
@@ -457,13 +457,13 @@ export default function ProfilePage() {
                   if (value === undefined || value === null || value === "") return null;
                   return (
                     <div key={fieldId} className="overflow-hidden">
-                      <p className="text-white/60 text-sm">{field.label}</p>
-                      <p className="text-white whitespace-pre-wrap break-words hyphens-auto">{getFieldDisplayValue(field, value)}</p>
+                      <p className="text-muted text-sm">{field.label}</p>
+                      <p className="text-primary whitespace-pre-wrap break-words hyphens-auto">{getFieldDisplayValue(field, value)}</p>
                     </div>
                   );
                 })}
                 {customFields.every(f => !profilInfo[getFieldId(f.label)]) && (
-                  <p className="text-white/60 italic">Aucune information renseignee</p>
+                  <p className="text-muted italic">Aucune information renseignee</p>
                 )}
               </div>
             )}
@@ -471,9 +471,9 @@ export default function ProfilePage() {
         )}
 
         {/* Tips */}
-        <div className="bg-[#1271FF]/20 rounded-2xl p-5">
-          <h3 className="font-semibold text-white mb-2">💡 Conseils</h3>
-          <ul className="text-white/70 text-sm space-y-2">
+        <div className="bg-[#1271FF]/10 rounded-2xl p-5">
+          <h3 className="font-semibold text-primary mb-2">💡 Conseils</h3>
+          <ul className="text-secondary text-sm space-y-2">
             <li>• Ajoutez une photo de profil claire et souriante</li>
             <li>• Décrivez vos centres d'intérêt dans votre bio</li>
             <li>• Soyez authentique et ouvert aux nouvelles rencontres</li>

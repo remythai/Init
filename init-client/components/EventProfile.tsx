@@ -1,5 +1,4 @@
 // components/EventProfile.tsx
-import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   Alert,
@@ -68,7 +67,7 @@ export function EventProfile({
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined }
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView

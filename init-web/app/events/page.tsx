@@ -605,13 +605,6 @@ export default function EventsPage() {
             >
               Déconnexion
             </button>
-            <Link
-              href="/profile"
-              className="md:hidden bg-accent-solid text-accent-solid-text hover:opacity-90 font-medium px-3 py-2 rounded-full text-xs transition-colors flex items-center gap-1.5 group"
-            >
-              <User className="w-3.5 h-3.5" />
-              Profil
-            </Link>
           </div>
         </div>
       </header>
@@ -753,7 +746,7 @@ export default function EventsPage() {
                   {filteredEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer relative h-full flex flex-col hover:scale-[1.01]"
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
                       {/* Event Image */}
@@ -787,7 +780,7 @@ export default function EventsPage() {
                       </div>
 
                       {/* Event Content */}
-                      <div className="p-4">
+                      <div className="p-4 flex-1 pb-20">
                         <h3 className="font-poppins font-semibold text-lg text-primary mb-3">
                           {event.name}
                         </h3>
@@ -833,7 +826,7 @@ export default function EventsPage() {
                           <Link
                             href={`/events/${event.id}/environment/swiper`}
                             onClick={(e) => e.stopPropagation()}
-                            className="block w-full mt-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
+                            className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
                           >
                             Acceder a l'environnement
                           </Link>

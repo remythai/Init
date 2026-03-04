@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { isDevMode } from './dev/dev-mode';
 
 // Get socket URL - resolved at connection time
 const getSocketUrl = (): string => {
@@ -79,6 +80,10 @@ class SocketService {
    * Connect to the WebSocket server
    */
   connect(token: string): Socket {
+    if (isDevMode()) {
+      console.log('[DEV MODE] Socket connection disabled');
+      return null as unknown as Socket;
+    }
     // If socket exists and is connected or connecting, return it
     if (this.socket) {
       // Update auth token in case it changed
@@ -137,6 +142,7 @@ class SocketService {
    * Disconnect from the WebSocket server
    */
   disconnect(): void {
+    if (isDevMode()) return;
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -154,6 +160,7 @@ class SocketService {
    * Check if connected
    */
   isConnected(): boolean {
+    if (isDevMode()) return false;
     return this.socket?.connected ?? false;
   }
 
@@ -165,6 +172,7 @@ class SocketService {
    * Join a chat room (match conversation)
    */
   joinChat(matchId: number): void {
+    if (isDevMode()) return;
     this.socket?.emit('chat:join', matchId);
   }
 
@@ -172,6 +180,7 @@ class SocketService {
    * Leave a chat room
    */
   leaveChat(matchId: number): void {
+    if (isDevMode()) return;
     this.socket?.emit('chat:leave', matchId);
   }
 
@@ -179,6 +188,7 @@ class SocketService {
    * Send typing indicator
    */
   sendTyping(matchId: number, isTyping: boolean): void {
+    if (isDevMode()) return;
     this.socket?.emit('chat:typing', { matchId, isTyping });
   }
 
@@ -186,6 +196,7 @@ class SocketService {
    * Mark a message as read via socket
    */
   markMessageRead(matchId: number, messageId: number): void {
+    if (isDevMode()) return;
     this.socket?.emit('chat:markRead', { matchId, messageId });
   }
 
@@ -193,6 +204,7 @@ class SocketService {
    * Listen for new messages
    */
   onNewMessage(callback: (data: SocketMessage) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add newMessage listener - socket not initialized');
       return () => {};
@@ -207,6 +219,7 @@ class SocketService {
    * Listen for typing indicators
    */
   onTyping(callback: (data: SocketTyping) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add typing listener - socket not initialized');
       return () => {};
@@ -221,6 +234,7 @@ class SocketService {
    * Listen for conversation updates
    */
   onConversationUpdate(callback: (data: SocketConversationUpdate) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add conversationUpdate listener - socket not initialized');
       return () => {};
@@ -235,6 +249,7 @@ class SocketService {
    * Listen for message read events
    */
   onMessageRead(callback: (data: { matchId: number; messageId: number; readBy: number }) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add messageRead listener - socket not initialized');
       return () => {};
@@ -253,6 +268,7 @@ class SocketService {
    * Join an event room
    */
   joinEvent(eventId: number | string): void {
+    if (isDevMode()) return;
     if (!this.socket?.connected) {
       console.warn('Socket: Cannot join event room - not connected');
       return;
@@ -265,6 +281,7 @@ class SocketService {
    * Leave an event room
    */
   leaveEvent(eventId: number | string): void {
+    if (isDevMode()) return;
     if (!this.socket?.connected) {
       console.warn('Socket: Cannot leave event room - not connected');
       return;
@@ -277,6 +294,7 @@ class SocketService {
    * Listen for new users joining event
    */
   onUserJoinedEvent(callback: (data: SocketUserJoined) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add userJoinedEvent listener - socket not initialized');
       return () => {};
@@ -295,6 +313,7 @@ class SocketService {
    * Listen for new matches
    */
   onNewMatch(callback: (data: SocketMatch) => void): () => void {
+    if (isDevMode()) return () => {};
     if (!this.socket) {
       console.warn('Socket: Cannot add newMatch listener - socket not initialized');
       return () => {};

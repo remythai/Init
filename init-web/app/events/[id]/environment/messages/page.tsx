@@ -366,8 +366,8 @@ export default function MessagesPage() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white/60">Chargement des messages...</p>
+          <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Chargement des messages...</p>
         </div>
       </div>
     );
@@ -376,18 +376,18 @@ export default function MessagesPage() {
   return (
     <div className="h-full flex">
       {/* Left Panel - Conversations List (Desktop) */}
-      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-r border-white/10 ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
+      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-r border-border ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {/* Title */}
         <div className="flex-shrink-0 p-4">
-          <h1 className="font-poppins text-2xl font-bold text-white">Messages</h1>
-          <p className="text-white/60 text-sm mt-1">Vos conversations avec vos matchs</p>
+          <h1 className="font-poppins text-2xl font-bold text-primary">Messages</h1>
+          <p className="text-muted text-sm mt-1">Vos conversations avec vos matchs</p>
         </div>
 
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {error ? (
             <div className="p-4 text-center">
-              <p className="text-red-400 mb-4">{error}</p>
+              <p className="text-red-500 mb-4">{error}</p>
               <button
                 onClick={loadConversations}
                 className="text-[#1271FF] hover:underline"
@@ -397,16 +397,16 @@ export default function MessagesPage() {
             </div>
           ) : conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4">
-                <MessageCircle className="w-10 h-10 text-white/50" />
+              <div className="w-20 h-20 bg-badge rounded-full flex items-center justify-center mb-4">
+                <MessageCircle className="w-10 h-10 text-muted" />
               </div>
-              <h2 className="text-white font-semibold mb-2">Pas encore de matchs</h2>
-              <p className="text-white/60 text-sm">
+              <h2 className="text-primary font-semibold mb-2">Pas encore de matchs</h2>
+              <p className="text-muted text-sm">
                 Commencez à swiper pour matcher avec d'autres participants !
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-border">
               {conversations.map((conv) => (
                 <button
                   key={conv.match_id}
@@ -418,8 +418,8 @@ export default function MessagesPage() {
                     // Update URL to reflect selected conversation (for layout to hide nav on mobile)
                     router.replace(`/events/${eventId}/environment/messages?match=${conv.match_id}`, { scroll: false });
                   }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left ${
-                    selectedMatchId === conv.match_id ? "bg-white/10" : ""
+                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
+                    selectedMatchId === conv.match_id ? "bg-badge" : ""
                   } ${conv.is_blocked || conv.is_other_user_blocked ? "opacity-60" : ""}`}
                 >
                   <div className="relative">
@@ -429,23 +429,23 @@ export default function MessagesPage() {
                       className="w-14 h-14 rounded-full object-cover"
                     />
                     {conv.unread_count > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-[#303030] flex items-center justify-center text-xs text-white font-medium">
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-card flex items-center justify-center text-xs text-white font-medium">
                         {conv.unread_count}
                       </span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-white">
+                      <h3 className="font-semibold text-primary">
                         {conv.user.firstname} {conv.user.lastname?.charAt(0)}.
                       </h3>
                       {conv.last_message && (
-                        <span className="text-xs text-white/50">
+                        <span className="text-xs text-muted">
                           {formatTime(conv.last_message.sent_at)}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-white/60 truncate">
+                    <p className="text-sm text-muted truncate">
                       {conv.last_message
                         ? conv.last_message.is_mine
                           ? `Vous: ${conv.last_message.content}`
@@ -463,9 +463,9 @@ export default function MessagesPage() {
       {/* Right Panel - Conversation */}
       <div className={`flex-1 flex flex-col ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {selectedMatchId && conversationData ? (
-          <div className="h-full flex flex-col bg-[#3a3a3a]">
+          <div className="h-full flex flex-col bg-page">
             {/* Conversation Header */}
-            <div className="flex-shrink-0 bg-[#252525] border-b border-white/10 px-4 py-3 flex items-center justify-between">
+            <div className="flex-shrink-0 bg-page border-b border-border px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => {
@@ -473,7 +473,7 @@ export default function MessagesPage() {
                     // Clear URL param when going back to list
                     router.replace(`/events/${eventId}/environment/messages`, { scroll: false });
                   }}
-                  className="md:hidden text-white/60 hover:text-white p-1"
+                  className="md:hidden text-muted hover:text-primary p-1"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -492,10 +492,10 @@ export default function MessagesPage() {
                     className="w-10 h-10 rounded-full object-cover"
                   />
                   <div className="text-left">
-                    <h2 className="font-semibold text-white">
+                    <h2 className="font-semibold text-primary">
                       {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
                     </h2>
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-muted">
                       {conversationData.match.event_name}
                     </p>
                   </div>
@@ -503,7 +503,7 @@ export default function MessagesPage() {
               </div>
               <button
                 onClick={openReportModal}
-                className="p-2 text-white/40 hover:text-white rounded-lg hover:bg-white/10"
+                className="p-2 text-muted hover:text-primary rounded-lg hover:bg-hover"
                 title="Signaler"
               >
                 <MoreVertical className="w-5 h-5" />
@@ -514,17 +514,17 @@ export default function MessagesPage() {
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-3 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-8 h-8 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin"></div>
                 </div>
               ) : conversationData.messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-8 h-8 text-white/40" />
+                  <div className="w-16 h-16 bg-badge rounded-full flex items-center justify-center mb-4">
+                    <MessageCircle className="w-8 h-8 text-muted" />
                   </div>
-                  <p className="text-white">
+                  <p className="text-primary">
                     Commencez la conversation !
                   </p>
-                  <p className="text-white/50 text-sm mt-1">
+                  <p className="text-muted text-sm mt-1">
                     Envoyez un premier message à {conversationData.match.user.firstname}
                   </p>
                 </div>
@@ -541,7 +541,7 @@ export default function MessagesPage() {
                       <div key={message.id}>
                         {showDate && (
                           <div className="flex justify-center my-4">
-                            <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/60">
+                            <span className="px-3 py-1 bg-badge rounded-full text-xs text-muted">
                               {formatDate(message.sent_at)}
                             </span>
                           </div>
@@ -553,13 +553,13 @@ export default function MessagesPage() {
                             className={`max-w-[75%] px-4 py-2 rounded-2xl ${
                               isMine
                                 ? "bg-[#1271FF] text-white rounded-br-md"
-                                : "bg-[#252525] text-white rounded-bl-md"
+                                : "bg-received-msg text-primary shadow-sm rounded-bl-md"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words hyphens-auto">{message.content}</p>
                             <p
                               className={`text-xs mt-1 ${
-                                isMine ? "text-white/70" : "text-white/40"
+                                isMine ? "text-white/70" : "text-muted"
                               }`}
                             >
                               {formatTime(message.sent_at)}
@@ -577,31 +577,31 @@ export default function MessagesPage() {
             {/* Typing indicator */}
             {typingUsers.length > 0 && (
               <div className="px-4 py-2">
-                <div className="inline-flex items-center gap-1.5 bg-[#252525] rounded-2xl px-4 py-3">
-                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
-                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
-                  <span className="typing-dot w-2 h-2 bg-white/50 rounded-full"></span>
+                <div className="inline-flex items-center gap-1.5 bg-page rounded-2xl px-4 py-3">
+                  <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
+                  <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
                 </div>
               </div>
             )}
 
             {/* Input */}
-            <div className="flex-shrink-0 bg-[#252525] border-t border-white/10 p-4">
+            <div className="flex-shrink-0 bg-page border-t border-border p-4">
               {isArchived ? (
-                <div className="bg-red-500/20 rounded-xl px-4 py-3 text-center">
-                  <p className="text-red-400 text-sm">
+                <div className="bg-red-50 dark:bg-red-500/20 rounded-xl px-4 py-3 text-center">
+                  <p className="text-red-500 text-sm">
                     Vous avez été retiré de cet événement par l'organisateur
                   </p>
                 </div>
               ) : isOtherUserBlocked ? (
-                <div className="bg-white/10 rounded-xl px-4 py-3 text-center">
-                  <p className="text-white/60 text-sm">
+                <div className="bg-badge rounded-xl px-4 py-3 text-center">
+                  <p className="text-muted text-sm">
                     Cet utilisateur a été retiré de l'événement
                   </p>
                 </div>
               ) : isEventExpired ? (
-                <div className="bg-orange-500/20 rounded-xl px-4 py-3 text-center">
-                  <p className="text-orange-400 text-sm">
+                <div className="bg-orange-50 dark:bg-orange-500/20 rounded-xl px-4 py-3 text-center">
+                  <p className="text-orange-500 text-sm">
                     La période de disponibilité de cet événement est terminée
                   </p>
                 </div>
@@ -628,13 +628,13 @@ export default function MessagesPage() {
                     placeholder="Écrivez un message..."
                     maxLength={500}
                     rows={1}
-                    className="flex-1 px-4 py-3 bg-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-white placeholder-white/40 resize-none overflow-hidden"
+                    className="flex-1 px-4 py-3 bg-badge rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted resize-none overflow-hidden"
                     style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sending}
-                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#0d5dd8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#1271FF]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <Send className="w-5 h-5" />
                   </button>
@@ -644,13 +644,13 @@ export default function MessagesPage() {
           </div>
         ) : (
           // Empty state (Desktop)
-          <div className="h-full flex items-center justify-center bg-[#252525]">
+          <div className="h-full flex items-center justify-center bg-page">
             <div className="text-center">
-              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-12 h-12 text-white/30" />
+              <div className="w-24 h-24 bg-badge rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-12 h-12 text-muted" />
               </div>
-              <h2 className="text-white/60 font-medium mb-1">Sélectionnez une conversation</h2>
-              <p className="text-white/40 text-sm">
+              <h2 className="text-muted font-medium mb-1">Sélectionnez une conversation</h2>
+              <p className="text-muted text-sm">
                 Choisissez un match pour commencer à discuter
               </p>
             </div>
@@ -662,14 +662,14 @@ export default function MessagesPage() {
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/40"
             onClick={() => !submittingReport && setShowReportModal(false)}
           />
-          <div className="relative bg-[#303030] rounded-2xl p-6 max-w-md mx-4 w-full">
-            <h3 className="font-poppins font-semibold text-xl text-white mb-2">
+          <div className="relative bg-modal rounded-2xl p-6 max-w-md mx-4 w-full">
+            <h3 className="font-poppins font-semibold text-xl text-primary mb-2">
               Signaler {conversationData?.match.user.firstname}
             </h3>
-            <p className="text-white/60 text-sm mb-6">
+            <p className="text-muted text-sm mb-6">
               {!reportType ? "Que souhaitez-vous signaler ?" : "Ajoutez des details si necessaire"}
             </p>
 
@@ -678,28 +678,28 @@ export default function MessagesPage() {
               <div className="space-y-3">
                 <button
                   onClick={() => setReportType('photo')}
-                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-full p-4 text-left rounded-xl bg-badge hover:bg-hover transition-colors"
                 >
-                  <div className="font-medium text-white">Photo inappropriee</div>
-                  <div className="text-sm text-white/60">Image choquante ou offensante</div>
+                  <div className="font-medium text-primary">Photo inappropriee</div>
+                  <div className="text-sm text-muted">Image choquante ou offensante</div>
                 </button>
                 <button
                   onClick={() => setReportType('profile')}
-                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-full p-4 text-left rounded-xl bg-badge hover:bg-hover transition-colors"
                 >
-                  <div className="font-medium text-white">Profil offensant</div>
-                  <div className="text-sm text-white/60">Informations inappropriees</div>
+                  <div className="font-medium text-primary">Profil offensant</div>
+                  <div className="text-sm text-muted">Informations inappropriees</div>
                 </button>
                 <button
                   onClick={() => setReportType('message')}
-                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-full p-4 text-left rounded-xl bg-badge hover:bg-hover transition-colors"
                 >
-                  <div className="font-medium text-white">Message offensant</div>
-                  <div className="text-sm text-white/60">Contenu des messages problematique</div>
+                  <div className="font-medium text-primary">Message offensant</div>
+                  <div className="text-sm text-muted">Contenu des messages problematique</div>
                 </button>
                 <button
                   onClick={() => setShowReportModal(false)}
-                  className="w-full py-3 text-white/60 hover:text-white transition-colors mt-2"
+                  className="w-full py-3 text-muted hover:text-primary transition-colors mt-2"
                 >
                   Annuler
                 </button>
@@ -711,20 +711,20 @@ export default function MessagesPage() {
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   placeholder="Decrivez la situation pour aider l'organisateur..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32"
+                  className="w-full px-4 py-3 rounded-xl bg-badge border border-border text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32"
                 />
                 <div className="flex gap-3">
                   <button
                     onClick={() => setReportType(null)}
                     disabled={submittingReport}
-                    className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-badge text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
                   >
                     Retour
                   </button>
                   <button
                     onClick={handleReportSubmit}
                     disabled={submittingReport}
-                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#0d5dd8] transition-colors disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#1271FF]/80 transition-colors disabled:opacity-50"
                   >
                     {submittingReport ? "Envoi..." : "Signaler"}
                   </button>
@@ -739,26 +739,26 @@ export default function MessagesPage() {
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/70"
+            className="absolute inset-0 bg-black/50"
             onClick={() => setShowProfileModal(false)}
           />
-          <div className="relative bg-[#303030] rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-modal rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             {/* Close button */}
             <button
               onClick={() => setShowProfileModal(false)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+              className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             {loadingProfile ? (
               <div className="h-96 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-10 h-10 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin"></div>
               </div>
             ) : profileData ? (
               <div className="flex flex-col">
                 {/* Photo carousel */}
-                <div className="relative aspect-[3/4] max-h-[50vh] bg-[#252525]">
+                <div className="relative aspect-[3/4] max-h-[50vh] bg-page">
                   {profileData.photos && profileData.photos.length > 0 ? (
                     <>
                       <img
@@ -783,7 +783,7 @@ export default function MessagesPage() {
                           {profilePhotoIndex > 0 && (
                             <button
                               onClick={() => setProfilePhotoIndex(prev => prev - 1)}
-                              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/40 rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors"
                             >
                               <ChevronLeft className="w-6 h-6" />
                             </button>
@@ -791,7 +791,7 @@ export default function MessagesPage() {
                           {profilePhotoIndex < profileData.photos.length - 1 && (
                             <button
                               onClick={() => setProfilePhotoIndex(prev => prev + 1)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/40 rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors"
                             >
                               <ChevronRight className="w-6 h-6" />
                             </button>
@@ -837,8 +837,8 @@ export default function MessagesPage() {
                         // Handle arrays (like interests)
                         if (Array.isArray(value)) {
                           return (
-                            <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10">
-                              <p className="text-sm font-semibold text-white mb-2">{formatLabel(key)}</p>
+                            <div key={key} className="bg-badge p-3 rounded-xl border border-border">
+                              <p className="text-sm font-semibold text-primary mb-2">{formatLabel(key)}</p>
                               <div className="flex flex-wrap gap-2">
                                 {value.map((item, idx) => (
                                   <span
@@ -855,15 +855,15 @@ export default function MessagesPage() {
 
                         // Handle regular values
                         return (
-                          <div key={key} className="bg-white/10 p-3 rounded-xl border border-white/10 overflow-hidden">
-                            <p className="text-sm font-semibold text-white mb-1">{formatLabel(key)}</p>
-                            <p className="text-white/70 whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
+                          <div key={key} className="bg-badge p-3 rounded-xl border border-border overflow-hidden">
+                            <p className="text-sm font-semibold text-primary mb-1">{formatLabel(key)}</p>
+                            <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="text-white/50 text-center py-4">
+                    <p className="text-muted text-center py-4">
                       Aucune information de profil disponible
                     </p>
                   )}
