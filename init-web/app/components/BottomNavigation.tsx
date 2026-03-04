@@ -19,10 +19,6 @@ export default function BottomNavigation({ userType, hidden }: BottomNavigationP
   const eventDetailPattern = /^\/events\/[^/]+\/.+$/;
   if (eventDetailPattern.test(pathname)) return null;
 
-  const eventIdPattern = /^\/events\/[^/]+$/;
-  const isEventDetailPage = eventIdPattern.test(pathname) && pathname !== "/events";
-  if (isEventDetailPage) return null;
-
   const tabs = [
     {
       name: "Profil",
