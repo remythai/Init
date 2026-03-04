@@ -1,6 +1,6 @@
 // components/EventsList.tsx
 import { MaterialIcons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -64,6 +64,9 @@ export function EventsList({
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>("all");
+
+  // Track scrolling to prevent accidental press during scroll
+  const isScrolling = useRef(false);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -172,6 +175,9 @@ export function EventsList({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={() => { isScrolling.current = true; }}
+        onScrollEndDrag={() => { isScrolling.current = false; }}
+        onMomentumScrollEnd={() => { isScrolling.current = false; }}
       >
         {filteredEvents.length === 0 ? (
           <View style={styles.emptyState}>
@@ -185,7 +191,12 @@ export function EventsList({
           </View>
         ) : (
           filteredEvents.map((event) => (
-            <Pressable key={event.id} style={styles.eventCard} onPress={() => onEventClick(event)}>
+            <Pressable
+              key={event.id}
+              style={styles.eventCard}
+              onPress={() => { if (!isScrolling.current) onEventClick(event); }}
+              unstable_pressDelay={100}
+            >
               <View style={styles.imageContainer}>
                 <Image source={{ uri: event.image }} style={styles.eventImage} />
                 <View style={styles.badgeContainer}>
@@ -203,13 +214,11 @@ export function EventsList({
               <View style={styles.cardContent}>
                 <Text style={styles.eventName}>{event.name}</Text>
 
-                {/* Nom de l'orga si disponible */}
                 {event.orgaName && (
                   <Text style={styles.orgaName}>{event.orgaName}</Text>
                 )}
 
                 <View style={styles.infoContainer}>
-                  {/* Date physique si disponible, sinon date app */}
                   <View style={styles.infoRow}>
                     <MaterialIcons name="event" size={16} color="#303030" />
                     <Text style={styles.infoText}>
@@ -217,7 +226,6 @@ export function EventsList({
                     </Text>
                   </View>
 
-                  {/* Lieu si disponible */}
                   {event.location ? (
                     <View style={styles.infoRow}>
                       <MaterialIcons name="place" size={16} color="#303030" />
