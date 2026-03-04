@@ -1,11 +1,15 @@
 // app/(main)/events/[id]/(event-tabs)/messagery/[id].tsx
-import { useEvent } from "@/context/EventContext";
-import { matchService } from "@/services/match.service";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Flag, MoreVertical, Send } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEvent } from '@/context/EventContext';
+import { matchService } from '@/services/match.service';
+import { reportService, ReportType } from '@/services/report.service';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   BackHandler,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -17,7 +21,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 interface ApiMessage {
   id: number;
@@ -30,304 +36,375 @@ interface ApiMessage {
 
 interface Message {
   id: string;
-  senderId: "me" | "other";
+  senderId: 'me' | 'other';
   text: string;
   timestamp: string;
+  date: string; // YYYY-MM-DD for grouping
+}
+
+function getPhotoUri(filePath?: string): string | null {
+  if (!filePath) return null;
+  return filePath.startsWith('http') ? filePath : `${API_URL}${filePath}`;
+}
+
+function formatMsgTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return "Aujourd'hui";
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
+
+function toDateKey(dateStr: string): string {
+  return new Date(dateStr).toISOString().slice(0, 10);
 }
 
 export default function ConversationPage() {
   const router = useRouter();
   const { currentEventId } = useEvent();
-  const params = useLocalSearchParams<{ id: string }>();
-  const matchId = params.id ? parseInt(params.id) : 0;
-
-  // ✅ Log pour debug
-  console.log('💬 Conversation - matchId:', matchId, 'currentEventId:', currentEventId, 'params:', params);
+  const { id: matchIdParam } = useLocalSearchParams<{ id: string }>();
+  const globalParams = useGlobalSearchParams<{ from?: string }>();
+  const fromGlobal = globalParams.from === 'global';
+  const matchId = matchIdParam ? parseInt(matchIdParam) : 0;
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const [messageText, setMessageText] = useState("");
-  const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showDropdownMenu, setShowDropdownMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [messageText, setMessageText] = useState('');
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [otherUserName, setOtherUserName] = useState<string>("Match");
-  const [eventName, setEventName] = useState<string>("Événement");
+  const [otherUserName, setOtherUserName] = useState('Match');
+  const [otherUserId, setOtherUserId] = useState<number | null>(null);
+  const [otherUserPhoto, setOtherUserPhoto] = useState<string | null>(null);
+  const [eventName, setEventName] = useState('Événement');
+  const [eventId, setEventId] = useState<number | null>(null);
+  const [isArchived, setIsArchived] = useState(false);
+  const [isEventExpired, setIsEventExpired] = useState(false);
+  const [isOtherUserBlocked, setIsOtherUserBlocked] = useState(false);
 
-  // ✅ Retour vers la messagerie d'event avec l'ID explicite
-  const goBackToMessagery = useCallback(() => {
-    if (currentEventId) {
-      console.log('🔙 Retour vers messagery, eventId:', currentEventId);
-      // ✅ IMPORTANT : Inclure l'ID de l'événement dans l'URL
-      router.replace(`/(main)/events/${currentEventId}/(event-tabs)/messagery`);
-    } else {
-      console.warn('⚠️ Pas de currentEventId, retour vers events');
-      router.replace('/(main)/events');
-    }
-  }, [currentEventId, router]);
+  // Report modal
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportType, setReportType] = useState<ReportType | null>(null);
+  const [reportDesc, setReportDesc] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
-  // ✅ Back hardware Android
+  const goBack = useCallback(() => {
+    const eid = eventId || currentEventId;
+    if (fromGlobal) router.replace('/(main)/messagery');
+    else if (eid) router.replace(`/(main)/events/${eid}/(event-tabs)/messagery`);
+    else router.replace('/(main)/messagery');
+  }, [eventId, currentEventId, router, fromGlobal]);
+
   useFocusEffect(
     useCallback(() => {
-      const onBackPress = () => {
-        goBackToMessagery();
-        return true; // ✅ Empêche le comportement par défaut
-      };
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        onBackPress
-      );
-      return () => subscription.remove();
-    }, [goBackToMessagery])
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => { goBack(); return true; });
+      return () => sub.remove();
+    }, [goBack])
   );
 
-  // Auto scroll en bas
   const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      "keyboardDidShow",
-      scrollToBottom
-    );
-    return () => keyboardDidShowListener.remove();
+    const sub = Keyboard.addListener('keyboardDidShow', scrollToBottom);
+    return () => sub.remove();
   }, []);
 
-  // Chargement des messages depuis l'API
   useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        if (!matchId) return;
-
-        const res = await matchService.getMessages(matchId);
-        const { match, messages: apiMessages } = res;
-
-        setEventName(match.event_name || "Événement");
-        setOtherUserName(
-          `${match.user.firstname} ${match.user.lastname}`.trim() || "Match"
-        );
-
-        const mapped: Message[] = apiMessages.map((m: ApiMessage) => ({
-          id: m.id.toString(),
-          senderId: m.sender_id === match.user.id ? "other" : "me",
-          text: m.content,
-          timestamp: new Date(m.sent_at).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        }));
-
-        setMessages(mapped);
-      } catch (e) {
-        console.error("Erreur chargement messages:", e);
-      }
-    };
-
+    if (!matchId) return;
     loadMessages();
   }, [matchId]);
 
-  // Envoi de message
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !matchId) return;
-
-    const content = messageText.trim();
-    setMessageText("");
-
-    const optimistic: Message = {
-      id: Date.now().toString(),
-      senderId: "me",
-      text: content,
-      timestamp: new Date().toLocaleTimeString("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-    setMessages((prev) => [...prev, optimistic]);
-
+  const loadMessages = async () => {
     try {
-      const sent = await matchService.sendMessage(matchId, content);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === optimistic.id
-            ? {
-                ...m,
-                id: sent.id.toString(),
-              }
-            : m
-        )
-      );
+      setLoading(true);
+      const res = await matchService.getMessages(matchId);
+      const { match, messages: apiMessages } = res;
+
+      setEventName(match.event_name || 'Événement');
+      setEventId(match.event_id || null);
+      setOtherUserId(match.user.id);
+      setOtherUserName(`${match.user.firstname} ${match.user.lastname}`.trim() || 'Match');
+
+      // Photo from match user
+      const photos = match.user.photos;
+      if (photos && photos.length > 0) {
+        setOtherUserPhoto(getPhotoUri(photos[0].file_path));
+      }
+
+      // Check conversation state from conversations list
+      // Try to get conv info if available
+      setIsArchived(res.is_blocked || false);
+      setIsEventExpired(res.is_event_expired || false);
+      setIsOtherUserBlocked(res.is_other_user_blocked || false);
+
+      const mapped: Message[] = apiMessages.map((m: ApiMessage) => ({
+        id: m.id.toString(),
+        senderId: m.sender_id === match.user.id ? 'other' : 'me',
+        text: m.content,
+        timestamp: formatMsgTime(m.sent_at),
+        date: toDateKey(m.sent_at),
+      }));
+      setMessages(mapped);
     } catch (e) {
-      console.error("Erreur envoi message:", e);
+      console.error('Erreur chargement messages:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReport = () => {
-    console.log("Signalement de l'utilisateur:", otherUserName);
-    setShowReportDialog(false);
+  const handleSend = async () => {
+    if (!messageText.trim() || !matchId || sending || isArchived || isEventExpired || isOtherUserBlocked) return;
+    const content = messageText.trim();
+    setMessageText('');
+    const now = new Date().toISOString();
+    const optimistic: Message = {
+      id: Date.now().toString(),
+      senderId: 'me',
+      text: content,
+      timestamp: formatMsgTime(now),
+      date: toDateKey(now),
+    };
+    setMessages(prev => [...prev, optimistic]);
+    try {
+      const sent = await matchService.sendMessage(matchId, content);
+      setMessages(prev =>
+        prev.map(m => m.id === optimistic.id ? { ...m, id: sent.id.toString() } : m)
+      );
+    } catch {
+      setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+    }
   };
+
+  const handleReportSubmit = async () => {
+    if (!reportType || !otherUserId || !eventId) return;
+    setSubmittingReport(true);
+    try {
+      await reportService.createReport(String(eventId), {
+        reportedUserId: otherUserId,
+        matchId: reportType === 'message' ? matchId : undefined,
+        reportType,
+        reason: reportType === 'message' ? 'harassment' : 'inappropriate',
+        description: reportDesc || undefined,
+      });
+      setShowReport(false);
+      setReportType(null);
+      setReportDesc('');
+      Alert.alert('Signalement envoyé', "L'organisateur va l'examiner.");
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message || 'Impossible d\'envoyer le signalement');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const canSend = !isArchived && !isEventExpired && !isOtherUserBlocked;
+
+  // Group messages by date
+  const groupedMessages: { dateLabel: string; dateKey: string; messages: Message[] }[] = [];
+  messages.forEach(msg => {
+    const last = groupedMessages[groupedMessages.length - 1];
+    if (last && last.dateKey === msg.date) {
+      last.messages.push(msg);
+    } else {
+      groupedMessages.push({ dateKey: msg.date, dateLabel: formatDateLabel(msg.date + 'T12:00:00'), messages: [msg] });
+    }
+  });
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
       keyboardVerticalOffset={0}
     >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={goBackToMessagery} style={styles.headerButton}>
-          <ArrowLeft size={24} color="white" />
+        <Pressable onPress={goBack} style={styles.headerBtn}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </Pressable>
-
         <View style={styles.headerCenter}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{otherUserName.charAt(0)}</Text>
-          </View>
-          <View>
-            <Text style={styles.headerName}>{otherUserName}</Text>
-            <Text style={styles.headerSubtitle}>
-              Match via {eventName}
-            </Text>
+          {otherUserPhoto ? (
+            <Image source={{ uri: otherUserPhoto }} style={styles.headerAvatar} />
+          ) : (
+            <View style={styles.headerAvatarFallback}>
+              <Text style={styles.headerAvatarText}>{otherUserName.charAt(0)}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>Match via {eventName}</Text>
           </View>
         </View>
-
-        <Pressable
-          onPress={() => setShowDropdownMenu(true)}
-          style={styles.headerButton}
-        >
-          <MoreVertical size={24} color="white" />
+        <Pressable onPress={() => setShowMenu(true)} style={styles.headerBtn}>
+          <MaterialIcons name="more-vert" size={24} color="#fff" />
         </Pressable>
       </View>
 
       {/* Messages */}
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={scrollToBottom}
-      >
-        {messages.map((message) => (
-          <View
-            key={message.id}
-            style={[
-              styles.messageRow,
-              message.senderId === "me"
-                ? styles.messageRowRight
-                : styles.messageRowLeft,
-            ]}
-          >
-            <View
-              style={[
-                styles.messageBubble,
-                message.senderId === "me"
-                  ? styles.messageBubbleMe
-                  : styles.messageBubbleOther,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.messageText,
-                  message.senderId === "me"
-                    ? styles.messageTextMe
-                    : styles.messageTextOther,
-                ]}
-              >
-                {message.text}
-              </Text>
-              <Text
-                style={[
-                  styles.messageTime,
-                  message.senderId === "me"
-                    ? styles.messageTimeMe
-                    : styles.messageTimeOther,
-                ]}
-              >
-                {message.timestamp}
-              </Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#1271FF" />
+        </View>
+      ) : (
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={scrollToBottom}
+        >
+          {messages.length === 0 ? (
+            <View style={styles.emptyConv}>
+              <View style={styles.emptyConvIcon}>
+                <MaterialIcons name="chat-bubble-outline" size={32} color="#9ca3af" />
+              </View>
+              <Text style={styles.emptyConvText}>Commencez la conversation !</Text>
+              <Text style={styles.emptyConvSub}>Envoyez un premier message à {otherUserName}</Text>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          ) : (
+            groupedMessages.map(group => (
+              <View key={group.dateKey}>
+                {/* Date separator */}
+                <View style={styles.dateSeparator}>
+                  <Text style={styles.dateSeparatorText}>{group.dateLabel}</Text>
+                </View>
+                {group.messages.map(msg => (
+                  <View
+                    key={msg.id}
+                    style={[styles.msgRow, msg.senderId === 'me' ? styles.msgRowRight : styles.msgRowLeft]}
+                  >
+                    <View style={[styles.bubble, msg.senderId === 'me' ? styles.bubbleMe : styles.bubbleOther]}>
+                      <Text style={[styles.bubbleText, msg.senderId === 'me' ? styles.bubbleTextMe : styles.bubbleTextOther]}>
+                        {msg.text}
+                      </Text>
+                      <Text style={[styles.bubbleTime, msg.senderId === 'me' ? styles.bubbleTimeMe : styles.bubbleTimeOther]}>
+                        {msg.timestamp}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
 
-      {/* Input */}
+      {/* Input zone */}
       <View style={styles.inputContainer}>
-        <TextInput
-          value={messageText}
-          onChangeText={setMessageText}
-          onSubmitEditing={handleSendMessage}
-          placeholder="Votre message..."
-          placeholderTextColor="#9E9E9E"
-          style={styles.input}
-          multiline
-          maxLength={500}
-        />
-        <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-          <Send size={20} color="white" />
-        </TouchableOpacity>
+        {isArchived ? (
+          <View style={styles.statusBanner}>
+            <MaterialIcons name="block" size={16} color="#dc2626" />
+            <Text style={styles.statusBannerText}>Vous avez été retiré de cet événement par l'organisateur</Text>
+          </View>
+        ) : isOtherUserBlocked ? (
+          <View style={[styles.statusBanner, styles.statusBannerGray]}>
+            <MaterialIcons name="person-off" size={16} color="#6b7280" />
+            <Text style={[styles.statusBannerText, { color: '#6b7280' }]}>Cet utilisateur a été retiré de l'événement</Text>
+          </View>
+        ) : isEventExpired ? (
+          <View style={[styles.statusBanner, styles.statusBannerOrange]}>
+            <MaterialIcons name="schedule" size={16} color="#ea580c" />
+            <Text style={[styles.statusBannerText, { color: '#ea580c' }]}>La période de disponibilité de cet événement est terminée</Text>
+          </View>
+        ) : (
+          <View style={styles.inputRow}>
+            <TextInput
+              value={messageText}
+              onChangeText={setMessageText}
+              placeholder="Écrivez un message..."
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              multiline
+              maxLength={500}
+            />
+            <Pressable
+              onPress={handleSend}
+              disabled={!messageText.trim() || sending}
+              style={[styles.sendBtn, (!messageText.trim() || sending) && styles.sendBtnDisabled]}
+            >
+              <MaterialIcons name="send" size={20} color="#fff" />
+            </Pressable>
+          </View>
+        )}
       </View>
 
-      {/* Dropdown Menu Modal */}
-      <Modal
-        visible={showDropdownMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDropdownMenu(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowDropdownMenu(false)}
-        >
-          <View style={styles.dropdownMenu}>
+      {/* Dropdown menu */}
+      <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
+          <View style={styles.menuBox}>
             <TouchableOpacity
-              onPress={() => {
-                setShowDropdownMenu(false);
-                setShowReportDialog(true);
-              }}
-              style={styles.dropdownItem}
+              style={styles.menuItem}
+              onPress={() => { setShowMenu(false); setReportType(null); setReportDesc(''); setShowReport(true); }}
             >
-              <Flag size={16} color="#DC2626" />
-              <Text style={styles.dropdownItemText}>Signaler l'utilisateur</Text>
+              <MaterialIcons name="flag" size={18} color="#dc2626" />
+              <Text style={styles.menuItemText}>Signaler l'utilisateur</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
 
-      {/* Report Dialog */}
-      <Modal
-        visible={showReportDialog}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowReportDialog(false)}
-      >
-        <View style={styles.dialogOverlay}>
-          <View style={styles.dialogBox}>
-            <Text style={styles.dialogTitle}>
-              Signaler {otherUserName}
-            </Text>
-            <Text style={styles.dialogDescription}>
-              Voulez-vous vraiment signaler cet utilisateur ? Cette action
-              permettra à notre équipe de modération d'examiner le comportement
-              de cette personne.
-            </Text>
-            <View style={styles.dialogActions}>
-              <TouchableOpacity
-                onPress={() => setShowReportDialog(false)}
-                style={styles.dialogButtonCancel}
-              >
-                <Text style={styles.dialogButtonCancelText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleReport}
-                style={styles.dialogButtonConfirm}
-              >
-                <Text style={styles.dialogButtonConfirmText}>Signaler</Text>
-              </TouchableOpacity>
+      {/* Report modal — multi-step like web */}
+      <Modal visible={showReport} transparent animationType="slide" onRequestClose={() => setShowReport(false)}>
+        <View style={styles.reportOverlay}>
+          <View style={styles.reportBox}>
+            <View style={styles.reportHeader}>
+              <Text style={styles.reportTitle}>Signaler {otherUserName}</Text>
+              <Pressable onPress={() => setShowReport(false)}>
+                <MaterialIcons name="close" size={22} color="#303030" />
+              </Pressable>
             </View>
+
+            {!reportType ? (
+              <>
+                <Text style={styles.reportSubtitle}>Que souhaitez-vous signaler ?</Text>
+                <View style={styles.reportOptions}>
+                  <Pressable style={styles.reportOption} onPress={() => setReportType('photo')}>
+                    <Text style={styles.reportOptionTitle}>Photo inappropriée</Text>
+                    <Text style={styles.reportOptionSub}>Image choquante ou offensante</Text>
+                  </Pressable>
+                  <Pressable style={styles.reportOption} onPress={() => setReportType('profile')}>
+                    <Text style={styles.reportOptionTitle}>Profil offensant</Text>
+                    <Text style={styles.reportOptionSub}>Informations inappropriées</Text>
+                  </Pressable>
+                  <Pressable style={styles.reportOption} onPress={() => setReportType('message')}>
+                    <Text style={styles.reportOptionTitle}>Message offensant</Text>
+                    <Text style={styles.reportOptionSub}>Contenu des messages problématique</Text>
+                  </Pressable>
+                </View>
+                <Pressable style={styles.reportCancelBtn} onPress={() => setShowReport(false)}>
+                  <Text style={styles.reportCancelText}>Annuler</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.reportSubtitle}>Ajoutez des détails si nécessaire</Text>
+                <TextInput
+                  value={reportDesc}
+                  onChangeText={setReportDesc}
+                  placeholder="Décrivez la situation pour aider l'organisateur..."
+                  placeholderTextColor="#9ca3af"
+                  style={styles.reportTextarea}
+                  multiline
+                  numberOfLines={4}
+                />
+                <View style={styles.reportActions}>
+                  <Pressable style={styles.reportBackBtn} onPress={() => setReportType(null)} disabled={submittingReport}>
+                    <Text style={styles.reportBackText}>Retour</Text>
+                  </Pressable>
+                  <Pressable style={[styles.reportSubmitBtn, submittingReport && { opacity: 0.6 }]} onPress={handleReportSubmit} disabled={submittingReport}>
+                    {submittingReport ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.reportSubmitText}>Signaler</Text>}
+                  </Pressable>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -336,142 +413,73 @@ export default function ConversationPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: '#fff' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: "#303030",
-    borderBottomWidth: 1,
-    borderBottomColor: "#303030",
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 8, paddingTop: 50, paddingBottom: 12,
+    backgroundColor: '#303030',
   },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerCenter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
+  headerBtn: { padding: 8, borderRadius: 8 },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20 },
+  headerAvatarFallback: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontWeight: '700', color: '#303030', fontSize: 16 },
+  headerName: { fontWeight: '600', color: '#fff', fontSize: 15 },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  messagesContainer: { flex: 1, backgroundColor: '#F5F5F5' },
+  messagesContent: { padding: 16, paddingBottom: 12 },
+  emptyConv: { alignItems: 'center', paddingVertical: 60 },
+  emptyConvIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  emptyConvText: { fontWeight: '600', color: '#303030', fontSize: 15 },
+  emptyConvSub: { color: '#9ca3af', fontSize: 13, marginTop: 4 },
+  dateSeparator: { alignItems: 'center', marginVertical: 12 },
+  dateSeparatorText: { fontSize: 12, color: '#9ca3af', backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
+  msgRow: { flexDirection: 'row', marginBottom: 8 },
+  msgRowRight: { justifyContent: 'flex-end' },
+  msgRowLeft: { justifyContent: 'flex-start' },
+  bubble: { maxWidth: '75%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
+  bubbleMe: { backgroundColor: '#303030', borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: '#fff', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
+  bubbleText: { fontSize: 14, lineHeight: 20 },
+  bubbleTextMe: { color: '#fff' },
+  bubbleTextOther: { color: '#303030' },
+  bubbleTime: { fontSize: 11, marginTop: 3 },
+  bubbleTimeMe: { color: 'rgba(255,255,255,0.55)', textAlign: 'right' },
+  bubbleTimeOther: { color: '#9ca3af' },
+  inputContainer: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 10 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  input: { flex: 1, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: '#303030', maxHeight: 100, fontSize: 14 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#303030', alignItems: 'center', justifyContent: 'center' },
+  sendBtnDisabled: { opacity: 0.4 },
+  statusBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#fee2e2', borderRadius: 12, padding: 12,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "white",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { color: "#303030", fontWeight: "600" },
-  headerName: { fontWeight: "600", color: "white" },
-  headerSubtitle: { fontSize: 12, color: "rgba(255, 255, 255, 0.7)" },
-  messagesContainer: { flex: 1, backgroundColor: "#F5F5F5" },
-  messagesContent: { padding: 16, paddingBottom: 8 },
-  messageRow: { flexDirection: "row", marginBottom: 12 },
-  messageRowRight: { justifyContent: "flex-end" },
-  messageRowLeft: { justifyContent: "flex-start" },
-  messageBubble: {
-    maxWidth: "75%",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  messageBubbleMe: { backgroundColor: "#303030" },
-  messageBubbleOther: { backgroundColor: "white" },
-  messageText: { fontSize: 14 },
-  messageTextMe: { color: "white" },
-  messageTextOther: { color: "#303030" },
-  messageTime: { fontSize: 12, marginTop: 4 },
-  messageTimeMe: { color: "#E3F2FD" },
-  messageTimeOther: { color: "#9E9E9E" },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-    backgroundColor: "white",
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#BDBDBD",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: "#303030",
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: "#303030",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  dropdownMenu: {
-    position: "absolute",
-    top: 80,
-    right: 16,
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 8,
-    minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    gap: 8,
-  },
-  dropdownItemText: { color: "#DC2626" },
-  dialogOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  dialogBox: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 24,
-    width: "100%",
-    maxWidth: 400,
-  },
-  dialogTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
-  dialogDescription: { color: "#757575", marginBottom: 24 },
-  dialogActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
-  },
-  dialogButtonCancel: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#BDBDBD",
-  },
-  dialogButtonCancelText: { color: "#000" },
-  dialogButtonConfirm: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: "#DC2626",
-  },
-  dialogButtonConfirmText: { color: "white" },
+  statusBannerGray: { backgroundColor: '#f3f4f6' },
+  statusBannerOrange: { backgroundColor: '#fff7ed' },
+  statusBannerText: { flex: 1, fontSize: 13, color: '#dc2626', lineHeight: 18 },
+  // Menu
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  menuBox: { position: 'absolute', top: 80, right: 12, backgroundColor: '#fff', borderRadius: 12, padding: 6, minWidth: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  menuItemText: { color: '#dc2626', fontWeight: '500', fontSize: 14 },
+  // Report
+  reportOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  reportBox: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  reportHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  reportTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
+  reportSubtitle: { fontSize: 13, color: '#6b7280', marginBottom: 16 },
+  reportOptions: { gap: 10 },
+  reportOption: { backgroundColor: '#f9fafb', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
+  reportOptionTitle: { fontWeight: '600', color: '#303030', fontSize: 14 },
+  reportOptionSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  reportCancelBtn: { marginTop: 16, alignItems: 'center', padding: 12 },
+  reportCancelText: { color: '#6b7280', fontWeight: '500' },
+  reportTextarea: { borderWidth: 1.5, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#303030', minHeight: 100, textAlignVertical: 'top', fontSize: 14 },
+  reportActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  reportBackBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
+  reportBackText: { fontWeight: '600', color: '#303030' },
+  reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center' },
+  reportSubmitText: { fontWeight: '600', color: '#fff' },
 });
