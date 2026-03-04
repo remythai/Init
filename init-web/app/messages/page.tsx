@@ -64,6 +64,7 @@ function GeneralMessagesContent() {
   const [profilePhotoIndex, setProfilePhotoIndex] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentUserId = useRef<number | null>(null);
 
   const handleNewMessage = useCallback((message: Message) => {
@@ -226,6 +227,9 @@ function GeneralMessagesContent() {
         return updated;
       });
       setNewMessage("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
     } catch (err: unknown) {
       console.error("Error sending message:", err);
     } finally {
@@ -347,21 +351,13 @@ function GeneralMessagesContent() {
     <div className="min-h-screen bg-page">
       {renderHeader(true)}
 
-      <main className="pt-16 md:pt-20 pb-20 md:pb-0" style={{ height: "100vh" }}>
+      <main className="md:pt-20 md:pb-0" style={{ height: "100vh" }}>
         <div className="h-full flex mx-auto px-0 md:px-6 lg:px-10">
 
           {/* ── Left Panel: Conversations List ── */}
           <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-card md:rounded-t-2xl md:mt-4 md:mr-4 md:shadow-sm overflow-hidden ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
-            {/* Panel header */}
-            <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-border">
-              <h2 className="font-poppins text-xl font-bold text-primary">Conversations</h2>
-              <p className="text-muted text-sm mt-0.5">
-                {getTotalConversationsCount()} conversation{getTotalConversationsCount() !== 1 ? "s" : ""}
-              </p>
-            </div>
-
             {/* Conversations list */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto py-17 md:py-0">
               {error ? (
                 <div className="p-6 text-center">
                   <p className="text-red-500 mb-3 text-sm">{error}</p>
@@ -418,7 +414,7 @@ function GeneralMessagesContent() {
                                 setIsArchived(conv.is_archived || false);
                                 setIsEventExpired(conv.is_event_expired || false);
                               }}
-                              className={`w-full px-5 py-3.5 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
+                              className={`w-full px-5 py-7 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
                                 selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF]" : ""
                               } ${conv.is_archived ? "opacity-50" : ""}`}
                             >
@@ -426,7 +422,7 @@ function GeneralMessagesContent() {
                                 <img
                                   src={getProfileImage(conv.user.photos, conv.user.firstname, conv.user.lastname)}
                                   alt={conv.user.firstname}
-                                  className="w-11 h-11 rounded-full object-cover"
+                                  className="w-15 h-15 rounded-full object-cover"
                                 />
                                 {conv.unread_count > 0 && (
                                   <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-card flex items-center justify-center text-[10px] text-white font-bold">
@@ -436,14 +432,14 @@ function GeneralMessagesContent() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
-                                  <h3 className={`font-semibold text-primary text-sm ${conv.unread_count > 0 ? "text-primary" : ""}`}>
+                                  <h3 className={`font-semibold text-primary text-md ${conv.unread_count > 0 ? "text-primary" : ""}`}>
                                     {conv.user.firstname} {conv.user.lastname?.charAt(0)}.
                                   </h3>
                                   {conv.last_message && (
                                     <span className="text-xs text-muted">{formatTime(conv.last_message.sent_at)}</span>
                                   )}
                                 </div>
-                                <p className={`text-sm truncate mt-0.5 ${conv.unread_count > 0 ? "text-primary font-medium" : "text-muted"}`}>
+                                <p className={`text-md truncate mt-0.5 ${conv.unread_count > 0 ? "text-primary font-medium" : "text-muted"}`}>
                                   {conv.last_message
                                     ? conv.last_message.is_mine
                                       ? `Vous: ${conv.last_message.content}`
@@ -483,13 +479,13 @@ function GeneralMessagesContent() {
                       <img
                         src={getProfileImage(conversationData.match.user.photos, conversationData.match.user.firstname, conversationData.match.user.lastname)}
                         alt={conversationData.match.user.firstname}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-14 h-14 rounded-full object-cover"
                       />
                       <div className="text-left">
-                        <h2 className="font-semibold text-primary text-sm">
+                        <h2 className="font-semibold text-primary text-md">
                           {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
                         </h2>
-                        <p className="text-xs text-muted">{conversationData.match.event_name}</p>
+                        <p className="text-sm text-muted">{conversationData.match.event_name}</p>
                       </div>
                     </button>
                   </div>
@@ -541,8 +537,8 @@ function GeneralMessagesContent() {
                                     : "bg-received-msg text-primary shadow-sm rounded-bl-md"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap break-words hyphens-auto text-sm">{message.content}</p>
-                                <p className={`text-[11px] mt-1 ${isMine ? "text-white/60" : "text-muted"}`}>
+                                <p className="whitespace-pre-wrap break-words hyphens-auto text-md">{message.content}</p>
+                                <p className={`text-[15px] mt-1 ${isMine ? "text-white/60" : "text-muted"}`}>
                                   {formatTime(message.sent_at)}
                                 </p>
                               </div>
@@ -583,6 +579,7 @@ function GeneralMessagesContent() {
                   ) : (
                     <div className="flex gap-3 items-end">
                       <textarea
+                        ref={textareaRef}
                         value={newMessage}
                         onChange={(e) => {
                           setNewMessage(e.target.value);
@@ -601,7 +598,7 @@ function GeneralMessagesContent() {
                         placeholder="Ecrivez un message..."
                         maxLength={500}
                         rows={1}
-                        className="flex-1 px-4 py-3 bg-page rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted resize-none overflow-hidden text-sm"
+                        className="flex-1 px-4 py-3 bg-page rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted resize-none overflow-hidden text-md"
                         style={{ minHeight: "48px", maxHeight: "120px" }}
                       />
                       <button

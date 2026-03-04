@@ -1,20 +1,29 @@
 "use client";
 
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Users, MessageCircle, User, ArrowLeft } from "lucide-react";
 import { useUnreadMessagesContext } from "../../../contexts/UnreadMessagesContext";
+import { authService } from "../../../services/auth.service";
+import ThemeToggle from "../../../components/ThemeToggle";
+import DesktopNav from "../../../components/DesktopNav";
 
 export default function EnvironmentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const eventId = params.id as string;
+
+  const handleLogout = async () => {
+    await authService.logout();
+    router.push("/");
+  };
   const { hasUnreadForEvent } = useUnreadMessagesContext();
   const hasUnreadMessages = hasUnreadForEvent(eventId);
 
@@ -46,27 +55,33 @@ export default function EnvironmentLayout({
   ];
 
   return (
-    <div className="h-screen bg-[#303030] flex flex-col overflow-hidden">
+    <div className="h-screen bg-page flex flex-col overflow-hidden">
       {/* Header - hidden on mobile when in conversation */}
-      <header className={`flex-shrink-0 bg-[#303030] border-b border-white/10 ${isInConversation ? "hidden md:block" : ""}`}>
-        <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
-          <Link href="/">
-            <Image
-              src="/initLogoGray.png"
-              alt="Init Logo"
-              width={200}
-              height={80}
-              className="h-8 md:h-12 w-auto"
-            />
-          </Link>
-          <Link
-            href={`/events/${eventId}`}
-            className="text-white/70 hover:text-white text-xs md:text-sm transition-colors flex items-center gap-1 md:gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden md:inline">Retour à l'événement</span>
-            <span className="md:hidden">Retour</span>
-          </Link>
+      <header className={`flex-shrink-0 ${isInConversation ? "hidden md:block" : ""}`}>
+        <div className="absolute inset-x-0 top-0 bg-page pointer-events-none h-0" />
+        <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/events/${eventId}`}
+              className="p-1.5 rounded-lg hover:bg-hover transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-primary" />
+            </Link>
+            <Link href="/">
+              <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
+              <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
+            </Link>
+          </div>
+          <DesktopNav />
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="md:hidden"><ThemeToggle /></div>
+            <button
+              onClick={handleLogout}
+              className="font-poppins text-sm text-secondary hover:text-primary transition-colors"
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
       </header>
 
@@ -76,7 +91,7 @@ export default function EnvironmentLayout({
       </main>
 
       {/* Bottom Navigation - hidden on mobile when in conversation */}
-      <nav className={`flex-shrink-0 bg-[#252525] border-t border-white/10 ${isInConversation ? "hidden md:block" : ""}`}>
+      <nav className={`flex-shrink-0 bg-card border-t border-border md:hidden ${isInConversation ? "hidden" : ""}`}>
         <div className="max-w-lg mx-auto flex">
           {tabs.map((tab) => (
             <Link
@@ -84,8 +99,8 @@ export default function EnvironmentLayout({
               href={tab.href}
               className={`flex-1 flex flex-col items-center py-3 transition-colors ${
                 tab.isActive
-                  ? "text-white"
-                  : "text-white/50 hover:text-white/70"
+                  ? "text-primary"
+                  : "text-muted hover:text-secondary"
               }`}
             >
               <div className="relative">

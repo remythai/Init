@@ -17,6 +17,9 @@ import {
 } from "../../services/event.service";
 import { reportService } from "../../services/report.service";
 import PhotoManager from "../../components/PhotoManager";
+import BottomNavigation from "../../components/BottomNavigation";
+import DesktopNav from "../../components/DesktopNav";
+import ThemeToggle from "../../components/ThemeToggle";
 
 export default function EventDetailPage() {
   const router = useRouter();
@@ -281,14 +284,14 @@ export default function EventDetailPage() {
         const textValue = profilInfo[fieldId] !== undefined ? String(profilInfo[fieldId]) : "";
         return (
           <div key={fieldId} className="mb-4">
-            <label className="block text-base font-semibold text-[#303030] mb-2">
+            <label className="block text-base font-semibold text-primary mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             <input
               type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
-              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
-                errorText ? "border-red-500" : "border-gray-200"
+              className={`w-full px-4 py-3 border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
+                errorText ? "border-red-500" : "border-border"
               }`}
               placeholder={getFieldPlaceholder(field)}
               value={textValue}
@@ -303,7 +306,7 @@ export default function EventDetailPage() {
             <div className="flex justify-between mt-1">
               {errorText ? <p className="text-red-500 text-sm">{errorText}</p> : <span />}
               {field.type === "text" && (
-                <p className={`text-xs ${textValue.length >= 140 ? 'text-orange-500' : 'text-gray-400'}`}>
+                <p className={`text-xs ${textValue.length >= 140 ? 'text-orange-500' : 'text-muted'}`}>
                   {textValue.length}/150
                 </p>
               )}
@@ -316,13 +319,13 @@ export default function EventDetailPage() {
         const textareaMaxLength = 500;
         return (
           <div key={fieldId} className="mb-4">
-            <label className="block text-base font-semibold text-[#303030] mb-2">
+            <label className="block text-base font-semibold text-primary mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
-              className={`w-full px-4 py-3 border rounded-xl text-[#303030] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] break-words hyphens-auto ${
-                errorText ? "border-red-500" : "border-gray-200"
+              className={`w-full px-4 py-3 border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] min-h-[100px] break-words hyphens-auto ${
+                errorText ? "border-red-500" : "border-border"
               }`}
               style={{ wordBreak: 'break-word' }}
               placeholder={getFieldPlaceholder(field)}
@@ -337,7 +340,7 @@ export default function EventDetailPage() {
             />
             <div className="flex justify-between mt-1">
               {errorText ? <p className="text-red-500 text-sm">{errorText}</p> : <span />}
-              <p className={`text-xs ${textareaValue.length >= 450 ? 'text-orange-500' : 'text-gray-400'}`}>
+              <p className={`text-xs ${textareaValue.length >= 450 ? 'text-orange-500' : 'text-muted'}`}>
                 {textareaValue.length}/500
               </p>
             </div>
@@ -347,14 +350,14 @@ export default function EventDetailPage() {
       case "date":
         return (
           <div key={fieldId} className="mb-4">
-            <label className="block text-base font-semibold text-[#303030] mb-2">
+            <label className="block text-base font-semibold text-primary mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             <input
               type="date"
-              className={`w-full px-4 py-3 border rounded-xl text-[#303030] focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
-                errorText ? "border-red-500" : "border-gray-200"
+              className={`w-full px-4 py-3 border rounded-xl text-primary focus:outline-none focus:ring-2 focus:ring-[#1271FF] ${
+                errorText ? "border-red-500" : "border-border"
               }`}
               value={(profilInfo[fieldId] as string) || ""}
               onChange={(e) =>
@@ -374,7 +377,7 @@ export default function EventDetailPage() {
             <label className="flex items-center gap-3 cursor-pointer">
               <div
                 className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                  profilInfo[fieldId] ? "bg-[#303030] border-[#303030]" : "border-gray-300"
+                  profilInfo[fieldId] ? "bg-accent-solid border-accent-solid" : "border-border"
                 }`}
                 onClick={() =>
                   setProfilInfo((prev) => ({
@@ -383,9 +386,9 @@ export default function EventDetailPage() {
                   }))
                 }
               >
-                {Boolean(profilInfo[fieldId]) && <Check className="w-4 h-4 text-white" />}
+                {Boolean(profilInfo[fieldId]) && <Check className="w-4 h-4 text-accent-solid-text" />}
               </div>
-              <span className="text-base font-semibold text-[#303030]">
+              <span className="text-base font-semibold text-primary">
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </span>
@@ -398,7 +401,7 @@ export default function EventDetailPage() {
       case "select":
         return (
           <div key={fieldId} className="mb-4">
-            <label className="block text-base font-semibold text-[#303030] mb-2">
+            <label className="block text-base font-semibold text-primary mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -409,8 +412,8 @@ export default function EventDetailPage() {
                   type="button"
                   className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
                     profilInfo[fieldId] === option
-                      ? "bg-[#303030] text-white border-[#303030]"
-                      : "border-gray-200 text-[#303030] hover:border-gray-300"
+                      ? "bg-accent-solid text-accent-solid-text border-accent-solid"
+                      : "border-border text-primary hover:border-border"
                   }`}
                   onClick={() =>
                     setProfilInfo((prev) => ({
@@ -431,7 +434,7 @@ export default function EventDetailPage() {
         const selectedValues = (profilInfo[fieldId] as string[]) || [];
         return (
           <div key={fieldId} className="mb-4">
-            <label className="block text-base font-semibold text-[#303030] mb-2">
+            <label className="block text-base font-semibold text-primary mb-2">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -444,8 +447,8 @@ export default function EventDetailPage() {
                     type="button"
                     className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
                       isSelected
-                        ? "bg-[#303030] text-white border-[#303030]"
-                        : "border-gray-200 text-[#303030] hover:border-gray-300"
+                        ? "bg-accent-solid text-accent-solid-text border-accent-solid"
+                        : "border-border text-primary hover:border-border"
                     }`}
                     onClick={() => {
                       setProfilInfo((prev) => {
@@ -462,10 +465,10 @@ export default function EventDetailPage() {
                   >
                     <div
                       className={`w-5 h-5 rounded border flex items-center justify-center ${
-                        isSelected ? "bg-white border-white" : "border-gray-300"
+                        isSelected ? "bg-accent-solid-text border-accent-solid-text" : "border-border"
                       }`}
                     >
-                      {isSelected && <Check className="w-3 h-3 text-[#303030]" />}
+                      {isSelected && <Check className="w-3 h-3 text-accent-solid" />}
                     </div>
                     {option}
                   </button>
@@ -525,10 +528,10 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+      <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
+          <p className="text-muted">Chargement...</p>
         </div>
       </div>
     );
@@ -536,7 +539,7 @@ export default function EventDetailPage() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+      <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error || "Evenement non trouve"}</p>
           <Link
@@ -551,32 +554,42 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header - Like mobile _layout.tsx */}
-      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/events")}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6 text-[#303030]" />
-          </button>
-
-          {userType === "orga" ? (
+    <div className="min-h-screen bg-page">
+      {/* Header */}
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50">
+        <div className="absolute inset-0 bg-page pointer-events-none" />
+        <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+              onClick={() => router.push("/events")}
+              className="p-1.5 rounded-lg hover:bg-hover transition-colors"
             >
-              <Trash2 className="w-6 h-6 text-red-500" />
+              <ArrowLeft className="w-5 h-5 text-primary" />
             </button>
-          ) : (
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Flag className="w-6 h-6 text-[#303030]" />
-            </button>
-          )}
+            <Link href="/">
+              <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
+              <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
+            </Link>
+          </div>
+          <DesktopNav />
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="md:hidden"><ThemeToggle /></div>
+            {userType === "orga" ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="p-2 rounded-lg hover:bg-hover transition-colors"
+              >
+                <Flag className="w-5 h-5 text-primary" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -607,8 +620,8 @@ export default function EventDetailPage() {
           </div>
 
           {/* Event Details */}
-          <div className="px-6 py-6">
-            <h1 className="font-poppins text-2xl font-bold text-[#303030] mb-4">
+          <div className="px-6 pt-10 pb-20 md:py-6">
+            <h1 className="font-poppins text-2xl font-bold text-primary mb-4">
               {event.name}
             </h1>
 
@@ -617,43 +630,43 @@ export default function EventDetailPage() {
               {/* Physical event date and location (if exists) */}
               {event.hasPhysicalEvent && (
                 <>
-                  <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                    <Calendar className="w-5 h-5 text-[#303030] mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-badge rounded-xl">
+                    <Calendar className="w-5 h-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-semibold text-sm text-[#303030]">Date de l'evenement</p>
-                      <p className="text-sm text-gray-600">{event.physicalDate}</p>
+                      <p className="font-semibold text-sm text-primary">Date de l'evenement</p>
+                      <p className="text-sm text-muted">{event.physicalDate}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                    <MapPin className="w-5 h-5 text-[#303030] mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-badge rounded-xl">
+                    <MapPin className="w-5 h-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-semibold text-sm text-[#303030]">Lieu</p>
-                      <p className="text-sm text-gray-600">{event.location || 'Lieu a confirmer'}</p>
+                      <p className="font-semibold text-sm text-primary">Lieu</p>
+                      <p className="text-sm text-muted">{event.location || 'Lieu a confirmer'}</p>
                     </div>
                   </div>
                 </>
               )}
 
               {/* App availability dates (always shown) */}
-              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl">
+              <div className="flex items-start gap-3 p-4 bg-[#1271FF]/10 rounded-xl">
                 <Calendar className="w-5 h-5 text-[#1271FF] mt-0.5" />
                 <div>
-                  <p className="font-semibold text-sm text-[#303030]">Disponibilite de l'app</p>
-                  <p className="text-sm text-gray-600">{event.appDate}</p>
+                  <p className="font-semibold text-sm text-primary">Disponibilite de l'app</p>
+                  <p className="text-sm text-muted">{event.appDate}</p>
                   <p className="text-xs text-[#1271FF] mt-1">Periode pour swiper, matcher et discuter</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-[#F5F5F5] rounded-xl">
-                <Users className="w-5 h-5 text-[#303030] mt-0.5" />
+              <div className="flex items-start gap-3 p-4 bg-badge rounded-xl">
+                <Users className="w-5 h-5 text-primary mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-sm text-[#303030]">Participants</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-semibold text-sm text-primary">Participants</p>
+                  <p className="text-sm text-muted">
                     {event.participants}/{event.maxParticipants} inscrits
                   </p>
                   {/* Progress Bar */}
-                  <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden mt-2">
+                  <div className="w-full h-2 bg-[#1271FF]/20 rounded-full overflow-hidden mt-2">
                     <div
                       className="h-full bg-[#1271FF] rounded-full transition-all"
                       style={{
@@ -667,10 +680,10 @@ export default function EventDetailPage() {
 
             {/* Description */}
             <div className="mb-6">
-              <h2 className="font-semibold text-lg text-[#303030] mb-3">
+              <h2 className="font-semibold text-lg text-primary mb-3">
                 A propos de l'evenement
               </h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words hyphens-auto">
+              <p className="text-muted leading-relaxed whitespace-pre-wrap break-words hyphens-auto">
                 {event.description}
               </p>
             </div>
@@ -678,10 +691,10 @@ export default function EventDetailPage() {
             {/* Organizer Section */}
             {event.orgaName && (
               <div className="mb-6">
-                <h2 className="font-semibold text-lg text-[#303030] mb-3">
+                <h2 className="font-semibold text-lg text-primary mb-3">
                   Organisateur
                 </h2>
-                <div className="flex items-center gap-3 p-4 bg-[#F5F5F5] rounded-xl">
+                <div className="flex items-center gap-3 p-4 bg-badge rounded-xl">
                   {event.orgaLogo ? (
                     <img
                       src={event.orgaLogo}
@@ -696,8 +709,8 @@ export default function EventDetailPage() {
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold text-[#303030]">{event.orgaName}</p>
-                    <p className="text-xs text-gray-600">Organisateur</p>
+                    <p className="font-semibold text-primary">{event.orgaName}</p>
+                    <p className="text-xs text-muted">Organisateur</p>
                   </div>
                 </div>
               </div>
@@ -707,7 +720,7 @@ export default function EventDetailPage() {
       </main>
 
       {/* Fixed Action Buttons */}
-      <div ref={footerRef} className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-6">
+      <div ref={footerRef} className="fixed bottom-20 md:bottom-0 left-0 right-0 bg-card border-t border-border p-6">
         <div className="max-w-4xl mx-auto">
           {userType === "orga" ? (
             /* Organizer actions - Modify, Delete, View Participants */
@@ -730,7 +743,7 @@ export default function EventDetailPage() {
               <div className="flex gap-3">
                 <Link
                   href={`/events/${eventId}/participants`}
-                  className={`${event.hasWhitelist ? "flex-1" : "w-full"} flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors`}
+                  className={`${event.hasWhitelist ? "flex-1" : "w-full"} flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-primary font-medium hover:bg-hover transition-colors`}
                 >
                   <UserCheck className="w-5 h-5" />
                   Participants ({event.participants})
@@ -738,7 +751,7 @@ export default function EventDetailPage() {
                 {event.hasWhitelist && (
                   <Link
                     href={`/events/${eventId}/whitelist`}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-primary font-medium hover:bg-hover transition-colors"
                   >
                     <Shield className="w-5 h-5" />
                     Whitelist
@@ -779,7 +792,7 @@ export default function EventDetailPage() {
               </div>
               <Link
                 href={`/events/${eventId}/environment/messages`}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-badge text-primary font-medium hover:bg-hover transition-colors"
               >
                 Voir mes conversations (lecture seule)
               </Link>
@@ -797,7 +810,7 @@ export default function EventDetailPage() {
               </button>
               <Link
                 href={`/events/${eventId}/environment/swiper`}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-[#303030] text-white font-semibold hover:bg-[#404040] transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-accent-solid text-accent-solid-text font-semibold hover:opacity-90 transition-colors"
               >
                 <LogIn className="w-5 h-5" />
                 Entrer
@@ -814,7 +827,7 @@ export default function EventDetailPage() {
               <button
                 onClick={handleRegisterClick}
                 disabled={registering || checkingEligibility || event.participants >= event.maxParticipants}
-                className="w-full py-4 rounded-xl bg-[#303030] text-white font-semibold hover:bg-[#404040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl bg-accent-solid text-accent-solid-text font-semibold hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {checkingEligibility
                   ? "Verification..."
@@ -836,18 +849,18 @@ export default function EventDetailPage() {
             className="absolute inset-0 bg-black/50"
             onClick={() => !deleting && setShowDeleteConfirm(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+          <div className="relative bg-modal rounded-2xl p-6 max-w-sm mx-4 w-full">
+            <h3 className="font-semibold text-lg text-primary mb-2">
               Supprimer l'evenement
             </h3>
-            <p className="text-gray-600 text-sm mb-6">
+            <p className="text-muted text-sm mb-6">
               Etes-vous sur de vouloir supprimer cet evenement ? Cette action est irreversible.
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleting}
-                className="w-full py-3 rounded-xl text-[#303030] font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-xl text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
               >
                 Annuler
               </button>
@@ -870,17 +883,17 @@ export default function EventDetailPage() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowReportModal(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+          <div className="relative bg-modal rounded-2xl p-6 max-w-sm mx-4 w-full">
+            <h3 className="font-semibold text-lg text-primary mb-2">
               Signaler l'evenement
             </h3>
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-muted text-sm mb-4">
               Pour quelle raison souhaitez-vous signaler cet evenement ?
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowReportModal(false)}
-                className="w-full py-3 rounded-xl text-[#303030] font-medium hover:bg-gray-50 transition-colors"
+                className="w-full py-3 rounded-xl text-primary font-medium hover:bg-hover transition-colors"
               >
                 Annuler
               </button>
@@ -914,11 +927,11 @@ export default function EventDetailPage() {
             className="absolute inset-0 bg-black/50"
             onClick={() => !registering && setShowRegistrationModal(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 max-w-lg mx-4 w-full max-h-[85vh] flex flex-col">
-            <h3 className="font-semibold text-lg text-[#303030] mb-2">
+          <div className="relative bg-modal rounded-2xl p-6 max-w-lg mx-4 w-full max-h-[85vh] flex flex-col">
+            <h3 className="font-semibold text-lg text-primary mb-2">
               Inscription a l'evenement
             </h3>
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-muted text-sm mb-4">
               Completez votre profil pour cet evenement.
             </p>
 
@@ -926,10 +939,10 @@ export default function EventDetailPage() {
               {/* Photos Section */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Camera className="w-5 h-5 text-[#303030]" />
-                  <h4 className="font-semibold text-[#303030]">Vos photos</h4>
+                  <Camera className="w-5 h-5 text-primary" />
+                  <h4 className="font-semibold text-primary">Vos photos</h4>
                 </div>
-                <p className="text-gray-600 text-sm mb-3">
+                <p className="text-muted text-sm mb-3">
                   Ajoutez des photos pour que les autres participants puissent vous decouvrir.
                 </p>
                 <PhotoManager
@@ -941,12 +954,12 @@ export default function EventDetailPage() {
 
               {/* Custom Fields Section */}
               {event.customFields && event.customFields.length > 0 && (
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4 border-t border-border">
                   <div className="flex items-center gap-2 mb-3">
-                    <Edit2 className="w-5 h-5 text-[#303030]" />
-                    <h4 className="font-semibold text-[#303030]">Informations demandees</h4>
+                    <Edit2 className="w-5 h-5 text-primary" />
+                    <h4 className="font-semibold text-primary">Informations demandees</h4>
                   </div>
-                  <p className="text-gray-600 text-sm mb-4">
+                  <p className="text-muted text-sm mb-4">
                     L'organisateur demande les informations suivantes.
                   </p>
                   {event.customFields.map((field) => renderCustomField(field))}
@@ -954,7 +967,7 @@ export default function EventDetailPage() {
               )}
             </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+            <div className="flex gap-3 mt-6 pt-4 border-t border-border">
               <button
                 onClick={() => {
                   setShowRegistrationModal(false);
@@ -962,14 +975,14 @@ export default function EventDetailPage() {
                   setProfilInfo({});
                 }}
                 disabled={registering}
-                className="flex-1 py-3 rounded-xl bg-gray-100 text-[#303030] font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-badge text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={handleConfirmProfile}
                 disabled={registering}
-                className="flex-1 py-3 rounded-xl bg-[#303030] text-white font-medium hover:bg-[#404040] transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-accent-solid text-accent-solid-text font-medium hover:opacity-90 transition-colors disabled:opacity-50"
               >
                 {registering ? "Inscription..." : "S'inscrire"}
               </button>
@@ -977,6 +990,9 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Bottom Navigation for users */}
+      <BottomNavigation userType={userType} />
     </div>
   );
 }

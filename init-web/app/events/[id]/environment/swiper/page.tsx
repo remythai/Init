@@ -59,6 +59,8 @@ export default function SwiperPage() {
 
   // Animation state: track which card is exiting and in which direction
   const [exitingCard, setExitingCard] = useState<{ index: number; direction: "left" | "right" } | null>(null);
+  // Feedback animation (heart/cross icon)
+  const [actionFeedback, setActionFeedback] = useState<"like" | "pass" | null>(null);
 
   // Drag state
   const [dragState, setDragState] = useState<{
@@ -268,6 +270,9 @@ export default function SwiperPage() {
     const cardIndex = currentIndex;
     const targetUserId = currentProfile.user_id;
 
+    // Show feedback icon
+    setActionFeedback(direction === "right" ? "like" : "pass");
+
     // Start exit animation for current card
     setExitingCard({ index: cardIndex, direction });
 
@@ -296,6 +301,7 @@ export default function SwiperPage() {
       setCurrentIndex((prev) => prev + 1);
       setCurrentImageIndex(0);
       setExitingCard(null);
+      setActionFeedback(null);
       setSwiping(false);
 
       // Show match modal after card is gone
@@ -463,7 +469,7 @@ export default function SwiperPage() {
     return (
       <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#303030]">Chargement des profils...</p>
         </div>
       </div>
@@ -542,14 +548,14 @@ export default function SwiperPage() {
       {newUserNotification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-[#1271FF] text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-hover rounded-full flex items-center justify-center">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
               <p className="font-medium">{newUserNotification.user.firstname} a rejoint !</p>
-              <p className="text-sm text-white/80">Nouveau profil disponible</p>
+              <p className="text-sm text-secondary">Nouveau profil disponible</p>
             </div>
-            <button onClick={() => setNewUserNotification(null)} className="ml-2 text-white/60 hover:text-white">
+            <button onClick={() => setNewUserNotification(null)} className="ml-2 text-muted hover:text-white">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -557,8 +563,8 @@ export default function SwiperPage() {
       )}
 
       {/* Card Container */}
-      <div className="flex-1 px-4 pb-2 min-h-0">
-        <div className="h-full max-w-lg mx-auto relative">
+      <div className="flex-1 px-6 pb-3 pt-1 min-h-0">
+        <div className="h-[95%] max-w-lg mx-auto relative">
           {!isFinished && currentProfile ? (
             <>
               {/* Next Card (behind) - shown during animation or when there's a next profile */}
@@ -589,7 +595,7 @@ export default function SwiperPage() {
                       transition: dragState?.isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    <div className="w-full h-full bg-white rounded-[32px] shadow-lg overflow-hidden">
+                    <div className="w-full h-full bg-white rounded-none shadow-lg overflow-hidden">
                       <div
                         className="w-full h-full bg-cover bg-center"
                         style={{ backgroundImage: `url(${getProfileImage(nextProfile)})` }}
@@ -609,7 +615,7 @@ export default function SwiperPage() {
                           </div>
                         )}
                         {/* Name for next card */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-5 pb-4">
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
                           <div className="flex items-center justify-between">
                             <h2 className="text-white text-[28px] font-bold flex-1">
                               {nextProfile.firstname}
@@ -632,7 +638,7 @@ export default function SwiperPage() {
               {!exitingCard && (
                 <div
                   ref={cardRef}
-                  className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                  className="absolute inset-1 md:inset-0 cursor-grab active:cursor-grabbing"
                   style={{
                     ...getDragTransform(),
                     transition: dragState?.isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -645,12 +651,25 @@ export default function SwiperPage() {
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                 >
-                  <div className="w-full h-full bg-white rounded-[32px] shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-white rounded-none shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(currentProfile, currentImageIndex)})` }}
                     >
                       <div className="absolute inset-0 bg-black/10" />
+
+                      {/* Action feedback overlay */}
+                      {actionFeedback && (
+                        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+                          <div className={`animate-feedback-pop ${actionFeedback === "like" ? "text-emerald-400" : "text-red-400"}`}>
+                            {actionFeedback === "like" ? (
+                              <Heart className="w-28 h-28 fill-current drop-shadow-lg" />
+                            ) : (
+                              <X className="w-28 h-28 drop-shadow-lg" strokeWidth={3} />
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* LIKE indicator during drag */}
                       <div
@@ -705,7 +724,7 @@ export default function SwiperPage() {
                       )}
 
                       {/* Bottom gradient with name */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-5 pb-4">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
                         <div className="flex items-center justify-between">
                           <h2 className="text-white text-[28px] font-bold flex-1">
                             {currentProfile.firstname}
@@ -752,7 +771,7 @@ export default function SwiperPage() {
                     transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
-                  <div className="w-full h-full bg-white rounded-[32px] shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-white rounded-none shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(profiles[exitingCard.index], currentImageIndex)})` }}
@@ -789,7 +808,7 @@ export default function SwiperPage() {
                       </div>
 
                       {/* Bottom gradient with name */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-5 pb-4">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
                         <div className="flex items-center justify-between">
                           <h2 className="text-white text-[28px] font-bold flex-1">
                             {profiles[exitingCard.index].firstname}
@@ -811,7 +830,7 @@ export default function SwiperPage() {
             <div className="h-full flex flex-col items-center justify-center text-center px-8">
               {loadingMore ? (
                 <>
-                  <div className="w-12 h-12 border-4 border-[#1271FF] border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mb-4"></div>
                   <p className="text-[#303030]">Chargement de nouveaux profils...</p>
                 </>
               ) : (
@@ -864,7 +883,7 @@ export default function SwiperPage() {
             <div className="mb-8">
               <Sparkles className="w-16 h-16 mx-auto mb-4" />
               <h2 className="text-4xl font-bold mb-2">It's a Match !</h2>
-              <p className="text-white/80">
+              <p className="text-secondary">
                 Vous et {matchedUser.firstname} vous êtes likés mutuellement
               </p>
             </div>
@@ -888,7 +907,7 @@ export default function SwiperPage() {
               </Link>
               <button
                 onClick={closeMatch}
-                className="block w-full text-white/80 hover:text-white transition-colors"
+                className="block w-full text-secondary hover:text-white transition-colors"
               >
                 Continuer à swiper
               </button>
@@ -901,10 +920,10 @@ export default function SwiperPage() {
       {showProfileModal && currentProfile && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/40"
             onClick={() => setShowProfileModal(false)}
           />
-          <div className="relative bg-white w-full max-w-lg rounded-t-3xl max-h-[80vh] overflow-hidden animate-slide-up">
+          <div className="relative bg-white w-full max-w-lg rounded-t-2xl max-h-[80vh] overflow-hidden animate-slide-up">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-[#303030]">
@@ -1005,14 +1024,14 @@ export default function SwiperPage() {
       {showReportModal && currentProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/40"
             onClick={() => !submittingReport && setShowReportModal(false)}
           />
-          <div className="relative bg-[#303030] rounded-2xl p-6 max-w-md mx-4 w-full">
-            <h3 className="font-poppins font-semibold text-xl text-white mb-2">
+          <div className="relative bg-modal rounded-2xl p-6 max-w-md mx-4 w-full">
+            <h3 className="font-poppins font-semibold text-xl text-primary mb-2">
               Signaler {currentProfile.firstname}
             </h3>
-            <p className="text-white/60 text-sm mb-6">
+            <p className="text-muted text-sm mb-6">
               {!reportType ? "Que souhaitez-vous signaler ?" : "Ajoutez des details si necessaire"}
             </p>
 
@@ -1021,21 +1040,21 @@ export default function SwiperPage() {
               <div className="space-y-3">
                 <button
                   onClick={() => setReportType('photo')}
-                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-full p-4 text-left rounded-xl bg-badge hover:bg-hover transition-colors"
                 >
-                  <div className="font-medium text-white">Photo inappropriee</div>
-                  <div className="text-sm text-white/60">Image choquante ou offensante</div>
+                  <div className="font-medium text-primary">Photo inappropriee</div>
+                  <div className="text-sm text-muted">Image choquante ou offensante</div>
                 </button>
                 <button
                   onClick={() => setReportType('profile')}
-                  className="w-full p-4 text-left rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-full p-4 text-left rounded-xl bg-badge hover:bg-hover transition-colors"
                 >
-                  <div className="font-medium text-white">Profil offensant</div>
-                  <div className="text-sm text-white/60">Informations inappropriees</div>
+                  <div className="font-medium text-primary">Profil offensant</div>
+                  <div className="text-sm text-muted">Informations inappropriees</div>
                 </button>
                 <button
                   onClick={() => setShowReportModal(false)}
-                  className="w-full py-3 text-white/60 hover:text-white transition-colors mt-2"
+                  className="w-full py-3 text-muted hover:text-primary transition-colors mt-2"
                 >
                   Annuler
                 </button>
@@ -1047,21 +1066,21 @@ export default function SwiperPage() {
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   placeholder="Decrivez la situation pour aider l'organisateur..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32 break-words hyphens-auto"
+                  className="w-full px-4 py-3 rounded-xl bg-badge border border-border text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none h-32 break-words hyphens-auto"
                   style={{ wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3">
                   <button
                     onClick={() => setReportType(null)}
                     disabled={submittingReport}
-                    className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-badge text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
                   >
                     Retour
                   </button>
                   <button
                     onClick={handleReportSubmit}
                     disabled={submittingReport}
-                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#0d5dd8] transition-colors disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-[#1271FF] text-white font-medium hover:bg-[#1271FF]/80 transition-colors disabled:opacity-50"
                   >
                     {submittingReport ? "Envoi..." : "Signaler"}
                   </button>
@@ -1083,6 +1102,23 @@ export default function SwiperPage() {
         }
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
+        }
+        @keyframes feedback-pop {
+          0% {
+            transform: scale(0.3);
+            opacity: 0;
+          }
+          40% {
+            transform: scale(1.15);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+        .animate-feedback-pop {
+          animation: feedback-pop 0.45s ease-out forwards;
         }
       `}</style>
     </div>
