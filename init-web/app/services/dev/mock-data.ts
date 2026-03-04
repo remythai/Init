@@ -1,0 +1,469 @@
+import type { User } from '../auth.service';
+import type { EventResponse, EventListResponse, CustomField } from '../event.service';
+import type { Profile, Match, Conversation, Message, MatchUserProfile } from '../match.service';
+import type { Photo, PhotosGrouped } from '../photo.service';
+import { DEV_MODE_USER_ID } from './dev-mode';
+
+// ── Helpers ──
+
+const now = new Date();
+const daysFromNow = (d: number) => new Date(now.getTime() + d * 86400000).toISOString();
+
+// ── Mock User ──
+
+export const MOCK_USER: User = {
+  id: DEV_MODE_USER_ID,
+  firstname: 'Alexandre',
+  lastname: 'Martin',
+  tel: '06 12 34 56 78',
+  mail: 'alexandre.martin@example.com',
+  birthday: '1998-03-15',
+  created_at: '2025-01-10T10:00:00Z',
+  updated_at: '2025-02-01T14:30:00Z',
+};
+
+// ── Mock Events ──
+
+export const MOCK_EVENT_RESPONSES: EventResponse[] = [
+  {
+    id: 1,
+    name: 'Soiree Networking Tech Paris',
+    location: '42 Rue de Rivoli, 75001 Paris',
+    max_participants: 80,
+    event_date: daysFromNow(7),
+    start_at: daysFromNow(7),
+    end_at: daysFromNow(7),
+    app_start_at: daysFromNow(-2),
+    app_end_at: daysFromNow(14),
+    theme: 'professionnel',
+    description: 'Rejoignez-nous pour une soiree networking dediee aux professionnels de la tech parisienne. Rencontrez des developpeurs, designers et entrepreneurs dans une ambiance decontractee.',
+    participant_count: 42,
+    is_registered: true,
+    is_blocked: false,
+    is_public: true,
+    has_whitelist: false,
+    custom_fields: [
+      { label: 'Poste actuel', type: 'text', required: true },
+      { label: 'Entreprise', type: 'text', required: false },
+      { label: 'Domaine', type: 'select', required: true, options: ['Frontend', 'Backend', 'Fullstack', 'DevOps', 'Data', 'Design', 'Product', 'Autre'] },
+    ],
+    orga_name: 'TechMeet Paris',
+    orga_logo: undefined,
+    banner_path: undefined,
+  },
+  {
+    id: 2,
+    name: 'Brunch & Rencontres Lyon',
+    location: 'Cafe de la Paix, 69002 Lyon',
+    max_participants: 40,
+    event_date: daysFromNow(12),
+    start_at: daysFromNow(12),
+    end_at: daysFromNow(12),
+    app_start_at: daysFromNow(-1),
+    app_end_at: daysFromNow(20),
+    theme: 'café',
+    description: 'Un brunch convivial pour faire de nouvelles rencontres autour de bons plats et de conversations animees.',
+    participant_count: 28,
+    is_registered: true,
+    is_blocked: false,
+    is_public: true,
+    has_whitelist: false,
+    custom_fields: [
+      { label: 'Centres d\'interet', type: 'multiselect', required: true, options: ['Cuisine', 'Voyage', 'Sport', 'Musique', 'Cinema', 'Lecture', 'Art', 'Technologie'] },
+      { label: 'Bio courte', type: 'textarea', required: false },
+    ],
+    orga_name: 'Brunch Club',
+    orga_logo: undefined,
+    banner_path: undefined,
+  },
+  {
+    id: 3,
+    name: 'Festival Electro Marseille',
+    location: 'Friche Belle de Mai, 13003 Marseille',
+    max_participants: 200,
+    event_date: daysFromNow(21),
+    start_at: daysFromNow(21),
+    end_at: daysFromNow(22),
+    app_start_at: daysFromNow(-3),
+    app_end_at: daysFromNow(25),
+    theme: 'musique',
+    description: 'Deux jours de musique electro dans le cadre industriel de la Friche. Retrouvez des artistes locaux et internationaux.',
+    participant_count: 156,
+    is_registered: false,
+    is_blocked: false,
+    is_public: true,
+    has_whitelist: false,
+    custom_fields: [],
+    orga_name: 'Electro Sud',
+    orga_logo: undefined,
+    banner_path: undefined,
+  },
+  {
+    id: 4,
+    name: 'After-Work Etudiants Bordeaux',
+    location: 'Darwin Eco-systeme, 33100 Bordeaux',
+    max_participants: 60,
+    event_date: daysFromNow(5),
+    start_at: daysFromNow(5),
+    end_at: daysFromNow(5),
+    app_start_at: daysFromNow(-1),
+    app_end_at: daysFromNow(10),
+    theme: 'étudiant',
+    description: 'Soiree decontractee reservee aux etudiants bordelais. Venez rencontrer des etudiants d\'autres cursus !',
+    participant_count: 35,
+    is_registered: false,
+    is_blocked: false,
+    is_public: true,
+    has_whitelist: false,
+    custom_fields: [
+      { label: 'Ecole / Universite', type: 'text', required: true },
+      { label: 'Annee d\'etude', type: 'select', required: true, options: ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat', 'Autre'] },
+    ],
+    orga_name: 'BDE Connect',
+    orga_logo: undefined,
+    banner_path: undefined,
+  },
+  {
+    id: 5,
+    name: 'Tournoi Sportif Nantes',
+    location: 'Parc de la Beaujoire, 44300 Nantes',
+    max_participants: 100,
+    event_date: daysFromNow(15),
+    start_at: daysFromNow(15),
+    end_at: daysFromNow(15),
+    app_start_at: daysFromNow(-2),
+    app_end_at: daysFromNow(18),
+    theme: 'sport',
+    description: 'Tournoi multi-sports ouvert a tous niveaux : volley, badminton, basket. Formez des equipes et rencontrez des sportifs !',
+    participant_count: 72,
+    is_registered: true,
+    is_blocked: false,
+    is_public: true,
+    has_whitelist: false,
+    custom_fields: [
+      { label: 'Sport prefere', type: 'radio', required: true, options: ['Volley', 'Badminton', 'Basket'] },
+      { label: 'Niveau', type: 'select', required: true, options: ['Debutant', 'Intermediaire', 'Confirme'] },
+    ],
+    orga_name: 'Sport Connect',
+    orga_logo: undefined,
+    banner_path: undefined,
+  },
+];
+
+export const MOCK_PUBLIC_EVENTS: EventListResponse = {
+  events: MOCK_EVENT_RESPONSES,
+  total: 5,
+  limit: 50,
+  offset: 0,
+};
+
+export const MOCK_REGISTERED_EVENTS: EventListResponse = {
+  events: MOCK_EVENT_RESPONSES.filter(e => e.is_registered),
+  total: 3,
+  limit: 50,
+  offset: 0,
+};
+
+// ── Mock Swiper Profiles ──
+
+export const MOCK_PROFILES: Profile[] = [
+  {
+    user_id: 101,
+    firstname: 'Camille',
+    lastname: 'Dupont',
+    birthday: '2000-06-22',
+    age: 25,
+    photos: [{ id: 1001, file_path: 'https://i.pravatar.cc/400?img=1' }, { id: 1002, file_path: 'https://i.pravatar.cc/400?img=11' }],
+    profil_info: { poste_actuel: 'Designer UX', entreprise: 'Figma', domaine: 'Design' },
+  },
+  {
+    user_id: 102,
+    firstname: 'Lucas',
+    lastname: 'Bernard',
+    birthday: '1999-01-10',
+    age: 27,
+    photos: [{ id: 1003, file_path: 'https://i.pravatar.cc/400?img=3' }],
+    profil_info: { poste_actuel: 'Developpeur Frontend', entreprise: 'Doctolib', domaine: 'Frontend' },
+  },
+  {
+    user_id: 103,
+    firstname: 'Emma',
+    lastname: 'Petit',
+    birthday: '2001-09-03',
+    age: 24,
+    photos: [{ id: 1004, file_path: 'https://i.pravatar.cc/400?img=5' }, { id: 1005, file_path: 'https://i.pravatar.cc/400?img=15' }],
+    profil_info: { poste_actuel: 'Product Manager', domaine: 'Product' },
+  },
+  {
+    user_id: 104,
+    firstname: 'Hugo',
+    lastname: 'Moreau',
+    birthday: '1997-11-28',
+    age: 28,
+    photos: [{ id: 1006, file_path: 'https://i.pravatar.cc/400?img=7' }],
+    profil_info: { poste_actuel: 'Data Scientist', entreprise: 'Datadog', domaine: 'Data' },
+  },
+  {
+    user_id: 105,
+    firstname: 'Lea',
+    lastname: 'Fournier',
+    birthday: '2000-04-17',
+    age: 25,
+    photos: [{ id: 1007, file_path: 'https://i.pravatar.cc/400?img=9' }, { id: 1008, file_path: 'https://i.pravatar.cc/400?img=19' }],
+    profil_info: { poste_actuel: 'Ingenieure DevOps', domaine: 'DevOps' },
+  },
+  {
+    user_id: 106,
+    firstname: 'Nathan',
+    lastname: 'Girard',
+    birthday: '1998-08-05',
+    age: 27,
+    photos: [{ id: 1009, file_path: 'https://i.pravatar.cc/400?img=12' }],
+    profil_info: { poste_actuel: 'Developpeur Backend', entreprise: 'OVH', domaine: 'Backend' },
+  },
+  {
+    user_id: 107,
+    firstname: 'Chloe',
+    lastname: 'Roux',
+    birthday: '2001-02-14',
+    age: 25,
+    photos: [{ id: 1010, file_path: 'https://i.pravatar.cc/400?img=16' }, { id: 1011, file_path: 'https://i.pravatar.cc/400?img=26' }],
+    profil_info: { poste_actuel: 'Fullstack Developer', domaine: 'Fullstack' },
+  },
+  {
+    user_id: 108,
+    firstname: 'Thomas',
+    lastname: 'Leroy',
+    birthday: '1999-12-01',
+    age: 26,
+    photos: [{ id: 1012, file_path: 'https://i.pravatar.cc/400?img=14' }],
+    profil_info: { poste_actuel: 'CTO', entreprise: 'Ma Startup', domaine: 'Fullstack' },
+  },
+  {
+    user_id: 109,
+    firstname: 'Manon',
+    lastname: 'Simon',
+    birthday: '2000-07-30',
+    age: 25,
+    photos: [{ id: 1013, file_path: 'https://i.pravatar.cc/400?img=20' }],
+    profil_info: { poste_actuel: 'Designer UI', domaine: 'Design' },
+  },
+  {
+    user_id: 110,
+    firstname: 'Antoine',
+    lastname: 'Laurent',
+    birthday: '1998-05-12',
+    age: 27,
+    photos: [{ id: 1014, file_path: 'https://i.pravatar.cc/400?img=8' }, { id: 1015, file_path: 'https://i.pravatar.cc/400?img=18' }],
+    profil_info: { poste_actuel: 'Entrepreneur', entreprise: 'Mon Projet', domaine: 'Product' },
+  },
+];
+
+// ── Mock Matches & Conversations ──
+
+export const MOCK_MATCHES: Match[] = [
+  {
+    id: 1,
+    user: { id: 101, firstname: 'Camille', lastname: 'Dupont', photos: [{ id: 1001, file_path: 'https://i.pravatar.cc/400?img=1' }] },
+    event_id: 1,
+    event_name: 'Soiree Networking Tech Paris',
+    created_at: daysFromNow(-3),
+  },
+  {
+    id: 2,
+    user: { id: 103, firstname: 'Emma', lastname: 'Petit', photos: [{ id: 1004, file_path: 'https://i.pravatar.cc/400?img=5' }] },
+    event_id: 1,
+    event_name: 'Soiree Networking Tech Paris',
+    created_at: daysFromNow(-1),
+  },
+  {
+    id: 3,
+    user: { id: 106, firstname: 'Nathan', lastname: 'Girard', photos: [{ id: 1009, file_path: 'https://i.pravatar.cc/400?img=12' }] },
+    event_id: 2,
+    event_name: 'Brunch & Rencontres Lyon',
+    created_at: daysFromNow(-2),
+  },
+];
+
+export const MOCK_CONVERSATIONS: Conversation[] = [
+  {
+    match_id: 1,
+    user: { id: 101, firstname: 'Camille', lastname: 'Dupont', photos: [{ id: 1001, file_path: 'https://i.pravatar.cc/400?img=1' }] },
+    last_message: { content: 'Super, on se retrouve a l\'entree ?', sent_at: daysFromNow(0), is_mine: false },
+    unread_count: 1,
+  },
+  {
+    match_id: 2,
+    user: { id: 103, firstname: 'Emma', lastname: 'Petit', photos: [{ id: 1004, file_path: 'https://i.pravatar.cc/400?img=5' }] },
+    last_message: { content: 'Enchantee ! Tu travailles dans quel domaine ?', sent_at: daysFromNow(-1), is_mine: false },
+    unread_count: 0,
+  },
+  {
+    match_id: 3,
+    user: { id: 106, firstname: 'Nathan', lastname: 'Girard', photos: [{ id: 1009, file_path: 'https://i.pravatar.cc/400?img=12' }] },
+    last_message: undefined,
+    unread_count: 0,
+  },
+];
+
+// ── Mock Messages ──
+
+type MockMessagesMap = Record<number, {
+  match: { id: number; event_id: number; event_name: string; user: { id: number; firstname: string; lastname: string; photos?: { id: number; file_path: string }[] } };
+  messages: Message[];
+}>;
+
+export const MOCK_MESSAGES: MockMessagesMap = {
+  1: {
+    match: { id: 1, event_id: 1, event_name: 'Soiree Networking Tech Paris', user: { id: 101, firstname: 'Camille', lastname: 'Dupont', photos: [{ id: 1001, file_path: 'https://i.pravatar.cc/400?img=1' }] } },
+    messages: [
+      { id: 1, match_id: 1, sender_id: DEV_MODE_USER_ID, content: 'Salut Camille ! Ravi de t\'avoir matchee, tu bosses dans le design c\'est ca ?', sent_at: daysFromNow(-3), read_at: daysFromNow(-3) },
+      { id: 2, match_id: 1, sender_id: 101, content: 'Oui exactement ! Je suis UX Designer chez Figma. Et toi ?', sent_at: daysFromNow(-3), read_at: daysFromNow(-3) },
+      { id: 3, match_id: 1, sender_id: DEV_MODE_USER_ID, content: 'Trop cool ! Moi je suis dev fullstack, on devrait bien s\'entendre pour echanger sur les process product/design', sent_at: daysFromNow(-2), read_at: daysFromNow(-2) },
+      { id: 4, match_id: 1, sender_id: 101, content: 'Carrement ! Tu comptes venir a la soiree jeudi ?', sent_at: daysFromNow(-1), read_at: daysFromNow(-1) },
+      { id: 5, match_id: 1, sender_id: DEV_MODE_USER_ID, content: 'Oui j\'y serai ! On se retrouve la-bas ?', sent_at: daysFromNow(0), read_at: daysFromNow(0) },
+      { id: 6, match_id: 1, sender_id: 101, content: 'Super, on se retrouve a l\'entree ?', sent_at: daysFromNow(0) },
+    ],
+  },
+  2: {
+    match: { id: 2, event_id: 1, event_name: 'Soiree Networking Tech Paris', user: { id: 103, firstname: 'Emma', lastname: 'Petit', photos: [{ id: 1004, file_path: 'https://i.pravatar.cc/400?img=5' }] } },
+    messages: [
+      { id: 7, match_id: 2, sender_id: 103, content: 'Salut ! On a matche, enchantee !', sent_at: daysFromNow(-1), read_at: daysFromNow(-1) },
+      { id: 8, match_id: 2, sender_id: DEV_MODE_USER_ID, content: 'Salut Emma ! Enchante aussi, comment tu vas ?', sent_at: daysFromNow(-1), read_at: daysFromNow(-1) },
+      { id: 9, match_id: 2, sender_id: 103, content: 'Enchantee ! Tu travailles dans quel domaine ?', sent_at: daysFromNow(-1), read_at: daysFromNow(-1) },
+    ],
+  },
+  3: {
+    match: { id: 3, event_id: 2, event_name: 'Brunch & Rencontres Lyon', user: { id: 106, firstname: 'Nathan', lastname: 'Girard', photos: [{ id: 1009, file_path: 'https://i.pravatar.cc/400?img=12' }] } },
+    messages: [],
+  },
+};
+
+// ── Mock All Conversations (grouped by event) ──
+
+export const MOCK_ALL_CONVERSATIONS = [
+  {
+    event: { id: 1, name: 'Soiree Networking Tech Paris' },
+    conversations: MOCK_CONVERSATIONS.filter(c => {
+      const match = MOCK_MATCHES.find(m => m.id === c.match_id);
+      return match?.event_id === 1;
+    }),
+  },
+  {
+    event: { id: 2, name: 'Brunch & Rencontres Lyon' },
+    conversations: MOCK_CONVERSATIONS.filter(c => {
+      const match = MOCK_MATCHES.find(m => m.id === c.match_id);
+      return match?.event_id === 2;
+    }),
+  },
+];
+
+// ── Mock All Matches (grouped by event) ──
+
+export const MOCK_ALL_MATCHES = {
+  total: MOCK_MATCHES.length,
+  by_event: [
+    {
+      event: { id: 1, name: 'Soiree Networking Tech Paris' },
+      matches: MOCK_MATCHES.filter(m => m.event_id === 1),
+    },
+    {
+      event: { id: 2, name: 'Brunch & Rencontres Lyon' },
+      matches: MOCK_MATCHES.filter(m => m.event_id === 2),
+    },
+  ],
+};
+
+// ── Mock Match Profiles ──
+
+export const MOCK_MATCH_PROFILES: Record<number, MatchUserProfile> = {
+  1: {
+    user_id: 101,
+    firstname: 'Camille',
+    lastname: 'Dupont',
+    birthday: '2000-06-22',
+    profil_info: { poste_actuel: 'Designer UX', entreprise: 'Figma', domaine: 'Design' },
+    photos: [{ id: 1001, file_path: 'https://i.pravatar.cc/400?img=1' }, { id: 1002, file_path: 'https://i.pravatar.cc/400?img=11' }],
+  },
+  2: {
+    user_id: 103,
+    firstname: 'Emma',
+    lastname: 'Petit',
+    birthday: '2001-09-03',
+    profil_info: { poste_actuel: 'Product Manager', domaine: 'Product' },
+    photos: [{ id: 1004, file_path: 'https://i.pravatar.cc/400?img=5' }, { id: 1005, file_path: 'https://i.pravatar.cc/400?img=15' }],
+  },
+  3: {
+    user_id: 106,
+    firstname: 'Nathan',
+    lastname: 'Girard',
+    birthday: '1998-08-05',
+    profil_info: { poste_actuel: 'Developpeur Backend', entreprise: 'OVH', domaine: 'Backend' },
+    photos: [{ id: 1009, file_path: 'https://i.pravatar.cc/400?img=12' }],
+  },
+};
+
+// ── Mock Photos ──
+
+export const MOCK_PHOTOS: Photo[] = [
+  {
+    id: 5001,
+    user_id: DEV_MODE_USER_ID,
+    file_path: 'https://i.pravatar.cc/400?img=33',
+    event_id: null,
+    display_order: 0,
+    is_primary: true,
+    created_at: daysFromNow(-30),
+    updated_at: daysFromNow(-30),
+  },
+  {
+    id: 5002,
+    user_id: DEV_MODE_USER_ID,
+    file_path: 'https://i.pravatar.cc/400?img=52',
+    event_id: null,
+    display_order: 1,
+    is_primary: false,
+    created_at: daysFromNow(-25),
+    updated_at: daysFromNow(-25),
+  },
+];
+
+export const MOCK_EVENT_PHOTOS: Photo[] = [
+  {
+    id: 5003,
+    user_id: DEV_MODE_USER_ID,
+    file_path: 'https://i.pravatar.cc/400?img=33',
+    event_id: 1,
+    display_order: 0,
+    is_primary: true,
+    created_at: daysFromNow(-10),
+    updated_at: daysFromNow(-10),
+  },
+];
+
+export const MOCK_PHOTOS_GROUPED: PhotosGrouped = {
+  general: MOCK_PHOTOS,
+  events: {
+    '1': {
+      event_name: 'Soiree Networking Tech Paris',
+      photos: MOCK_EVENT_PHOTOS,
+    },
+  },
+};
+
+// ── Mock Event Profile Data ──
+
+export const MOCK_EVENT_PROFILE: Record<string, { profil_info: Record<string, unknown>; custom_fields: CustomField[] }> = {
+  '1': {
+    custom_fields: MOCK_EVENT_RESPONSES[0].custom_fields || [],
+    profil_info: { poste_actuel: 'Developpeur Fullstack', entreprise: 'Freelance', domaine: 'Fullstack' },
+  },
+  '2': {
+    custom_fields: MOCK_EVENT_RESPONSES[1].custom_fields || [],
+    profil_info: { "centres_d'interet": ['Cuisine', 'Voyage', 'Technologie'], bio_courte: 'Passionne de tech et de bonne bouffe !' },
+  },
+  '5': {
+    custom_fields: MOCK_EVENT_RESPONSES[4].custom_fields || [],
+    profil_info: { sport_prefere: 'Volley', niveau: 'Intermediaire' },
+  },
+};

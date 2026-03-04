@@ -91,7 +91,7 @@ export default function EnvironmentLayout({
       </main>
 
       {/* Bottom Navigation - hidden on mobile when in conversation */}
-      <nav className={`flex-shrink-0 bg-card border-t border-border md:hidden ${isInConversation ? "hidden" : ""}`}>
+      <nav className={`flex-shrink-0 bg-card border-t border-border md:hidden ${isInConversation ? "hidden" : ""}`} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-lg mx-auto flex">
           {tabs.map((tab) => (
             <Link
