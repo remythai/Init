@@ -1,0 +1,116 @@
+services:
+  front:
+    image: ghcr.io/mailu/nginx:2024.06
+    container_name: mailu-front
+    restart: unless-stopped
+    env_file: mailu.env
+    ports:
+      - "127.0.0.1:8080:80"
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - "/mailu/certs:/certs"
+      - "/mailu/overrides/nginx:/overrides:ro"
+    depends_on:
+      - resolver
+    networks:
+      mailu:
+        aliases:
+          - front
+
+  resolver:
+    image: ghcr.io/mailu/unbound:2024.06
+    container_name: mailu-resolver
+    restart: unless-stopped
+    env_file: mailu.env
+    networks:
+      mailu:
+        ipv4_address: 192.168.203.254
+
+  admin:
+    image: ghcr.io/mailu/admin:2024.06
+    container_name: mailu-admin
+    restart: unless-stopped
+    env_file: mailu.env
+    volumes:
+      - "/mailu/data:/data"
+      - "/mailu/dkim:/dkim"
+    depends_on:
+      - redis
+      - resolver
+    networks:
+      - mailu
+
+  imap:
+    image: ghcr.io/mailu/dovecot:2024.06
+    container_name: mailu-imap
+    restart: unless-stopped
+    env_file: mailu.env
+    volumes:
+      - "/mailu/mail:/mail"
+      - "/mailu/overrides/dovecot:/overrides:ro"
+    depends_on:
+      - front
+      - resolver
+    networks:
+      - mailu
+
+  smtp:
+    image: ghcr.io/mailu/postfix:2024.06
+    container_name: mailu-smtp
+    restart: unless-stopped
+    env_file: mailu.env
+    volumes:
+      - "/mailu/mailqueue:/queue"
+      - "/mailu/overrides/postfix:/overrides:ro"
+    depends_on:
+      - front
+      - resolver
+    networks:
+      - mailu
+
+  antispam:
+    image: ghcr.io/mailu/rspamd:2024.06
+    container_name: mailu-antispam
+    restart: unless-stopped
+    env_file: mailu.env
+    volumes:
+      - "/mailu/filter:/var/lib/rspamd"
+      - "/mailu/overrides/rspamd:/overrides:ro"
+    depends_on:
+      - front
+      - resolver
+    networks:
+      - mailu
+
+  webmail:
+    image: ghcr.io/mailu/webmail:2024.06
+    container_name: mailu-webmail
+    restart: unless-stopped
+    env_file: mailu.env
+    volumes:
+      - "/mailu/webmail:/data"
+      - "/mailu/overrides/roundcube:/overrides:ro"
+    depends_on:
+      - front
+    networks:
+      - mailu
+
+  redis:
+    image: redis:7-alpine
+    container_name: mailu-redis
+    restart: unless-stopped
+    volumes:
+      - "/mailu/redis:/data"
+    networks:
+      - mailu
+
+networks:
+  mailu:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.203.0/24
