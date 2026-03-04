@@ -1,6 +1,8 @@
 // services/photo.service.ts
 
 import { authService } from './auth.service';
+import { isDevMode } from './dev/dev-mode';
+import { MOCK_PHOTOS, MOCK_EVENT_PHOTOS, MOCK_PHOTOS_GROUPED } from './dev/mock-data';
 
 export interface Photo {
   id: number;
@@ -31,6 +33,7 @@ class PhotoService {
    */
   getPhotoUrl(filePath: string): string {
     if (!filePath) return '';
+    if (isDevMode()) return filePath;
     return filePath;
   }
 
@@ -43,6 +46,9 @@ class PhotoService {
     eventId?: string,
     isPrimary?: boolean
   ): Promise<Photo> {
+    if (isDevMode()) {
+      return { id: Date.now(), user_id: 999, file_path: URL.createObjectURL(file), event_id: eventId ? parseInt(eventId) : null, display_order: 0, is_primary: isPrimary || false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    }
     const token = authService.getToken();
     if (!token) {
       throw new Error('Non authentifié');
@@ -91,6 +97,7 @@ class PhotoService {
    * Get photos (general or for a specific event)
    */
   async getPhotos(eventId?: string): Promise<Photo[]> {
+    if (isDevMode()) return eventId ? MOCK_EVENT_PHOTOS.filter(p => p.event_id === parseInt(eventId)) : MOCK_PHOTOS;
     const url = eventId
       ? `/api/users/photos?eventId=${eventId}`
       : '/api/users/photos';
@@ -109,6 +116,7 @@ class PhotoService {
    * Get all photos grouped by context (general + events)
    */
   async getAllPhotos(): Promise<PhotosGrouped> {
+    if (isDevMode()) return MOCK_PHOTOS_GROUPED;
     const response = await authService.authenticatedFetch('/api/users/photos/all');
     const data = await response.json();
 
@@ -123,6 +131,7 @@ class PhotoService {
    * Delete a photo
    */
   async deletePhoto(photoId: number): Promise<void> {
+    if (isDevMode()) return;
     const response = await authService.authenticatedFetch(`/api/users/photos/${photoId}`, {
       method: 'DELETE',
     });
@@ -138,6 +147,11 @@ class PhotoService {
    * Set a photo as primary
    */
   async setPrimaryPhoto(photoId: number): Promise<Photo> {
+    if (isDevMode()) {
+      const photo = [...MOCK_PHOTOS, ...MOCK_EVENT_PHOTOS].find(p => p.id === photoId);
+      if (photo) return { ...photo, is_primary: true };
+      return { id: photoId, user_id: 999, file_path: '', event_id: null, display_order: 0, is_primary: true, created_at: '', updated_at: '' };
+    }
     const response = await authService.authenticatedFetch(`/api/users/photos/${photoId}/primary`, {
       method: 'PUT',
     });
@@ -155,6 +169,7 @@ class PhotoService {
    * Reorder photos
    */
   async reorderPhotos(photoIds: number[], eventId?: string): Promise<Photo[]> {
+    if (isDevMode()) return eventId ? MOCK_EVENT_PHOTOS : MOCK_PHOTOS;
     const response = await authService.authenticatedFetch('/api/users/photos/reorder', {
       method: 'PUT',
       body: JSON.stringify({
@@ -176,6 +191,7 @@ class PhotoService {
    * Copy photos to an event
    */
   async copyPhotosToEvent(eventId: string, photoIds?: number[]): Promise<Photo[]> {
+    if (isDevMode()) return MOCK_EVENT_PHOTOS;
     const response = await authService.authenticatedFetch('/api/users/photos/copy-to-event', {
       method: 'POST',
       body: JSON.stringify({

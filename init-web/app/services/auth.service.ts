@@ -1,5 +1,8 @@
 // services/auth.service.ts
 
+import { isDevMode } from './dev/dev-mode';
+import { MOCK_USER } from './dev/mock-data';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface LoginCredentials {
@@ -192,6 +195,7 @@ class AuthService {
   }
 
   async logout(): Promise<void> {
+    if (isDevMode()) { this.clearAuth(); return; }
     const token = this.getToken();
     const userType = this.getUserType();
 
@@ -313,12 +317,14 @@ class AuthService {
   }
 
   isAuthenticated(): boolean {
+    if (isDevMode()) return true;
     const token = this.getToken();
     const userType = this.getUserType();
     return !!token && !!userType;
   }
 
   async validateAndGetUserType(): Promise<'user' | 'orga' | null> {
+    if (isDevMode()) return 'user';
     let token = this.getToken();
     const userType = this.getUserType();
 
@@ -371,6 +377,7 @@ class AuthService {
   }
 
   async getCurrentProfile(): Promise<User | Orga | null> {
+    if (isDevMode()) return MOCK_USER;
     try {
       const userType = this.getUserType();
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
@@ -485,6 +492,7 @@ class AuthService {
   }
 
   async validateToken(): Promise<boolean> {
+    if (isDevMode()) return true;
     let token = this.getToken();
 
     if (!token) {

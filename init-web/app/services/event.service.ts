@@ -1,5 +1,7 @@
 // services/event.service.ts
 import { authService } from './auth.service';
+import { isDevMode } from './dev/dev-mode';
+import { MOCK_PUBLIC_EVENTS, MOCK_REGISTERED_EVENTS, MOCK_EVENT_RESPONSES, MOCK_EVENT_PROFILE } from './dev/mock-data';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -110,6 +112,7 @@ class EventService {
     limit?: number;
     offset?: number;
   }): Promise<EventListResponse> {
+    if (isDevMode()) return MOCK_PUBLIC_EVENTS;
     const params = new URLSearchParams();
 
     if (filters?.upcoming !== undefined) {
@@ -151,6 +154,7 @@ class EventService {
     limit?: number;
     offset?: number;
   }): Promise<EventListResponse> {
+    if (isDevMode()) return MOCK_REGISTERED_EVENTS;
     const params = new URLSearchParams();
 
     if (filters?.upcoming !== undefined) {
@@ -180,6 +184,7 @@ class EventService {
   }
 
   async getMyOrgaEvents(): Promise<EventResponse[]> {
+    if (isDevMode()) return [];
     const response = await authService.authenticatedFetch('/api/events/orga/my-events');
 
     if (!response.ok) {
@@ -198,6 +203,10 @@ class EventService {
     requires_password?: boolean;
     custom_fields?: CustomField[];
   }> {
+    if (isDevMode()) {
+      const evt = MOCK_EVENT_RESPONSES.find(e => e.id === parseInt(eventId));
+      return { eligible: true, custom_fields: evt?.custom_fields || [] };
+    }
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/check-eligibility`
     );
@@ -212,6 +221,7 @@ class EventService {
   }
 
   async registerToEvent(eventId: string, data?: { profil_info?: unknown; access_password?: string }) {
+    if (isDevMode()) return;
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/register`,
       {
@@ -227,6 +237,7 @@ class EventService {
   }
 
   async unregisterFromEvent(eventId: string): Promise<void> {
+    if (isDevMode()) return;
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/register`,
       { method: 'DELETE' }
@@ -274,6 +285,11 @@ class EventService {
   }
 
   async getEventById(id: string): Promise<EventResponse> {
+    if (isDevMode()) {
+      const evt = MOCK_EVENT_RESPONSES.find(e => e.id === parseInt(id));
+      if (!evt) throw new Error('Événement non trouvé');
+      return evt;
+    }
     const userType = authService.getUserType();
     const endpoint = userType === 'orga'
       ? `/api/events/${id}`
@@ -353,6 +369,7 @@ class EventService {
     profil_info: Record<string, unknown>;
     custom_fields: CustomField[];
   }> {
+    if (isDevMode()) return MOCK_EVENT_PROFILE[eventId] || { profil_info: {}, custom_fields: [] };
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/my-profile`
     );
@@ -367,6 +384,7 @@ class EventService {
   }
 
   async updateMyEventProfile(eventId: string, profilInfo: Record<string, unknown>): Promise<void> {
+    if (isDevMode()) return;
     const response = await authService.authenticatedFetch(
       `/api/events/${eventId}/register`,
       {

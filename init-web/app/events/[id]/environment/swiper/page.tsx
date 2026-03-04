@@ -467,10 +467,10 @@ export default function SwiperPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+      <div className="h-full flex items-center justify-center bg-page">
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#303030]">Chargement des profils...</p>
+          <p className="text-primary">Chargement des profils...</p>
         </div>
       </div>
     );
@@ -478,12 +478,12 @@ export default function SwiperPage() {
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+      <div className="h-full flex items-center justify-center bg-page">
         <div className="text-center p-8">
           <p className="text-red-500 mb-4">{error}</p>
           <button
             onClick={loadProfiles}
-            className="bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+            className="bg-accent-solid text-accent-solid-text px-6 py-3 rounded-full font-medium hover:opacity-90 transition-colors"
           >
             Réessayer
           </button>
@@ -494,20 +494,20 @@ export default function SwiperPage() {
 
   if (isBlocked) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+      <div className="h-full flex items-center justify-center bg-page">
         <div className="text-center p-8 max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <X className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="text-xl font-semibold text-[#303030] mb-3">
+          <h2 className="text-xl font-semibold text-primary mb-3">
             Accès bloqué
           </h2>
-          <p className="text-[#6B7280] mb-6">
+          <p className="text-muted mb-6">
             Vous avez été retiré de cet événement par l'organisateur.
           </p>
           <Link
             href={`/events/${eventId}/environment/messages`}
-            className="inline-block bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+            className="inline-block bg-accent-solid text-accent-solid-text px-6 py-3 rounded-full font-medium hover:opacity-90 transition-colors"
           >
             Voir mes conversations
           </Link>
@@ -518,20 +518,20 @@ export default function SwiperPage() {
 
   if (isEventExpired) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+      <div className="h-full flex items-center justify-center bg-page">
         <div className="text-center p-8 max-w-md">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <Clock className="w-10 h-10 text-orange-500" />
           </div>
-          <h2 className="text-xl font-semibold text-[#303030] mb-3">
+          <h2 className="text-xl font-semibold text-primary mb-3">
             Événement terminé
           </h2>
-          <p className="text-[#6B7280] mb-6">
+          <p className="text-muted mb-6">
             La période de disponibilité de cet événement est terminée. Vous ne pouvez plus découvrir de nouveaux profils.
           </p>
           <Link
             href={`/events/${eventId}/environment/messages`}
-            className="inline-block bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+            className="inline-block bg-accent-solid text-accent-solid-text px-6 py-3 rounded-full font-medium hover:opacity-90 transition-colors"
           >
             Voir mes conversations
           </Link>
@@ -543,7 +543,7 @@ export default function SwiperPage() {
   const isFinished = currentIndex >= profiles.length;
 
   return (
-    <div className="h-full flex flex-col bg-[#F5F5F5] pt-3">
+    <div className="h-full flex flex-col bg-page pt-3">
       {/* New User Notification */}
       {newUserNotification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
@@ -595,7 +595,7 @@ export default function SwiperPage() {
                       transition: dragState?.isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    <div className="w-full h-full bg-white rounded-none shadow-lg overflow-hidden">
+                    <div className="w-full h-full bg-card rounded-none shadow-lg overflow-hidden">
                       <div
                         className="w-full h-full bg-cover bg-center"
                         style={{ backgroundImage: `url(${getProfileImage(nextProfile)})` }}
@@ -651,7 +651,7 @@ export default function SwiperPage() {
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                 >
-                  <div className="w-full h-full bg-white rounded-none shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-card rounded-none shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(currentProfile, currentImageIndex)})` }}
@@ -771,7 +771,7 @@ export default function SwiperPage() {
                     transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
-                  <div className="w-full h-full bg-white rounded-none shadow-xl overflow-hidden">
+                  <div className="w-full h-full bg-card rounded-none shadow-xl overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${getProfileImage(profiles[exitingCard.index], currentImageIndex)})` }}
@@ -831,20 +831,20 @@ export default function SwiperPage() {
               {loadingMore ? (
                 <>
                   <div className="w-12 h-12 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin mb-4"></div>
-                  <p className="text-[#303030]">Chargement de nouveaux profils...</p>
+                  <p className="text-primary">Chargement de nouveaux profils...</p>
                 </>
               ) : (
                 <>
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
-                    <Heart className="w-10 h-10 text-[#303030]" />
+                  <div className="w-20 h-20 bg-card rounded-full flex items-center justify-center mb-4 shadow-md">
+                    <Heart className="w-10 h-10 text-primary" />
                   </div>
-                  <h2 className="text-xl font-semibold text-[#303030] mb-2">
+                  <h2 className="text-xl font-semibold text-primary mb-2">
                     Plus de profils disponibles
                   </h2>
-                  <p className="text-[#6B7280] mb-6">Revenez plus tard !</p>
+                  <p className="text-muted mb-6">Revenez plus tard !</p>
                   <Link
                     href={`/events/${eventId}`}
-                    className="bg-[#303030] text-white px-6 py-3 rounded-full font-medium hover:bg-[#404040] transition-colors"
+                    className="bg-accent-solid text-accent-solid-text px-6 py-3 rounded-full font-medium hover:opacity-90 transition-colors"
                   >
                     Retour à l'événement
                   </Link>
@@ -861,7 +861,7 @@ export default function SwiperPage() {
           <button
             onClick={() => handleSwipe("left")}
             disabled={swiping}
-            className="w-[60px] h-[60px] bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-red-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+            className="w-[60px] h-[60px] bg-card rounded-full shadow-lg flex items-center justify-center border-2 border-red-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
           >
             <X className="w-7 h-7 text-red-500" />
           </button>
@@ -869,7 +869,7 @@ export default function SwiperPage() {
           <button
             onClick={() => handleSwipe("right")}
             disabled={swiping}
-            className="w-[60px] h-[60px] bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-emerald-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+            className="w-[60px] h-[60px] bg-card rounded-full shadow-lg flex items-center justify-center border-2 border-emerald-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
           >
             <Heart className="w-7 h-7 text-emerald-500" />
           </button>
@@ -901,7 +901,7 @@ export default function SwiperPage() {
             <div className="space-y-3">
               <Link
                 href={`/events/${eventId}/environment/messages?match=${matchId}`}
-                className="block w-full bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors"
+                className="block w-full bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-white/80 transition-colors"
               >
                 Envoyer un message
               </Link>
@@ -923,10 +923,10 @@ export default function SwiperPage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowProfileModal(false)}
           />
-          <div className="relative bg-white w-full max-w-lg rounded-t-2xl max-h-[80vh] overflow-hidden animate-slide-up">
+          <div className="relative bg-card w-full max-w-lg rounded-t-2xl max-h-[80vh] overflow-hidden animate-slide-up">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-[#303030]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h2 className="text-2xl font-bold text-primary">
                 {currentProfile.firstname}
                 {getAge(currentProfile) && (
                   <span className="font-normal">, {getAge(currentProfile)}</span>
@@ -934,7 +934,7 @@ export default function SwiperPage() {
               </h2>
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="w-8 h-8 flex items-center justify-center text-[#303030] hover:bg-gray-100 rounded-full transition-colors"
+                className="w-8 h-8 flex items-center justify-center text-primary hover:bg-hover rounded-full transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -945,7 +945,7 @@ export default function SwiperPage() {
               {/* Custom fields from profil_info (defined by organizer) */}
               {currentProfile.profil_info && Object.keys(currentProfile.profil_info).length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-[#303030] mb-3">Informations</h3>
+                  <h3 className="text-lg font-semibold text-primary mb-3">Informations</h3>
                   <div className="space-y-2">
                     {Object.entries(currentProfile.profil_info).map(([key, value]) => {
                       // Skip if value is empty, null, or an empty array
@@ -954,13 +954,13 @@ export default function SwiperPage() {
                       // Handle arrays (like interests)
                       if (Array.isArray(value)) {
                         return (
-                          <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200">
-                            <p className="text-sm font-semibold text-[#303030] mb-2">{formatFieldLabel(key)}</p>
+                          <div key={key} className="bg-badge p-3 rounded-xl border border-border">
+                            <p className="text-sm font-semibold text-primary mb-2">{formatFieldLabel(key)}</p>
                             <div className="flex flex-wrap gap-2">
                               {value.map((item, idx) => (
                                 <span
                                   key={idx}
-                                  className="px-3 py-1.5 bg-indigo-100 text-[#303030] rounded-full text-sm border border-indigo-200"
+                                  className="px-3 py-1.5 bg-card text-primary rounded-full text-sm border border-border"
                                 >
                                   {String(item)}
                                 </span>
@@ -972,9 +972,9 @@ export default function SwiperPage() {
 
                       // Handle regular values
                       return (
-                        <div key={key} className="bg-[#F9FAFB] p-3 rounded-xl border border-gray-200 overflow-hidden">
-                          <p className="text-sm font-semibold text-[#303030] mb-1">{formatFieldLabel(key)}</p>
-                          <p className="text-[#4B5563] whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
+                        <div key={key} className="bg-badge p-3 rounded-xl border border-border overflow-hidden">
+                          <p className="text-sm font-semibold text-primary mb-1">{formatFieldLabel(key)}</p>
+                          <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                         </div>
                       );
                     })}
@@ -985,7 +985,7 @@ export default function SwiperPage() {
               {/* Show message if no profile info */}
               {(!currentProfile.profil_info || Object.keys(currentProfile.profil_info).length === 0) && (
                 <div className="text-center py-8">
-                  <p className="text-[#6B7280]">Aucune information de profil</p>
+                  <p className="text-muted">Aucune information de profil</p>
                 </div>
               )}
 
@@ -993,14 +993,14 @@ export default function SwiperPage() {
             </div>
 
             {/* Footer with action buttons */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-5 py-4">
+            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border px-5 py-4">
               <div className="flex items-center justify-center gap-6">
                 <button
                   onClick={() => {
                     setShowProfileModal(false);
                     setTimeout(() => handleSwipe("left"), 300);
                   }}
-                  className="w-[70px] h-[70px] bg-white rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-red-500 hover:scale-105 transition-transform"
+                  className="w-[70px] h-[70px] bg-card rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-red-500 hover:scale-105 transition-transform"
                 >
                   <X className="w-8 h-8 text-red-500" />
                 </button>
@@ -1010,7 +1010,7 @@ export default function SwiperPage() {
                     setShowProfileModal(false);
                     setTimeout(() => handleSwipe("right"), 300);
                   }}
-                  className="w-[70px] h-[70px] bg-white rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-emerald-500 hover:scale-105 transition-transform"
+                  className="w-[70px] h-[70px] bg-card rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-emerald-500 hover:scale-105 transition-transform"
                 >
                   <Heart className="w-8 h-8 text-emerald-500" />
                 </button>

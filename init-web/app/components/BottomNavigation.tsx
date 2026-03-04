@@ -48,7 +48,7 @@ export default function BottomNavigation({ userType, hidden }: BottomNavigationP
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-50 flex justify-center md:hidden ${hidden ? "hidden" : ""}`}>
-      <nav className="flex items-center w-full bg-[#303030] rounded-none px-10 py-1.5">
+      <nav className="flex items-center w-full bg-[#303030] rounded-none px-10 pt-1.5" style={{ paddingBottom: 'calc(0.375rem + env(safe-area-inset-bottom, 0px))' }}>
         {tabs.map((tab) => (
           <Link
             key={tab.name}
