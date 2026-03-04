@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/initLogoGray.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "output": "static",
