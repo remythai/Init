@@ -1,6 +1,7 @@
 .env
 .env.local
 .env.development
+mailu/mailu.env
 .DS_Store
 .next/
 .vscode/
