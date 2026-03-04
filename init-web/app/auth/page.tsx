@@ -194,33 +194,27 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#303030] flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-[#303030] dark:bg-[#252525] flex flex-col items-center justify-center px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
         <Link href="/" className="inline-block mb-4">
-          <Image
-            src="/initLogoGray.png"
-            alt="Init Logo"
-            width={200}
-            height={80}
-            className="h-12 md:h-20 w-auto"
-          />
+          <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-8 md:h-12 w-auto" />
         </Link>
         <p className="text-white/70 font-roboto text-xs md:text-sm">Là où tout commence</p>
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-md bg-[#F5F5F5] rounded-2xl p-6 md:p-8">
+      <div className="w-full max-w-md bg-page rounded-2xl p-6 md:p-8">
         {/* Login/Register Toggle */}
-        <div className="flex gap-2 mb-6 bg-white p-1 rounded-lg">
+        <div className="flex gap-2 mb-6 bg-card p-1 rounded-lg">
           <button
             type="button"
             onClick={() => setIsLogin(true)}
             disabled={loading}
             className={`flex-1 py-3 rounded-md text-sm font-medium transition-all ${
               isLogin
-                ? "bg-[#303030] text-white"
-                : "bg-transparent text-[#303030] hover:bg-gray-100"
+                ? "bg-accent-solid text-accent-solid-text"
+                : "bg-transparent text-primary hover:bg-hover"
             }`}
           >
             Connexion
@@ -231,8 +225,8 @@ export default function AuthPage() {
             disabled={loading}
             className={`flex-1 py-3 rounded-md text-sm font-medium transition-all ${
               !isLogin
-                ? "bg-[#303030] text-white"
-                : "bg-transparent text-[#303030] hover:bg-gray-100"
+                ? "bg-accent-solid text-accent-solid-text"
+                : "bg-transparent text-primary hover:bg-hover"
             }`}
           >
             Inscription
@@ -241,7 +235,7 @@ export default function AuthPage() {
 
         {/* User Type Selection */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-[#303030] mb-3">
+          <label className="block text-sm font-medium text-primary mb-3">
             Je suis :
           </label>
           <div className="flex gap-4">
@@ -249,44 +243,44 @@ export default function AuthPage() {
               type="button"
               onClick={() => setUserType("user")}
               disabled={loading}
-              className={`flex-1 flex items-center gap-3 p-3 bg-white rounded-lg border-2 transition-all ${
+              className={`flex-1 flex items-center gap-3 p-3 bg-card rounded-lg border-2 transition-all ${
                 userType === "user"
                   ? "border-[#1271FF]"
-                  : "border-transparent hover:border-gray-200"
+                  : "border-transparent hover:border-border"
               }`}
             >
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  userType === "user" ? "border-[#1271FF]" : "border-[#303030]"
+                  userType === "user" ? "border-[#1271FF]" : "border-primary"
                 }`}
               >
                 {userType === "user" && (
                   <div className="w-2.5 h-2.5 rounded-full bg-[#1271FF]" />
                 )}
               </div>
-              <span className="text-sm text-[#303030]">Utilisateur</span>
+              <span className="text-sm text-primary">Utilisateur</span>
             </button>
 
             <button
               type="button"
               onClick={() => setUserType("organizer")}
               disabled={loading}
-              className={`flex-1 flex items-center gap-3 p-3 bg-white rounded-lg border-2 transition-all ${
+              className={`flex-1 flex items-center gap-3 p-3 bg-card rounded-lg border-2 transition-all ${
                 userType === "organizer"
                   ? "border-[#1271FF]"
-                  : "border-transparent hover:border-gray-200"
+                  : "border-transparent hover:border-border"
               }`}
             >
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  userType === "organizer" ? "border-[#1271FF]" : "border-[#303030]"
+                  userType === "organizer" ? "border-[#1271FF]" : "border-primary"
                 }`}
               >
                 {userType === "organizer" && (
                   <div className="w-2.5 h-2.5 rounded-full bg-[#1271FF]" />
                 )}
               </div>
-              <span className="text-sm text-[#303030]">Organisateur</span>
+              <span className="text-sm text-primary">Organisateur</span>
             </button>
           </div>
         </div>
@@ -304,7 +298,7 @@ export default function AuthPage() {
           {isLogin && userType === "user" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Numéro de téléphone *
                 </label>
                 <input
@@ -313,14 +307,14 @@ export default function AuthPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-secondary mt-1">
                   Format: 10-20 caractères (chiffres, +, -, (), espaces)
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Mot de passe *
                 </label>
                 <div className="relative">
@@ -330,12 +324,12 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -348,7 +342,7 @@ export default function AuthPage() {
           {isLogin && userType === "organizer" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Email *
                 </label>
                 <input
@@ -357,12 +351,12 @@ export default function AuthPage() {
                   value={organizerEmail}
                   onChange={(e) => setOrganizerEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-600 mt-1">Format: exemple@email.com</p>
+                <p className="text-xs text-secondary mt-1">Format: exemple@email.com</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Mot de passe *
                 </label>
                 <div className="relative">
@@ -372,12 +366,12 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -391,7 +385,7 @@ export default function AuthPage() {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#303030] mb-2">
+                  <label className="block text-sm font-medium text-primary mb-2">
                     Prénom *
                   </label>
                   <input
@@ -400,11 +394,11 @@ export default function AuthPage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#303030] mb-2">
+                  <label className="block text-sm font-medium text-primary mb-2">
                     Nom *
                   </label>
                   <input
@@ -413,12 +407,12 @@ export default function AuthPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Téléphone *
                 </label>
                 <input
@@ -427,14 +421,14 @@ export default function AuthPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-secondary mt-1">
                   Format: 10-20 caractères (chiffres, +, -, (), espaces)
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Date de naissance * (18 ans minimum)
                 </label>
                 <input
@@ -442,11 +436,11 @@ export default function AuthPage() {
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Email (optionnel)
                 </label>
                 <input
@@ -455,11 +449,11 @@ export default function AuthPage() {
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Mot de passe * (min. 8 caractères)
                 </label>
                 <div className="relative">
@@ -469,19 +463,19 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Confirmer le mot de passe *
                 </label>
                 <div className="relative">
@@ -491,12 +485,12 @@ export default function AuthPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -509,7 +503,7 @@ export default function AuthPage() {
           {!isLogin && userType === "organizer" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Nom de l&apos;organisation *
                 </label>
                 <input
@@ -518,11 +512,11 @@ export default function AuthPage() {
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Email *
                 </label>
                 <input
@@ -531,11 +525,11 @@ export default function AuthPage() {
                   value={organizerEmail}
                   onChange={(e) => setOrganizerEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Téléphone (optionnel)
                 </label>
                 <input
@@ -544,11 +538,11 @@ export default function AuthPage() {
                   value={organizerPhone}
                   onChange={(e) => setOrganizerPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Description (optionnel)
                 </label>
                 <textarea
@@ -557,12 +551,12 @@ export default function AuthPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
                   rows={3}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none break-words hyphens-auto"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all resize-none break-words hyphens-auto"
                   style={{ wordBreak: 'break-word' }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Mot de passe * (min. 8 caractères)
                 </label>
                 <div className="relative">
@@ -572,19 +566,19 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#303030] mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Confirmer le mot de passe *
                 </label>
                 <div className="relative">
@@ -594,12 +588,12 @@ export default function AuthPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full px-4 py-3 pr-12 bg-white border border-gray-200 rounded-lg text-[#303030] placeholder-gray-400 focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
+                    className="w-full px-4 py-3 pr-12 bg-card border border-border rounded-lg text-primary placeholder-muted focus:outline-none focus:border-[#1271FF] focus:ring-1 focus:ring-[#1271FF] transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -617,9 +611,9 @@ export default function AuthPage() {
                 checked={acceptedCGU}
                 onChange={(e) => setAcceptedCGU(e.target.checked)}
                 disabled={loading}
-                className="mt-1 w-4 h-4 text-[#1271FF] bg-white border-gray-300 rounded focus:ring-[#1271FF] focus:ring-2 cursor-pointer"
+                className="mt-1 w-4 h-4 text-[#1271FF] bg-card border-border rounded focus:ring-[#1271FF] focus:ring-2 cursor-pointer"
               />
-              <label htmlFor="acceptCGU" className="text-sm text-[#303030] cursor-pointer">
+              <label htmlFor="acceptCGU" className="text-sm text-primary cursor-pointer">
                 <span className="text-red-500">*</span>{" "}
                 J&apos;accepte les{" "}
                 <Link href="/legal/cgu" className="text-[#1271FF] hover:underline" target="_blank">
@@ -637,7 +631,7 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading || (!isLogin && !acceptedCGU)}
-            className="w-full bg-[#303030] hover:bg-[#404040] text-white py-3 rounded-lg font-medium mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading
               ? isLogin
@@ -653,7 +647,7 @@ export default function AuthPage() {
             <div className="text-center mt-4">
               <button
                 type="button"
-                className="text-sm text-[#303030] hover:text-[#1271FF] transition-colors"
+                className="text-sm text-primary hover:text-[#1271FF] transition-colors"
               >
                 Mot de passe oublié ?
               </button>

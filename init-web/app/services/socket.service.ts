@@ -2,18 +2,14 @@ import { io, Socket } from 'socket.io-client';
 
 // Get socket URL - resolved at connection time
 const getSocketUrl = (): string => {
-  // Use NEXT_PUBLIC_API_URL if available (works in both dev and prod without nginx)
-  // This variable is inlined at build time by Next.js
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
-  // In browser with nginx, use the same origin (nginx proxies /socket.io/ to backend)
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
 
-  // Fallback for SSR or testing
   return 'http://localhost:3000';
 };
 

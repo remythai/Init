@@ -190,16 +190,18 @@ export const getOrgaLogoUrl = (orgaId: number, filename: string): string => {
   return `/uploads/orga/${orgaId}/${filename}`;
 };
 
-export const deleteOrgaLogo = (orgaId: number): boolean => {
+export const deleteOrgaLogo = (orgaId: number, excludeFile?: string): boolean => {
   const orgaDir = path.join(ORGA_DIR, String(orgaId));
   if (fs.existsSync(orgaDir)) {
     const files = fs.readdirSync(orgaDir);
+    let deleted = false;
     for (const file of files) {
-      if (file.startsWith('logo')) {
+      if (file.startsWith('logo') && file !== excludeFile) {
         fs.unlinkSync(path.join(orgaDir, file));
-        return true;
+        deleted = true;
       }
     }
+    return deleted;
   }
   return false;
 };
@@ -237,16 +239,18 @@ export const getEventBannerUrl = (eventId: number, filename: string): string => 
   return `/uploads/events/${eventId}/${filename}`;
 };
 
-export const deleteEventBanner = (eventId: number): boolean => {
+export const deleteEventBanner = (eventId: number, excludeFile?: string): boolean => {
   const eventDir = path.join(EVENTS_DIR, String(eventId));
   if (fs.existsSync(eventDir)) {
     const files = fs.readdirSync(eventDir);
+    let deleted = false;
     for (const file of files) {
-      if (file.startsWith('banner')) {
+      if (file.startsWith('banner') && file !== excludeFile) {
         fs.unlinkSync(path.join(eventDir, file));
-        return true;
+        deleted = true;
       }
     }
+    return deleted;
   }
   return false;
 };

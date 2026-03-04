@@ -7,20 +7,18 @@ import { useUnreadMessagesContext } from "../contexts/UnreadMessagesContext";
 
 interface BottomNavigationProps {
   userType?: "user" | "orga" | null;
+  hidden?: boolean;
 }
 
-export default function BottomNavigation({ userType }: BottomNavigationProps) {
+export default function BottomNavigation({ userType, hidden }: BottomNavigationProps) {
   const pathname = usePathname();
   const { hasUnreadGeneral: hasUnreadMessages } = useUnreadMessagesContext();
 
-  // Only show for users, not organizers
   if (userType === "orga") return null;
 
-  // Don't show on specific event pages (they have their own navigation)
   const eventDetailPattern = /^\/events\/[^/]+\/.+$/;
   if (eventDetailPattern.test(pathname)) return null;
 
-  // Also don't show on event detail page itself (e.g., /events/123)
   const eventIdPattern = /^\/events\/[^/]+$/;
   const isEventDetailPage = eventIdPattern.test(pathname) && pathname !== "/events";
   if (isEventDetailPage) return null;
@@ -53,13 +51,13 @@ export default function BottomNavigation({ userType }: BottomNavigationProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#252525] border-t border-white/10 safe-area-bottom">
-      <div className="max-w-lg mx-auto flex">
+    <div className={`fixed bottom-0 left-0 right-0 z-50 flex justify-center md:hidden ${hidden ? "hidden" : ""}`}>
+      <nav className="flex items-center w-full bg-[#303030] rounded-none px-10 py-1.5">
         {tabs.map((tab) => (
           <Link
             key={tab.name}
             href={tab.href}
-            className={`flex-1 flex flex-col items-center py-3 transition-colors ${
+            className={`flex flex-col items-center flex-1 px-7 py-1.5 transition-colors ${
               tab.isActive
                 ? "text-white"
                 : "text-white/50 hover:text-white/70"
@@ -71,13 +69,13 @@ export default function BottomNavigation({ userType }: BottomNavigationProps) {
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#1271FF] rounded-full" />
               )}
             </div>
-            <span className="text-xs mt-1">{tab.name}</span>
+            <span className="text-xs mt-0.5">{tab.name}</span>
             {tab.subtitle && (
               <span className="text-[10px] text-white/40">{tab.subtitle}</span>
             )}
           </Link>
         ))}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
