@@ -1,8 +1,10 @@
 // components/EventDetails.tsx
 import { CustomField } from "@/services/event.service";
+import { type Theme } from "@/constants/theme";
+import { useTheme, shared } from "@/context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Alert,
   Image,
@@ -58,6 +60,8 @@ export function EventDetail({
   onEnterEvent,
 }: EventDetailProps) {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [isLoading, setIsLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profilInfo, setProfilInfo] = useState<Record<string, any>>({});
@@ -65,16 +69,8 @@ export function EventDetail({
 
   const isOrga = userType === "organizer";
 
-  const getThemeColor = (theme: string) => {
-    const colors: Record<string, string> = {
-      musique: "#a855f7",
-      professionnel: "#3b82f6",
-      étudiant: "#22c55e",
-      sport: "#f97316",
-      café: "#f59e0b",
-      fête: "#ec4899",
-    };
-    return colors[theme.toLowerCase()] || "#6b7280";
+  const getThemeColor = (eventTheme: string) => {
+    return shared.eventTheme[eventTheme.toLowerCase()] || shared.eventTheme.général;
   };
 
   const getFieldKey = (field: CustomField): string => {
@@ -210,6 +206,7 @@ export function EventDetail({
                   ? "06 12 34 56 78"
                   : "Votre réponse"
               }
+              placeholderTextColor={theme.colors.placeholder}
               value={profilInfo[key] !== undefined ? String(profilInfo[key]) : ""}
               onChangeText={(text) =>
                 setProfilInfo((prev) => ({
@@ -237,6 +234,7 @@ export function EventDetail({
             <TextInput
               style={[styles.input, styles.textarea, fieldErrors[key] && styles.inputError]}
               placeholder="Votre réponse..."
+              placeholderTextColor={theme.colors.placeholder}
               value={(profilInfo[key] as string) || ""}
               onChangeText={(text) => setProfilInfo((prev) => ({ ...prev, [key]: text }))}
               multiline
@@ -252,6 +250,7 @@ export function EventDetail({
             <TextInput
               style={[styles.input, fieldErrors[key] && styles.inputError]}
               placeholder="JJ/MM/AAAA"
+              placeholderTextColor={theme.colors.placeholder}
               value={(profilInfo[key] as string) || ""}
               onChangeText={(text) => setProfilInfo((prev) => ({ ...prev, [key]: text }))}
               keyboardType="numeric"
@@ -267,7 +266,7 @@ export function EventDetail({
               onPress={() => setProfilInfo((prev) => ({ ...prev, [key]: !prev[key] }))}
             >
               <View style={[styles.checkbox, profilInfo[key] && styles.checkboxChecked]}>
-                {profilInfo[key] && <MaterialIcons name="check" size={16} color="#fff" />}
+                {profilInfo[key] && <MaterialIcons name="check" size={16} color={theme.colors.card} />}
               </View>
               <Text style={styles.checkboxLabel}>
                 {field.label}
@@ -334,7 +333,7 @@ export function EventDetail({
                           isSelected && styles.multiselectCheckboxActive,
                         ]}
                       >
-                        {isSelected && <MaterialIcons name="check" size={14} color="#fff" />}
+                        {isSelected && <MaterialIcons name="check" size={14} color={theme.colors.card} />}
                       </View>
                       <Text
                         style={[
@@ -365,14 +364,14 @@ export function EventDetail({
           style={[styles.orgaButton, styles.orgaButtonPrimary]}
           onPress={() => router.push(`/(main)/events/${event.id}/edit`)}
         >
-          <MaterialIcons name="edit" size={18} color="#fff" />
+          <MaterialIcons name="edit" size={18} color={theme.colors.primaryForeground} />
           <Text style={styles.orgaButtonPrimaryText}>Modifier</Text>
         </Pressable>
         <Pressable
           style={styles.orgaButtonIcon}
           onPress={() => router.push(`/(main)/events/${event.id}/statistics`)}
         >
-          <MaterialIcons name="bar-chart" size={20} color="#1271FF" />
+          <MaterialIcons name="bar-chart" size={20} color={theme.colors.primary} />
         </Pressable>
       </View>
 
@@ -381,7 +380,7 @@ export function EventDetail({
           style={[styles.orgaButtonSecondary, { flex: event.hasWhitelist ? 1 : undefined, width: event.hasWhitelist ? undefined : '100%' }]}
           onPress={() => router.push(`/(main)/events/${event.id}/participants`)}
         >
-          <MaterialIcons name="people" size={18} color="#303030" />
+          <MaterialIcons name="people" size={18} color={theme.colors.foreground} />
           <Text style={styles.orgaButtonSecondaryText}>
             Participants ({event.participants})
           </Text>
@@ -391,7 +390,7 @@ export function EventDetail({
             style={[styles.orgaButtonSecondary, { flex: 1 }]}
             onPress={() => router.push(`/(main)/events/${event.id}/whitelist`)}
           >
-            <MaterialIcons name="verified-user" size={18} color="#303030" />
+            <MaterialIcons name="verified-user" size={18} color={theme.colors.foreground} />
             <Text style={styles.orgaButtonSecondaryText}>Whitelist</Text>
           </Pressable>
         )}
@@ -401,7 +400,7 @@ export function EventDetail({
         style={styles.orgaButtonReports}
         onPress={() => router.push(`/(main)/events/${event.id}/reports`)}
       >
-        <MaterialIcons name="flag" size={18} color="#dc2626" />
+        <MaterialIcons name="flag" size={18} color={shared.error} />
         <Text style={styles.orgaButtonReportsText}>Signalements</Text>
       </Pressable>
     </View>
@@ -412,7 +411,7 @@ export function EventDetail({
     if (event.isBlocked) {
       return (
         <View style={styles.blockedContainer}>
-          <MaterialIcons name="block" size={20} color="#dc2626" />
+          <MaterialIcons name="block" size={20} color={shared.error} />
           <Text style={styles.blockedText}>
             Vous avez été retiré de cet événement par l'organisateur
           </Text>
@@ -428,7 +427,7 @@ export function EventDetail({
             onPress={handleUnregister}
             disabled={isLoading}
           >
-            <MaterialIcons name="cancel" size={20} color="#dc2626" />
+            <MaterialIcons name="cancel" size={20} color={shared.error} />
             <Text style={styles.unregisterButtonText}>
               {isLoading ? "Chargement..." : "Se désinscrire"}
             </Text>
@@ -438,7 +437,7 @@ export function EventDetail({
             onPress={() => onEnterEvent?.(event)}
             disabled={isLoading}
           >
-            <MaterialIcons name="login" size={20} color="#fff" />
+            <MaterialIcons name="login" size={20} color={theme.colors.primaryForeground} />
             <Text style={styles.actionButtonText}>Entrer</Text>
           </Pressable>
         </View>
@@ -485,7 +484,7 @@ export function EventDetail({
           <View style={styles.infoSection}>
             {event.hasPhysicalEvent && (
               <View style={styles.infoCard}>
-                <MaterialIcons name="event" size={20} color="#303030" />
+                <MaterialIcons name="event" size={20} color={theme.colors.foreground} />
                 <View style={styles.infoCardContent}>
                   <Text style={styles.infoCardTitle}>Date de l'événement</Text>
                   <Text style={styles.infoCardText}>{event.physicalDate}</Text>
@@ -493,7 +492,7 @@ export function EventDetail({
               </View>
             )}
             <View style={styles.infoCard}>
-              <MaterialIcons name="phone-iphone" size={20} color="#303030" />
+              <MaterialIcons name="phone-iphone" size={20} color={theme.colors.foreground} />
               <View style={styles.infoCardContent}>
                 <Text style={styles.infoCardTitle}>Disponibilité sur l'app</Text>
                 <Text style={styles.infoCardText}>{event.appDate}</Text>
@@ -501,7 +500,7 @@ export function EventDetail({
             </View>
             {event.location && (
               <View style={styles.infoCard}>
-                <MaterialIcons name="place" size={20} color="#303030" />
+                <MaterialIcons name="place" size={20} color={theme.colors.foreground} />
                 <View style={styles.infoCardContent}>
                   <Text style={styles.infoCardTitle}>Lieu</Text>
                   <Text style={styles.infoCardText}>{event.location}</Text>
@@ -509,7 +508,7 @@ export function EventDetail({
               </View>
             )}
             <View style={styles.infoCard}>
-              <MaterialIcons name="group" size={20} color="#303030" />
+              <MaterialIcons name="group" size={20} color={theme.colors.foreground} />
               <View style={styles.infoCardContent}>
                 <Text style={styles.infoCardTitle}>Participants</Text>
                 <Text style={styles.infoCardText}>
@@ -611,20 +610,20 @@ export function EventDetail({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.card },
   scrollView: { flex: 1 },
   imageContainer: { position: "relative", height: 256 },
   eventImage: { width: "100%", height: "100%" },
   badgeContainer: { position: "absolute", bottom: 16, left: 16 },
   themeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  badgeText: { color: theme.colors.primaryForeground, fontSize: 12, fontWeight: "600" },
   content: { padding: 24, paddingBottom: 100 },
   eventName: {
     fontFamily: "Poppins",
     fontWeight: "700",
     fontSize: 24,
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 16,
   },
   infoSection: { gap: 16, marginBottom: 24 },
@@ -633,7 +632,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 16,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
     borderRadius: 12,
   },
   infoCardContent: { flex: 1 },
@@ -641,43 +640,43 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 14,
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 4,
   },
-  infoCardText: { fontSize: 14, color: "#6b7280" },
+  infoCardText: { fontSize: 14, color: theme.colors.mutedForeground },
   progressBar: {
     width: "100%",
     height: 8,
-    backgroundColor: "#E0E7FF",
+    backgroundColor: theme.colors.accent,
     borderRadius: 4,
     marginTop: 8,
     overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: "#1271FF", borderRadius: 4 },
+  progressFill: { height: "100%", backgroundColor: theme.colors.primary, borderRadius: 4 },
   section: { marginBottom: 24 },
   sectionTitle: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 18,
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 12,
   },
-  description: { fontSize: 16, color: "#6b7280", lineHeight: 24 },
+  description: { fontSize: 16, color: theme.colors.mutedForeground, lineHeight: 24 },
   organizerCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 16,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
     borderRadius: 12,
   },
   organizerAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
     borderWidth: 2,
-    borderColor: "#303030",
+    borderColor: theme.colors.foreground,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -686,17 +685,17 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 20,
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   organizerInfo: { flex: 1 },
   organizerName: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 16,
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 2,
   },
-  organizerBadge: { fontSize: 12, color: "#6b7280" },
+  organizerBadge: { fontSize: 12, color: theme.colors.mutedForeground },
 
   // Action container
   actionContainer: {
@@ -705,9 +704,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
     borderTopWidth: 1,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: theme.colors.secondary,
   },
 
   // Orga actions
@@ -722,14 +721,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
   },
-  orgaButtonPrimary: { backgroundColor: "#1271FF" },
-  orgaButtonPrimaryText: { fontFamily: "Poppins", fontWeight: "600", fontSize: 14, color: "#fff" },
+  orgaButtonPrimary: { backgroundColor: theme.colors.primary },
+  orgaButtonPrimaryText: { fontFamily: "Poppins", fontWeight: "600", fontSize: 14, color: theme.colors.primaryForeground },
   orgaButtonIcon: {
     width: 48,
     height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#1271FF",
+    borderColor: theme.colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -741,14 +740,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    backgroundColor: "#fff",
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
   },
   orgaButtonSecondaryText: {
     fontFamily: "Poppins",
     fontWeight: "500",
     fontSize: 13,
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   orgaButtonReports: {
     flexDirection: "row",
@@ -757,15 +756,15 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#fee2e2",
+    backgroundColor: shared.errorLight,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: shared.errorLight,
   },
   orgaButtonReportsText: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 13,
-    color: "#dc2626",
+    color: shared.error,
   },
 
   // User actions
@@ -778,24 +777,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  registerButton: { flex: 1, backgroundColor: "#303030" },
+  registerButton: { flex: 1, backgroundColor: theme.colors.accentSolid },
   disabledButton: { opacity: 0.5 },
-  enterButton: { flex: 1, backgroundColor: "#303030" },
+  enterButton: { flex: 1, backgroundColor: theme.colors.accentSolid },
   unregisterButton: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
     borderWidth: 1.5,
-    borderColor: "#dc2626",
+    borderColor: shared.error,
   },
   actionButtonText: {
     fontFamily: "Poppins",
-    color: "#fff",
+    color: theme.colors.accentSolidText,
     fontSize: 16,
     fontWeight: "600",
   },
   unregisterButtonText: {
     fontFamily: "Poppins",
-    color: "#dc2626",
+    color: shared.error,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -803,23 +802,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#fee2e2",
+    backgroundColor: shared.errorLight,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: shared.errorLight,
   },
-  blockedText: { flex: 1, fontSize: 13, color: "#dc2626", fontWeight: "500" },
+  blockedText: { flex: 1, fontSize: 13, color: shared.error, fontWeight: "500" },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "center",
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
     borderRadius: 16,
     padding: 24,
     maxHeight: "80%",
@@ -829,7 +828,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 18,
     marginBottom: 20,
-    color: "#111827",
+    color: theme.colors.foreground,
   },
   modalScroll: { maxHeight: 400 },
   fieldContainer: { marginBottom: 20 },
@@ -838,34 +837,34 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontSize: 14,
     marginBottom: 8,
-    color: "#111827",
+    color: theme.colors.foreground,
   },
-  requiredMark: { color: "#dc2626" },
+  requiredMark: { color: shared.error },
   input: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    color: "#111827",
-    backgroundColor: "#fff",
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
   },
-  inputError: { borderColor: "#dc2626", borderWidth: 1.5 },
+  inputError: { borderColor: shared.error, borderWidth: 1.5 },
   textarea: { height: 100, textAlignVertical: "top" },
-  fieldError: { marginTop: 6, color: "#dc2626", fontSize: 12 },
+  fieldError: { marginTop: 6, color: shared.error, fontSize: 12 },
   selectContainer: { gap: 8 },
   selectOption: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
   },
-  selectOptionActive: { backgroundColor: "#111827", borderColor: "#111827" },
-  selectOptionText: { fontSize: 14, color: "#111827" },
-  selectOptionTextActive: { color: "#fff" },
+  selectOptionActive: { backgroundColor: theme.colors.foreground, borderColor: theme.colors.foreground },
+  selectOptionText: { fontSize: 14, color: theme.colors.foreground },
+  selectOptionTextActive: { color: theme.colors.card },
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -876,39 +875,39 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderWidth: 1.5,
-    borderColor: "#e5e7eb",
+    borderColor: theme.colors.border,
     borderRadius: 4,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
   },
-  checkboxChecked: { backgroundColor: "#111827", borderColor: "#111827" },
-  checkboxLabel: { fontSize: 14, color: "#111827", flex: 1 },
+  checkboxChecked: { backgroundColor: theme.colors.foreground, borderColor: theme.colors.foreground },
+  checkboxLabel: { fontSize: 14, color: theme.colors.foreground, flex: 1 },
   multiselectOption: { flexDirection: "row", alignItems: "center", gap: 10 },
   multiselectCheckbox: {
     width: 18,
     height: 18,
     borderWidth: 1.5,
-    borderColor: "#e5e7eb",
+    borderColor: theme.colors.border,
     borderRadius: 3,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
   },
-  multiselectCheckboxActive: { backgroundColor: "#111827", borderColor: "#111827" },
+  multiselectCheckboxActive: { backgroundColor: theme.colors.foreground, borderColor: theme.colors.foreground },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 24 },
-  modalCancelButton: { flex: 1, backgroundColor: "#f3f4f6" },
-  modalSubmitButton: { flex: 1, backgroundColor: "#111827" },
+  modalCancelButton: { flex: 1, backgroundColor: theme.colors.secondary },
+  modalSubmitButton: { flex: 1, backgroundColor: theme.colors.foreground },
   modalCancelText: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 14,
-    color: "#111827",
+    color: theme.colors.foreground,
   },
   modalSubmitText: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 14,
-    color: "#fff",
+    color: theme.colors.card,
   },
 });

@@ -1,9 +1,11 @@
 // app/(main)/events/[id]/_layout.tsx
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { authService } from '@/services/auth.service';
 import { eventService } from '@/services/event.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function EventLayout() {
@@ -11,6 +13,8 @@ export default function EventLayout() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segments = useSegments();
   const pathname = usePathname();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userType, setUserType] = useState<'user' | 'organizer' | null>(null);
   const [pendingReports, setPendingReports] = useState(0);
@@ -107,7 +111,7 @@ export default function EventLayout() {
       {showHeader && (
         <View style={styles.header}>
           <Pressable onPress={() => router.push('/events')} style={styles.headerButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#303030" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
           </Pressable>
 
           {userType === 'organizer' ? (
@@ -117,26 +121,26 @@ export default function EventLayout() {
                 onPress={() => router.push(`/(main)/events/${id}/edit`)}
                 style={styles.headerButton}
               >
-                <MaterialIcons name="edit" size={22} color="#1271FF" />
+                <MaterialIcons name="edit" size={22} color={theme.colors.primary} />
               </Pressable>
               <Pressable
                 onPress={() => router.push(`/(main)/events/${id}/statistics`)}
                 style={styles.headerButton}
               >
-                <MaterialIcons name="bar-chart" size={22} color="#303030" />
+                <MaterialIcons name="bar-chart" size={22} color={theme.colors.foreground} />
               </Pressable>
               <Pressable
                 onPress={() => router.push(`/(main)/events/${id}/participants`)}
                 style={styles.headerButton}
               >
-                <MaterialIcons name="people" size={22} color="#303030" />
+                <MaterialIcons name="people" size={22} color={theme.colors.foreground} />
               </Pressable>
               <Pressable
                 onPress={() => router.push(`/(main)/events/${id}/reports`)}
                 style={styles.headerButton}
               >
                 <View>
-                  <MaterialIcons name="flag" size={22} color={pendingReports > 0 ? '#dc2626' : '#303030'} />
+                  <MaterialIcons name="flag" size={22} color={pendingReports > 0 ? theme.colors.destructive : theme.colors.foreground} />
                   {pendingReports > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{pendingReports > 9 ? '9+' : pendingReports}</Text>
@@ -148,12 +152,12 @@ export default function EventLayout() {
                 onPress={() => router.push(`/(main)/events/${id}/settings`)}
                 style={styles.headerButton}
               >
-                <MaterialIcons name="settings" size={22} color="#303030" />
+                <MaterialIcons name="settings" size={22} color={theme.colors.foreground} />
               </Pressable>
             </View>
           ) : (
             <Pressable onPress={handleReportEvent} style={styles.headerButton}>
-              <MaterialIcons name="flag" size={24} color="#303030" />
+              <MaterialIcons name="flag" size={24} color={theme.colors.foreground} />
             </Pressable>
           )}
         </View>
@@ -173,8 +177,8 @@ export default function EventLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.card },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -182,18 +186,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.colors.border,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerButton: { padding: 8, borderRadius: 8 },
   badge: {
     position: 'absolute', top: -4, right: -4,
-    backgroundColor: '#dc2626', borderRadius: 8,
+    backgroundColor: theme.colors.destructive, borderRadius: 8,
     minWidth: 16, height: 16,
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 3,
   },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  badgeText: { color: theme.colors.destructiveForeground, fontSize: 9, fontWeight: '700' },
 });

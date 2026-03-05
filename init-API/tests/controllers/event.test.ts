@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => {
       updateEvent: vi.fn(),
       deleteEvent: vi.fn(),
       getOrgaEvent: vi.fn(),
+      getUserEvent: vi.fn(),
       getOrgaEvents: vi.fn(),
       registerUser: vi.fn(),
       updateRegistration: vi.fn(),
@@ -136,11 +137,11 @@ describe('EventController', () => {
   // getEventByID (delegates to EventService)
   // ────────────────────────────────────────────────────────────────────
   describe('getEventByID', () => {
-    it('delegates to EventService.getOrgaEvent', async () => {
+    it('delegates to EventService.getOrgaEvent for orga role', async () => {
       const eventWithCount = { id: 1, name: 'Party', participant_count: 25 };
       mocks.EventService.getOrgaEvent.mockResolvedValue(eventWithCount);
 
-      const req = makeReq();
+      const req = makeReq({ user: { id: 1, role: 'orga' } });
       const res = makeRes();
       await EventController.getEventByID(req, res);
 
@@ -148,12 +149,34 @@ describe('EventController', () => {
       expect(mocks.successFn).toHaveBeenCalledWith(res, eventWithCount);
     });
 
-    it('propagates NotFoundError from service', async () => {
+    it('delegates to EventService.getUserEvent for user role', async () => {
+      const event = { id: 1, name: 'Party', is_registered: true };
+      mocks.EventService.getUserEvent.mockResolvedValue(event);
+
+      const req = makeReq({ user: { id: 42, role: 'user' } });
+      const res = makeRes();
+      await EventController.getEventByID(req, res);
+
+      expect(mocks.EventService.getUserEvent).toHaveBeenCalledWith(42, 1);
+      expect(mocks.successFn).toHaveBeenCalledWith(res, event);
+    });
+
+    it('propagates NotFoundError from service (orga)', async () => {
       mocks.EventService.getOrgaEvent.mockRejectedValue(
         new (await import('../../utils/errors.js')).NotFoundError('Événement non trouvé')
       );
 
-      const req = makeReq();
+      const req = makeReq({ user: { id: 1, role: 'orga' } });
+      const res = makeRes();
+      await expect(EventController.getEventByID(req, res)).rejects.toThrow('non trouvé');
+    });
+
+    it('propagates NotFoundError from service (user)', async () => {
+      mocks.EventService.getUserEvent.mockRejectedValue(
+        new (await import('../../utils/errors.js')).NotFoundError('Événement non trouvé')
+      );
+
+      const req = makeReq({ user: { id: 1, role: 'user' } });
       const res = makeRes();
       await expect(EventController.getEventByID(req, res)).rejects.toThrow('non trouvé');
     });
@@ -163,7 +186,7 @@ describe('EventController', () => {
         new (await import('../../utils/errors.js')).ForbiddenError('Vous ne pouvez consulter que vos propres événements')
       );
 
-      const req = makeReq();
+      const req = makeReq({ user: { id: 1, role: 'orga' } });
       const res = makeRes();
       await expect(EventController.getEventByID(req, res)).rejects.toThrow('vos propres');
     });

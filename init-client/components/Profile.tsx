@@ -1,9 +1,11 @@
 // components/Profile.tsx
 import PhotoManager from "@/components/PhotoManager";
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { authService } from "@/services/auth.service";
 import * as ImagePicker from "expo-image-picker";
 import { Edit2, Save, X } from "lucide-react-native";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -66,6 +68,8 @@ export function Profile({
   const [editedProfile, setEditedProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleSave = async () => {
     try {
@@ -202,16 +206,16 @@ export function Profile({
                 style={styles.editButton}
                 disabled={loading}
               >
-                <Edit2 color="#FFFFFF" size={16} />
+                <Edit2 color={theme.colors.accentSolidText} size={16} />
                 <Text style={styles.editButtonText}>Modifier</Text>
               </TouchableOpacity>
             ) : isOwnProfile && isEditing ? (
               <View style={styles.actionButtons}>
                 <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
-                  <X color="#FFFFFF" size={16} />
+                  <X color={theme.colors.accentSolidText} size={16} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
-                  <Save color="#303030" size={16} />
+                  <Save color={theme.colors.foreground} size={16} />
                   <Text style={styles.saveButtonText}>{saving ? "..." : "Enregistrer"}</Text>
                 </TouchableOpacity>
               </View>
@@ -431,110 +435,111 @@ export function Profile({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 80 },
-  header: {
-    backgroundColor: "#303030",
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 80,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  headerTitle: { fontWeight: "600", fontSize: 20, color: "#FFFFFF" },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  editButtonText: { color: "#FFFFFF" },
-  actionButtons: { flexDirection: "row", gap: 8 },
-  cancelButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButtonText: { color: "#303030" },
-  avatarContainer: { alignItems: "center", gap: 12 },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  avatarText: { fontWeight: "700", fontSize: 36, color: "#303030" },
-  logoActions: { flexDirection: "row", gap: 8 },
-  logoButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  logoButtonText: { color: "#FFFFFF", fontSize: 13 },
-  logoDeleteButton: {
-    backgroundColor: "rgba(220,38,38,0.3)",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  logoDeleteText: { color: "#FFFFFF", fontSize: 13 },
-  content: { paddingHorizontal: 24, marginTop: -48 },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  row: { flexDirection: "row", gap: 16, marginBottom: 16 },
-  halfWidth: { flex: 1 },
-  fullWidthField: { marginBottom: 16 },
-  label: { fontSize: 12, color: "#6B7280", marginBottom: 4 },
-  value: { fontWeight: "600", fontSize: 16, color: "#303030" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    color: "#303030",
-    backgroundColor: "#FFFFFF",
-  },
-  textArea: { minHeight: 100, textAlignVertical: "top" },
-  cardTitle: { fontWeight: "600", fontSize: 18, color: "#303030", marginBottom: 12 },
-  placeholderText: { color: "#9CA3AF", fontSize: 14, fontStyle: "italic" },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scrollView: { flex: 1 },
+    scrollContent: { paddingBottom: 80 },
+    header: {
+      backgroundColor: theme.colors.accentSolid,
+      paddingHorizontal: 24,
+      paddingTop: 32,
+      paddingBottom: 80,
+    },
+    headerTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    headerTitle: { fontWeight: "600", fontSize: 20, color: theme.colors.accentSolidText },
+    editButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "rgba(255,255,255,0.2)",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    editButtonText: { color: theme.colors.accentSolidText },
+    actionButtons: { flexDirection: "row", gap: 8 },
+    cancelButton: {
+      backgroundColor: "rgba(255,255,255,0.2)",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    saveButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    saveButtonText: { color: theme.colors.foreground },
+    avatarContainer: { alignItems: "center", gap: 12 },
+    avatar: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: theme.colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    avatarImage: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      borderWidth: 3,
+      borderColor: "rgba(255,255,255,0.3)",
+    },
+    avatarText: { fontWeight: "700", fontSize: 36, color: theme.colors.foreground },
+    logoActions: { flexDirection: "row", gap: 8 },
+    logoButton: {
+      backgroundColor: "rgba(255,255,255,0.2)",
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 8,
+    },
+    logoButtonText: { color: theme.colors.accentSolidText, fontSize: 13 },
+    logoDeleteButton: {
+      backgroundColor: "rgba(220,38,38,0.3)",
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 8,
+    },
+    logoDeleteText: { color: theme.colors.accentSolidText, fontSize: 13 },
+    content: { paddingHorizontal: 24, marginTop: -48 },
+    card: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 12,
+      padding: 24,
+      marginBottom: 16,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 3,
+    },
+    row: { flexDirection: "row", gap: 16, marginBottom: 16 },
+    halfWidth: { flex: 1 },
+    fullWidthField: { marginBottom: 16 },
+    label: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: 4 },
+    value: { fontWeight: "600", fontSize: 16, color: theme.colors.foreground },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      fontSize: 16,
+      color: theme.colors.foreground,
+      backgroundColor: theme.colors.card,
+    },
+    textArea: { minHeight: 100, textAlignVertical: "top" },
+    cardTitle: { fontWeight: "600", fontSize: 18, color: theme.colors.foreground, marginBottom: 12 },
+    placeholderText: { color: theme.colors.placeholder, fontSize: 14, fontStyle: "italic" },
+  });

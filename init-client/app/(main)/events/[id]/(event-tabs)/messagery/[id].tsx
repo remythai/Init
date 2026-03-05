@@ -1,10 +1,12 @@
 // app/(main)/events/[id]/(event-tabs)/messagery/[id].tsx
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
 import { reportService, ReportType } from '@/services/report.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -66,6 +68,8 @@ function toDateKey(dateStr: string): string {
 
 export default function ConversationPage() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { currentEventId } = useEvent();
   const { id: matchIdParam } = useLocalSearchParams<{ id: string }>();
   const globalParams = useGlobalSearchParams<{ from?: string }>();
@@ -229,7 +233,7 @@ export default function ConversationPage() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.headerBtn}>
-          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primaryForeground} />
         </Pressable>
         <View style={styles.headerCenter}>
           {otherUserPhoto ? (
@@ -245,14 +249,14 @@ export default function ConversationPage() {
           </View>
         </View>
         <Pressable onPress={() => setShowMenu(true)} style={styles.headerBtn}>
-          <MaterialIcons name="more-vert" size={24} color="#fff" />
+          <MaterialIcons name="more-vert" size={24} color={theme.colors.primaryForeground} />
         </Pressable>
       </View>
 
       {/* Messages */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#1271FF" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <ScrollView
@@ -264,7 +268,7 @@ export default function ConversationPage() {
           {messages.length === 0 ? (
             <View style={styles.emptyConv}>
               <View style={styles.emptyConvIcon}>
-                <MaterialIcons name="chat-bubble-outline" size={32} color="#9ca3af" />
+                <MaterialIcons name="chat-bubble-outline" size={32} color={theme.colors.placeholder} />
               </View>
               <Text style={styles.emptyConvText}>Commencez la conversation !</Text>
               <Text style={styles.emptyConvSub}>Envoyez un premier message à {otherUserName}</Text>
@@ -301,18 +305,18 @@ export default function ConversationPage() {
       <View style={styles.inputContainer}>
         {isArchived ? (
           <View style={styles.statusBanner}>
-            <MaterialIcons name="block" size={16} color="#dc2626" />
+            <MaterialIcons name="block" size={16} color={theme.colors.destructive} />
             <Text style={styles.statusBannerText}>Vous avez été retiré de cet événement par l'organisateur</Text>
           </View>
         ) : isOtherUserBlocked ? (
           <View style={[styles.statusBanner, styles.statusBannerGray]}>
-            <MaterialIcons name="person-off" size={16} color="#6b7280" />
-            <Text style={[styles.statusBannerText, { color: '#6b7280' }]}>Cet utilisateur a été retiré de l'événement</Text>
+            <MaterialIcons name="person-off" size={16} color={theme.colors.mutedForeground} />
+            <Text style={[styles.statusBannerText, { color: theme.colors.mutedForeground }]}>Cet utilisateur a été retiré de l'événement</Text>
           </View>
         ) : isEventExpired ? (
           <View style={[styles.statusBanner, styles.statusBannerOrange]}>
-            <MaterialIcons name="schedule" size={16} color="#ea580c" />
-            <Text style={[styles.statusBannerText, { color: '#ea580c' }]}>La période de disponibilité de cet événement est terminée</Text>
+            <MaterialIcons name="schedule" size={16} color={theme.warning} />
+            <Text style={[styles.statusBannerText, { color: theme.warning }]}>La période de disponibilité de cet événement est terminée</Text>
           </View>
         ) : (
           <View style={styles.inputRow}>
@@ -320,7 +324,7 @@ export default function ConversationPage() {
               value={messageText}
               onChangeText={setMessageText}
               placeholder="Écrivez un message..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
               style={styles.input}
               multiline
               maxLength={500}
@@ -330,7 +334,7 @@ export default function ConversationPage() {
               disabled={!messageText.trim() || sending}
               style={[styles.sendBtn, (!messageText.trim() || sending) && styles.sendBtnDisabled]}
             >
-              <MaterialIcons name="send" size={20} color="#fff" />
+              <MaterialIcons name="send" size={20} color={theme.colors.primaryForeground} />
             </Pressable>
           </View>
         )}
@@ -344,7 +348,7 @@ export default function ConversationPage() {
               style={styles.menuItem}
               onPress={() => { setShowMenu(false); setReportType(null); setReportDesc(''); setShowReport(true); }}
             >
-              <MaterialIcons name="flag" size={18} color="#dc2626" />
+              <MaterialIcons name="flag" size={18} color={theme.colors.destructive} />
               <Text style={styles.menuItemText}>Signaler l'utilisateur</Text>
             </TouchableOpacity>
           </View>
@@ -358,7 +362,7 @@ export default function ConversationPage() {
             <View style={styles.reportHeader}>
               <Text style={styles.reportTitle}>Signaler {otherUserName}</Text>
               <Pressable onPress={() => setShowReport(false)}>
-                <MaterialIcons name="close" size={22} color="#303030" />
+                <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
               </Pressable>
             </View>
 
@@ -390,7 +394,7 @@ export default function ConversationPage() {
                   value={reportDesc}
                   onChangeText={setReportDesc}
                   placeholder="Décrivez la situation pour aider l'organisateur..."
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.colors.placeholder}
                   style={styles.reportTextarea}
                   multiline
                   numberOfLines={4}
@@ -400,7 +404,7 @@ export default function ConversationPage() {
                     <Text style={styles.reportBackText}>Retour</Text>
                   </Pressable>
                   <Pressable style={[styles.reportSubmitBtn, submittingReport && { opacity: 0.6 }]} onPress={handleReportSubmit} disabled={submittingReport}>
-                    {submittingReport ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.reportSubmitText}>Signaler</Text>}
+                    {submittingReport ? <ActivityIndicator size="small" color={theme.colors.primaryForeground} /> : <Text style={styles.reportSubmitText}>Signaler</Text>}
                   </Pressable>
                 </View>
               </>
@@ -412,74 +416,74 @@ export default function ConversationPage() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.card },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 8, paddingTop: 50, paddingBottom: 12,
-    backgroundColor: '#303030',
+    backgroundColor: theme.colors.foreground,
   },
   headerBtn: { padding: 8, borderRadius: 8 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
   headerAvatar: { width: 40, height: 40, borderRadius: 20 },
-  headerAvatarFallback: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText: { fontWeight: '700', color: '#303030', fontSize: 16 },
-  headerName: { fontWeight: '600', color: '#fff', fontSize: 15 },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
-  messagesContainer: { flex: 1, backgroundColor: '#F5F5F5' },
+  headerAvatarFallback: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.card, alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontWeight: '700', color: theme.colors.foreground, fontSize: 16 },
+  headerName: { fontWeight: '600', color: theme.colors.primaryForeground, fontSize: 15 },
+  headerSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
+  messagesContainer: { flex: 1, backgroundColor: theme.colors.background },
   messagesContent: { padding: 16, paddingBottom: 12 },
   emptyConv: { alignItems: 'center', paddingVertical: 60 },
-  emptyConvIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  emptyConvText: { fontWeight: '600', color: '#303030', fontSize: 15 },
-  emptyConvSub: { color: '#9ca3af', fontSize: 13, marginTop: 4 },
+  emptyConvIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  emptyConvText: { fontWeight: '600', color: theme.colors.foreground, fontSize: 15 },
+  emptyConvSub: { color: theme.colors.placeholder, fontSize: 13, marginTop: 4 },
   dateSeparator: { alignItems: 'center', marginVertical: 12 },
-  dateSeparatorText: { fontSize: 12, color: '#9ca3af', backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
+  dateSeparatorText: { fontSize: 12, color: theme.colors.placeholder, backgroundColor: theme.colors.background, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
   msgRow: { flexDirection: 'row', marginBottom: 8 },
   msgRowRight: { justifyContent: 'flex-end' },
   msgRowLeft: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '75%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
-  bubbleMe: { backgroundColor: '#303030', borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: '#fff', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
+  bubbleMe: { backgroundColor: theme.colors.sentMsg, borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: theme.colors.receivedMsg, borderBottomLeftRadius: 4, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
   bubbleText: { fontSize: 14, lineHeight: 20 },
-  bubbleTextMe: { color: '#fff' },
-  bubbleTextOther: { color: '#303030' },
+  bubbleTextMe: { color: theme.colors.sentMsgText },
+  bubbleTextOther: { color: theme.colors.foreground },
   bubbleTime: { fontSize: 11, marginTop: 3 },
-  bubbleTimeMe: { color: 'rgba(255,255,255,0.55)', textAlign: 'right' },
-  bubbleTimeOther: { color: '#9ca3af' },
-  inputContainer: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 10 },
+  bubbleTimeMe: { color: theme.colors.textMuted, textAlign: 'right' },
+  bubbleTimeOther: { color: theme.colors.placeholder },
+  inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingVertical: 10 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  input: { flex: 1, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: '#303030', maxHeight: 100, fontSize: 14 },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#303030', alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: theme.colors.foreground, maxHeight: 100, fontSize: 14 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.sentMsg, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
   statusBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fee2e2', borderRadius: 12, padding: 12,
+    backgroundColor: theme.errorLight, borderRadius: 12, padding: 12,
   },
-  statusBannerGray: { backgroundColor: '#f3f4f6' },
-  statusBannerOrange: { backgroundColor: '#fff7ed' },
-  statusBannerText: { flex: 1, fontSize: 13, color: '#dc2626', lineHeight: 18 },
+  statusBannerGray: { backgroundColor: theme.colors.secondary },
+  statusBannerOrange: { backgroundColor: theme.warningLight },
+  statusBannerText: { flex: 1, fontSize: 13, color: theme.colors.destructive, lineHeight: 18 },
   // Menu
-  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
-  menuBox: { position: 'absolute', top: 80, right: 12, backgroundColor: '#fff', borderRadius: 12, padding: 6, minWidth: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
+  menuOverlay: { flex: 1, backgroundColor: theme.colors.overlay },
+  menuBox: { position: 'absolute', top: 80, right: 12, backgroundColor: theme.colors.card, borderRadius: 12, padding: 6, minWidth: 200, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  menuItemText: { color: '#dc2626', fontWeight: '500', fontSize: 14 },
+  menuItemText: { color: theme.colors.destructive, fontWeight: '500', fontSize: 14 },
   // Report
-  reportOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  reportBox: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  reportOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: 'flex-end' },
+  reportBox: { backgroundColor: theme.colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   reportHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  reportTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
-  reportSubtitle: { fontSize: 13, color: '#6b7280', marginBottom: 16 },
+  reportTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
+  reportSubtitle: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 16 },
   reportOptions: { gap: 10 },
-  reportOption: { backgroundColor: '#f9fafb', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
-  reportOptionTitle: { fontWeight: '600', color: '#303030', fontSize: 14 },
-  reportOptionSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  reportOption: { backgroundColor: theme.colors.secondary, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.colors.border },
+  reportOptionTitle: { fontWeight: '600', color: theme.colors.foreground, fontSize: 14 },
+  reportOptionSub: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
   reportCancelBtn: { marginTop: 16, alignItems: 'center', padding: 12 },
-  reportCancelText: { color: '#6b7280', fontWeight: '500' },
-  reportTextarea: { borderWidth: 1.5, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#303030', minHeight: 100, textAlignVertical: 'top', fontSize: 14 },
+  reportCancelText: { color: theme.colors.mutedForeground, fontWeight: '500' },
+  reportTextarea: { borderWidth: 1.5, borderColor: theme.colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: theme.colors.foreground, minHeight: 100, textAlignVertical: 'top', fontSize: 14 },
   reportActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  reportBackBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
-  reportBackText: { fontWeight: '600', color: '#303030' },
-  reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center' },
-  reportSubmitText: { fontWeight: '600', color: '#fff' },
+  reportBackBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.secondary, alignItems: 'center' },
+  reportBackText: { fontWeight: '600', color: theme.colors.foreground },
+  reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.destructive, alignItems: 'center', justifyContent: 'center' },
+  reportSubmitText: { fontWeight: '600', color: theme.colors.primaryForeground },
 });

@@ -1,11 +1,15 @@
 import { View, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import { Profile, UserProfile, OrgaProfile } from "@/components/Profile";
-import { useState, useEffect } from "react";
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { useState, useEffect, useMemo } from "react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "expo-router";
 
 export default function MyProfileScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [profile, setProfile] = useState<UserProfile | OrgaProfile | null>(null);
   const [profileType, setProfileType] = useState<'user' | 'orga' | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +114,7 @@ export default function MyProfileScreen() {
   if (loading || !profile || !profileType) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#303030" />
+        <ActivityIndicator size="large" color={theme.colors.foreground} />
       </View>
     );
   }
@@ -128,11 +132,12 @@ export default function MyProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.colors.background,
+    },
+  });

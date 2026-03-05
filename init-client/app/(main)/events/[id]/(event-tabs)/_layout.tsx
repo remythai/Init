@@ -1,13 +1,17 @@
 // app/(main)/events/[id]/(event-tabs)/_layout.tsx
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function EventTabsLayout() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const segments = useSegments();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const isInConversation = segments[segments.length - 2] === 'messagery' &&
     segments[segments.length - 1] !== 'index';
@@ -16,14 +20,14 @@ export default function EventTabsLayout() {
     if (Platform.OS !== 'android') return;
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // ✅ Si on est dans une conversation, laisser [id].tsx gérer
+      // Si on est dans une conversation, laisser [id].tsx gerer
       if (isInConversation) {
-        return false; // Laisse le BackHandler de la conversation prendre le relais
+        return false;
       }
 
+      const eventTabsIndex = segments.indexOf('(event-tabs)');
       const currentTab = segments[eventTabsIndex + 1];
 
-      // ✅ Navigation selon le tab actuel
       if (currentTab === 'swiper') {
         router.replace('/(main)/events');
         return true;
@@ -64,7 +68,7 @@ export default function EventTabsLayout() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.push(`/events/${id}`)}>
-          <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.accentSolidText} />
         </Pressable>
         <Text style={styles.eventName}>Décoeurtique moi</Text>
         <View style={{ width: 24 }} />
@@ -74,12 +78,12 @@ export default function EventTabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: true,
-          tabBarActiveTintColor: "#303030",
-          tabBarInactiveTintColor: "rgba(48,48,48,0.6)",
+          tabBarActiveTintColor: theme.colors.tabActive,
+          tabBarInactiveTintColor: theme.colors.tabInactive,
           tabBarStyle: {
-            backgroundColor: "#F5F5F5",
+            backgroundColor: theme.colors.nav,
             borderTopWidth: 1,
-            borderTopColor: "#E5E5E5",
+            borderTopColor: theme.colors.border,
             paddingVertical: 6,
             height: 70,
           },
@@ -124,7 +128,7 @@ export default function EventTabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -133,13 +137,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: "#303030",
+    backgroundColor: theme.colors.accentSolid,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: theme.colors.border,
   },
   eventName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#fff",
+    color: theme.colors.accentSolidText,
   },
 });

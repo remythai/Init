@@ -166,6 +166,16 @@ export const EventService = {
     await EventModel.delete(eventId);
   },
 
+  async getUserEvent(userId: number, eventId: number): Promise<unknown> {
+    const event = await EventModel.findPublicEventById(eventId, userId);
+
+    if (!event) {
+      throw new NotFoundError('Événement non trouvé');
+    }
+
+    return event;
+  },
+
   async getOrgaEvent(orgaId: number, eventId: number): Promise<unknown> {
     const event = await EventModel.findById(eventId);
 

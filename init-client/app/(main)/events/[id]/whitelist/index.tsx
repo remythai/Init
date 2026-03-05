@@ -1,8 +1,10 @@
 // app/(main)/events/[id]/whitelist/index.tsx
 import { authService } from '@/services/auth.service';
+import { useTheme, shared } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,6 +47,8 @@ const FILTER_TABS: Array<{ key: WhitelistStatus | 'all'; label: string }> = [
 export default function WhitelistScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [entries, setEntries] = useState<WhitelistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -168,9 +172,9 @@ export default function WhitelistScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#dc2626" />
+              <ActivityIndicator size="small" color={theme.colors.destructive} />
             ) : (
-              <MaterialIcons name="close" size={18} color="#dc2626" />
+              <MaterialIcons name="close" size={18} color={theme.colors.destructive} />
             )}
           </Pressable>
         )}
@@ -179,26 +183,26 @@ export default function WhitelistScreen() {
   };
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#1271FF" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <MaterialIcons name="arrow-back" size={24} color="#303030" />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
         </Pressable>
         <Text style={styles.headerTitle}>Whitelist</Text>
         <Pressable style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-          <MaterialIcons name="add" size={22} color="#fff" />
+          <MaterialIcons name="add" size={22} color={theme.colors.primaryForeground} />
         </Pressable>
       </View>
 
       {/* Stats banner */}
       <View style={styles.statsBanner}>
         {[
-          { label: 'Total', value: stats.total, color: '#303030' },
+          { label: 'Total', value: stats.total, color: theme.colors.primaryForeground },
           { label: 'En attente', value: stats.pending, color: '#f97316' },
           { label: 'Inscrits', value: stats.registered, color: '#22c55e' },
           { label: 'Retirés', value: stats.removed, color: '#9ca3af' },
@@ -212,17 +216,17 @@ export default function WhitelistScreen() {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <MaterialIcons name="search" size={20} color="#9ca3af" />
+        <MaterialIcons name="search" size={20} color={theme.colors.placeholder} />
         <TextInput
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
           placeholder="Numéro ou nom..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.colors.placeholder}
         />
         {search.length > 0 && (
           <Pressable onPress={() => setSearch('')}>
-            <MaterialIcons name="close" size={18} color="#9ca3af" />
+            <MaterialIcons name="close" size={18} color={theme.colors.placeholder} />
           </Pressable>
         )}
       </View>
@@ -246,7 +250,7 @@ export default function WhitelistScreen() {
         data={filtered}
         keyExtractor={item => String(item.id)}
         renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#1271FF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.colors.primary} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 8 }}
         ListEmptyComponent={<Text style={styles.empty}>{search || filter !== 'all' ? 'Aucun résultat' : 'Whitelist vide'}</Text>}
       />
@@ -258,16 +262,16 @@ export default function WhitelistScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Ajouter des numéros</Text>
               <Pressable onPress={() => setShowAddModal(false)}>
-                <MaterialIcons name="close" size={22} color="#303030" />
+                <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
               </Pressable>
             </View>
-            <Text style={styles.modalSub}>Un numéro par ligne, format international (+33…) ou local</Text>
+            <Text style={styles.modalSub}>Un numéro par ligne, format international (+33...) ou local</Text>
             <TextInput
               style={styles.numbersInput}
               value={newNumbers}
               onChangeText={setNewNumbers}
               placeholder={'+33612345678\n+33698765432\n0612345678'}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
               multiline
               autoCapitalize="none"
               autoCorrect={false}
@@ -281,7 +285,7 @@ export default function WhitelistScreen() {
               </Pressable>
               <Pressable style={styles.confirmBtn} onPress={handleAdd} disabled={addLoading}>
                 {addLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
                 ) : (
                   <Text style={styles.confirmBtnText}>Ajouter</Text>
                 )}
@@ -294,63 +298,63 @@ export default function WhitelistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
+    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
   },
   headerBtn: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
-  addBtn: { backgroundColor: '#1271FF', borderRadius: 10, padding: 8 },
+  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
+  addBtn: { backgroundColor: theme.colors.primary, borderRadius: 10, padding: 8 },
   statsBanner: {
-    flexDirection: 'row', backgroundColor: '#303030', paddingVertical: 14, paddingHorizontal: 8,
+    flexDirection: 'row', backgroundColor: theme.colors.foreground, paddingVertical: 14, paddingHorizontal: 8,
   },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 18 },
   statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    backgroundColor: theme.colors.card, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
-  searchInput: { flex: 1, fontSize: 15, color: '#303030' },
+  searchInput: { flex: 1, fontSize: 15, color: theme.colors.foreground },
   filterRow: {
-    flexDirection: 'row', backgroundColor: '#fff',
+    flexDirection: 'row', backgroundColor: theme.colors.card,
     paddingHorizontal: 12, paddingVertical: 8, gap: 6,
-    borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
-  filterTab: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F5F5F5' },
-  filterTabActive: { backgroundColor: '#303030' },
-  filterTabText: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
-  filterTabTextActive: { color: '#fff' },
-  empty: { textAlign: 'center', color: '#9ca3af', marginTop: 40, fontSize: 14 },
+  filterTab: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: theme.colors.background },
+  filterTabActive: { backgroundColor: theme.colors.accentSolid },
+  filterTabText: { fontSize: 12, fontWeight: '600', color: theme.colors.mutedForeground },
+  filterTabTextActive: { color: theme.colors.accentSolidText },
+  empty: { textAlign: 'center', color: theme.colors.placeholder, marginTop: 40, fontSize: 14 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
+    backgroundColor: theme.colors.card, borderRadius: 14, padding: 14,
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   rowInfo: { flex: 1 },
-  rowPhone: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 15, color: '#303030' },
-  rowName: { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  rowPhone: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 15, color: theme.colors.foreground },
+  rowName: { fontSize: 13, color: theme.colors.mutedForeground, marginTop: 2 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
   statusText: { fontSize: 11, fontWeight: '600' },
   removeBtn: { padding: 6 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: theme.colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  modalTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
-  modalSub: { fontSize: 13, color: '#6b7280', marginBottom: 14 },
+  modalTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
+  modalSub: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 14 },
   numbersInput: {
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
-    padding: 14, fontSize: 14, color: '#303030', minHeight: 140,
+    borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12,
+    padding: 14, fontSize: 14, color: theme.colors.foreground, minHeight: 140,
     textAlignVertical: 'top', fontFamily: 'monospace',
   },
-  countHint: { fontSize: 12, color: '#9ca3af', marginTop: 6, textAlign: 'right' },
+  countHint: { fontSize: 12, color: theme.colors.placeholder, marginTop: 6, textAlign: 'right' },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#F5F5F5', alignItems: 'center' },
-  cancelBtnText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#303030' },
-  confirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#303030', alignItems: 'center' },
-  confirmBtnText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#fff' },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.background, alignItems: 'center' },
+  cancelBtnText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.foreground },
+  confirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.accentSolid, alignItems: 'center' },
+  confirmBtnText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.accentSolidText },
 });

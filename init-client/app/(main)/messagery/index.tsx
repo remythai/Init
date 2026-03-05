@@ -1,10 +1,12 @@
 // app/(main)/messagery/index.tsx
 // Messagerie globale — toutes conversations de tous les événements
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -31,11 +33,12 @@ function getPhotoUri(photos?: { file_path: string }[]): string | null {
   return null;
 }
 
-function Avatar({ photos, firstname, lastname, size = 48 }: {
+function Avatar({ photos, firstname, lastname, size = 48, theme }: {
   photos?: { file_path: string }[];
   firstname: string;
   lastname: string;
   size?: number;
+  theme: Theme;
 }) {
   const uri = getPhotoUri(photos);
   const initials = `${firstname?.[0] || ''}${lastname?.[0] || ''}`.toUpperCase();
@@ -43,8 +46,8 @@ function Avatar({ photos, firstname, lastname, size = 48 }: {
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
   }
   return (
-    <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarFallbackText, { fontSize: size * 0.34 }]}>{initials}</Text>
+    <View style={[{ backgroundColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', width: size, height: size, borderRadius: size / 2 }]}>
+      <Text style={[{ fontWeight: '700', color: theme.colors.mutedForeground, fontSize: size * 0.34 }]}>{initials}</Text>
     </View>
   );
 }
@@ -65,6 +68,8 @@ function formatTime(dateStr?: string): string {
 
 export default function GlobalMessageryScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { setCurrentEventId } = useEvent();
 
   const [eventGroups, setEventGroups] = useState<EventConversations[]>([]);
@@ -111,13 +116,13 @@ export default function GlobalMessageryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1271FF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -137,13 +142,13 @@ export default function GlobalMessageryScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#1271FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={theme.colors.primary} />
         }
       >
         {eventGroups.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
-              <MaterialIcons name="chat-bubble-outline" size={44} color="#9ca3af" />
+              <MaterialIcons name="chat-bubble-outline" size={44} color={theme.colors.placeholder} />
             </View>
             <Text style={styles.emptyTitle}>Pas encore de matchs</Text>
             <Text style={styles.emptySubtitle}>
@@ -164,7 +169,7 @@ export default function GlobalMessageryScreen() {
                 <Pressable
                   style={styles.groupHeader}
                   onPress={() => toggleCollapse(group.event.id)}
-                  android_ripple={{ color: '#e5e7eb' }}
+                  android_ripple={{ color: theme.colors.border }}
                 >
                   <View style={styles.groupHeaderLeft}>
                     <Text style={styles.groupName} numberOfLines={1}>{group.event.name}</Text>
@@ -180,7 +185,7 @@ export default function GlobalMessageryScreen() {
                   <MaterialIcons
                     name={isCollapsed ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
                     size={22}
-                    color="#9ca3af"
+                    color={theme.colors.placeholder}
                   />
                 </Pressable>
 
@@ -198,7 +203,7 @@ export default function GlobalMessageryScreen() {
                           key={conv.match_id}
                           style={[styles.convRow, isBlocked && { opacity: 0.5 }, !isLast && styles.convRowBorder]}
                           onPress={() => handleConvPress(conv, group.event.id)}
-                          android_ripple={{ color: '#f9fafb' }}
+                          android_ripple={{ color: theme.colors.secondary }}
                         >
                           {/* Avatar + badge */}
                           <View style={styles.avatarWrapper}>
@@ -207,6 +212,7 @@ export default function GlobalMessageryScreen() {
                               firstname={conv.user?.firstname || '?'}
                               lastname={conv.user?.lastname || ''}
                               size={48}
+                              theme={theme}
                             />
                             {hasUnread && (
                               <View style={styles.unreadBadge}>
@@ -245,7 +251,7 @@ export default function GlobalMessageryScreen() {
                             </View>
                           </View>
 
-                          <MaterialIcons name="chevron-right" size={18} color="#d1d5db" />
+                          <MaterialIcons name="chevron-right" size={18} color={theme.colors.border} />
                         </Pressable>
                       );
                     })}
@@ -260,48 +266,46 @@ export default function GlobalMessageryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   header: {
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 22, color: '#303030' },
-  headerSub: { fontSize: 13, color: '#9ca3af' },
-  unreadTotal: { backgroundColor: '#1271FF', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  unreadTotalText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 22, color: theme.colors.foreground },
+  headerSub: { fontSize: 13, color: theme.colors.placeholder },
+  unreadTotal: { backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  unreadTotalText: { color: theme.colors.primaryForeground, fontSize: 11, fontWeight: '700' },
   emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
-  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 16, color: '#303030', marginBottom: 8 },
-  emptySubtitle: { fontSize: 13, color: '#9ca3af', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  emptyBtn: { backgroundColor: '#1271FF', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 24 },
-  emptyBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 16, color: theme.colors.foreground, marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, color: theme.colors.placeholder, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  emptyBtn: { backgroundColor: theme.colors.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 24 },
+  emptyBtnText: { color: theme.colors.primaryForeground, fontWeight: '600', fontSize: 14 },
   // Groups
-  group: { marginTop: 10, backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#f9fafb', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  group: { marginTop: 10, backgroundColor: theme.colors.card, borderRadius: 16, marginHorizontal: 12, overflow: 'hidden', shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.colors.secondary, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary },
   groupHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  groupName: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#303030', flex: 1 },
-  groupCount: { backgroundColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  groupCountText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
-  groupUnread: { backgroundColor: '#1271FF', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  groupUnreadText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  groupName: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.foreground, flex: 1 },
+  groupCount: { backgroundColor: theme.colors.border, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  groupCountText: { fontSize: 11, fontWeight: '700', color: theme.colors.mutedForeground },
+  groupUnread: { backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  groupUnreadText: { fontSize: 11, fontWeight: '700', color: theme.colors.primaryForeground },
   // Conversations
   convList: {},
   convRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
-  convRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
+  convRowBorder: { borderBottomWidth: 1, borderBottomColor: theme.colors.secondary },
   avatarWrapper: { position: 'relative' },
-  avatarFallback: { backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
-  avatarFallbackText: { fontWeight: '700', color: '#6b7280' },
-  unreadBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: '#1271FF', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 2, borderColor: '#fff' },
-  unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  unreadBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: theme.colors.primary, borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 2, borderColor: theme.colors.card },
+  unreadBadgeText: { color: theme.colors.primaryForeground, fontSize: 9, fontWeight: '700' },
   convInfo: { flex: 1, gap: 2 },
   convRow1: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   convRow2: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  convName: { fontSize: 14, fontWeight: '500', color: '#303030', flex: 1, marginRight: 6 },
+  convName: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, flex: 1, marginRight: 6 },
   convNameUnread: { fontWeight: '700' },
-  convTime: { fontSize: 11, color: '#9ca3af' },
-  convLastMsg: { fontSize: 13, color: '#9ca3af', flex: 1 },
-  convLastMsgUnread: { color: '#303030', fontWeight: '600' },
-  unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#1271FF', marginLeft: 4 },
+  convTime: { fontSize: 11, color: theme.colors.placeholder },
+  convLastMsg: { fontSize: 13, color: theme.colors.placeholder, flex: 1 },
+  convLastMsgUnread: { color: theme.colors.foreground, fontWeight: '600' },
+  unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.primary, marginLeft: 4 },
 });

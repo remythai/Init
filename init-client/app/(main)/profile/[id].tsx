@@ -1,13 +1,17 @@
 // app/(main)/profile/[id].tsx
 import { Profile, UserProfile } from "@/components/Profile";
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { authService } from "@/services/auth.service";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export default function UserProfileScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#303030" />
+        <ActivityIndicator size="large" color={theme.colors.foreground} />
       </View>
     );
   }
@@ -68,29 +72,30 @@ export default function UserProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  backButton: {
-    backgroundColor: "#303030",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.colors.background,
+      padding: 24,
+    },
+    errorText: {
+      fontSize: 16,
+      color: theme.colors.mutedForeground,
+      textAlign: "center",
+      marginBottom: 16,
+    },
+    backButton: {
+      backgroundColor: theme.colors.accentSolid,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    backButtonText: {
+      color: theme.colors.accentSolidText,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+  });

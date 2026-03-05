@@ -2,7 +2,9 @@
 import { DatePicker } from "@/components/DatePicker";
 import { AuthButton, AuthError, AuthInput } from "@/components/auth";
 import { ThemedText } from "@/components/themed-text";
-import { useState } from "react";
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { useMemo, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -25,6 +27,9 @@ interface AuthPageProps {
 type UserType = "user" | "organizer";
 
 export function AuthPage({ onAuth, loading }: AuthPageProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [isLogin, setIsLogin] = useState(true);
   const [userType, setUserType] = useState<UserType>("user");
 
@@ -176,133 +181,6 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
     }
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#303030",
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 40,
-    },
-    header: {
-      alignItems: "center",
-      paddingTop: 48,
-      paddingBottom: 32,
-    },
-    logoContainer: {
-      marginBottom: 16,
-      alignItems: "center",
-    },
-    logo: {
-      width: 64,
-      height: 64,
-      resizeMode: "contain",
-    },
-    tagline: {
-      color: "rgba(255, 255, 255, 0.7)",
-      fontSize: 14,
-    },
-    card: {
-      backgroundColor: "#F5F5F5",
-      borderRadius: 16,
-      padding: 24,
-      marginBottom: 32,
-    },
-    toggleContainer: {
-      flexDirection: "row",
-      gap: 8,
-      marginBottom: 16,
-      backgroundColor: "white",
-      padding: 4,
-      borderRadius: 8,
-    },
-    toggleButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 6,
-      alignItems: "center",
-    },
-    toggleButtonActive: {
-      backgroundColor: "#303030",
-    },
-    toggleButtonInactive: {
-      backgroundColor: "transparent",
-    },
-    toggleText: {
-      fontSize: 14,
-      fontWeight: "500",
-    },
-    toggleTextActive: {
-      color: "white",
-    },
-    toggleTextInactive: {
-      color: "#303030",
-    },
-    userTypeSection: {
-      marginBottom: 24,
-    },
-    userTypeLabel: {
-      marginBottom: 12,
-      fontSize: 14,
-      fontWeight: "500",
-      color: "#303030",
-    },
-    radioContainer: {
-      flexDirection: "row",
-      gap: 16,
-    },
-    radioOption: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: "white",
-      padding: 12,
-      borderRadius: 8,
-      borderWidth: 2,
-      gap: 8,
-    },
-    radioCircle: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderColor: "#303030",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    radioCircleSelected: {
-      borderColor: "#1271FF",
-    },
-    radioInner: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: "#1271FF",
-    },
-    radioLabel: {
-      fontSize: 14,
-      color: "#303030",
-    },
-    formContent: {
-      gap: 16,
-    },
-    forgotPassword: {
-      alignItems: "center",
-      marginTop: 16,
-    },
-    forgotPasswordText: {
-      color: "#303030",
-      fontSize: 14,
-    },
-    hint: {
-      fontSize: 12,
-      color: "#666",
-      marginTop: 4,
-      marginLeft: 4,
-    },
-  });
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -381,7 +259,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                   styles.radioOption,
                   {
                     borderColor:
-                      userType === "user" ? "#1271FF" : "transparent",
+                      userType === "user" ? theme.colors.primary : "transparent",
                   },
                 ]}
                 onPress={() => setUserType("user")}
@@ -403,7 +281,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                   styles.radioOption,
                   {
                     borderColor:
-                      userType === "organizer" ? "#1271FF" : "transparent",
+                      userType === "organizer" ? theme.colors.primary : "transparent",
                   },
                 ]}
                 onPress={() => setUserType("organizer")}
@@ -624,3 +502,130 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
     </KeyboardAvoidingView>
   );
 }
+
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.foreground,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: "center",
+    paddingTop: 48,
+    paddingBottom: 32,
+  },
+  logoContainer: {
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    resizeMode: "contain",
+  },
+  tagline: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+  },
+  card: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 32,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    backgroundColor: theme.colors.card,
+    padding: 4,
+    borderRadius: 8,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: theme.colors.foreground,
+  },
+  toggleButtonInactive: {
+    backgroundColor: "transparent",
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  toggleTextActive: {
+    color: theme.colors.background,
+  },
+  toggleTextInactive: {
+    color: theme.colors.foreground,
+  },
+  userTypeSection: {
+    marginBottom: 24,
+  },
+  userTypeLabel: {
+    marginBottom: 12,
+    fontSize: 14,
+    fontWeight: "500",
+    color: theme.colors.foreground,
+  },
+  radioContainer: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  radioOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.card,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    gap: 8,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: theme.colors.foreground,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioCircleSelected: {
+    borderColor: theme.colors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.primary,
+  },
+  radioLabel: {
+    fontSize: 14,
+    color: theme.colors.foreground,
+  },
+  formContent: {
+    gap: 16,
+  },
+  forgotPassword: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    color: theme.colors.foreground,
+    fontSize: 14,
+  },
+  hint: {
+    fontSize: 12,
+    color: theme.colors.mutedForeground,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+});

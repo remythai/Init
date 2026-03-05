@@ -1,8 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { lightTheme, darkTheme } from '../constants/theme';
-
-type Theme = typeof lightTheme;
+import { lightTheme, darkTheme, shared, type Theme } from '../constants/theme';
 
 interface ThemeContextType {
   theme: Theme;
@@ -69,3 +67,6 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
+
+// Re-export shared tokens for direct import (mode-independent values)
+export { shared };

@@ -1,6 +1,6 @@
 // components/EventsList.tsx
 import { MaterialIcons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -14,6 +14,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useTheme, shared } from "@/context/ThemeContext";
+import { type Theme } from "@/constants/theme";
 import { CreateEventDialog } from "./CreateEventDialog";
 
 export interface Event {
@@ -56,6 +58,9 @@ export function EventsList({
   userType,
   onCreateEvent,
 }: EventsListProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [activeFilter, setActiveFilter] = useState<"all" | "registered">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -120,16 +125,8 @@ export function EventsList({
   const hasActiveAdvancedFilters =
     maxDistance !== 50 || selectedTheme !== "all" || onlyAvailable || dateFilter !== "all";
 
-  const getThemeColor = (theme: string) => {
-    const colors: Record<string, string> = {
-      musique: "#a855f7",
-      professionnel: "#3b82f6",
-      étudiant: "#22c55e",
-      sport: "#f97316",
-      café: "#f59e0b",
-      fête: "#ec4899",
-    };
-    return colors[theme.toLowerCase()] || "#6b7280";
+  const getThemeColor = (eventTheme: string) => {
+    return shared.eventTheme[eventTheme.toLowerCase()] || shared.eventTheme.général;
   };
 
   const themes = [
@@ -154,17 +151,17 @@ export function EventsList({
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
-          <MaterialIcons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+          <MaterialIcons name="search" size={20} color={theme.colors.placeholder} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher un événement..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={theme.colors.placeholder}
           />
         </View>
         <Pressable style={styles.filterButton} onPress={() => setIsAdvancedOpen(true)}>
-          <MaterialIcons name="more-vert" size={20} color="#303030" />
+          <MaterialIcons name="more-vert" size={20} color={theme.colors.foreground} />
           {hasActiveAdvancedFilters && <View style={styles.filterDot} />}
         </Pressable>
       </View>
@@ -220,7 +217,7 @@ export function EventsList({
 
                 <View style={styles.infoContainer}>
                   <View style={styles.infoRow}>
-                    <MaterialIcons name="event" size={16} color="#303030" />
+                    <MaterialIcons name="event" size={16} color={theme.colors.foreground} />
                     <Text style={styles.infoText}>
                       {event.hasPhysicalEvent ? event.physicalDate : event.appDate}
                     </Text>
@@ -228,13 +225,13 @@ export function EventsList({
 
                   {event.location ? (
                     <View style={styles.infoRow}>
-                      <MaterialIcons name="place" size={16} color="#303030" />
+                      <MaterialIcons name="place" size={16} color={theme.colors.foreground} />
                       <Text style={styles.infoText}>{event.location}</Text>
                     </View>
                   ) : null}
 
                   <View style={styles.infoRow}>
-                    <MaterialIcons name="group" size={16} color="#303030" />
+                    <MaterialIcons name="group" size={16} color={theme.colors.foreground} />
                     <Text style={styles.infoText}>
                       {event.participants}/{event.maxParticipants} participants
                     </Text>
@@ -305,7 +302,7 @@ export function EventsList({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Recherche avancée</Text>
               <Pressable onPress={() => setIsAdvancedOpen(false)}>
-                <MaterialIcons name="close" size={24} color="#303030" />
+                <MaterialIcons name="close" size={24} color={theme.colors.foreground} />
               </Pressable>
             </View>
 
@@ -332,14 +329,14 @@ export function EventsList({
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Type d'événement</Text>
                 <View style={styles.optionsContainer}>
-                  {themes.map((theme) => (
+                  {themes.map((themeOption) => (
                     <Pressable
-                      key={theme.value}
-                      style={[styles.optionButton, selectedTheme === theme.value && styles.optionButtonActive]}
-                      onPress={() => setSelectedTheme(theme.value)}
+                      key={themeOption.value}
+                      style={[styles.optionButton, selectedTheme === themeOption.value && styles.optionButtonActive]}
+                      onPress={() => setSelectedTheme(themeOption.value)}
                     >
-                      <Text style={[styles.optionButtonText, selectedTheme === theme.value && styles.optionButtonTextActive]}>
-                        {theme.label}
+                      <Text style={[styles.optionButtonText, selectedTheme === themeOption.value && styles.optionButtonTextActive]}>
+                        {themeOption.label}
                       </Text>
                     </Pressable>
                   ))}
@@ -397,37 +394,37 @@ export function EventsList({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5", position: "relative" },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background, position: "relative" },
   searchContainer: {
     position: "absolute", top: 16, left: 16, right: 16,
     flexDirection: "row", gap: 8, zIndex: 10,
   },
   searchWrapper: {
     flex: 1, flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 24,
-    paddingHorizontal: 12, shadowColor: "#000", shadowOpacity: 0.1,
+    backgroundColor: theme.colors.card, borderRadius: 24,
+    paddingHorizontal: 12, shadowColor: theme.colors.shadow, shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, height: 48, fontSize: 16, color: "#303030" },
+  searchInput: { flex: 1, height: 48, fontSize: 16, color: theme.colors.foreground },
   filterButton: {
-    width: 48, height: 48, backgroundColor: "rgba(255,255,255,0.9)",
+    width: 48, height: 48, backgroundColor: theme.colors.card,
     borderRadius: 24, justifyContent: "center", alignItems: "center",
-    shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
+    shadowColor: theme.colors.shadow, shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6, elevation: 3, position: "relative",
   },
   filterDot: {
     position: "absolute", top: 8, right: 8, width: 8, height: 8,
-    backgroundColor: "#1271FF", borderRadius: 4,
+    backgroundColor: theme.colors.primary, borderRadius: 4,
   },
   scrollView: { flex: 1 },
   scrollContent: { paddingTop: 80, padding: 16, paddingBottom: 100, gap: 16 },
   emptyState: { paddingVertical: 48, alignItems: "center" },
-  emptyText: { fontSize: 16, color: "#6b7280", textAlign: "center" },
+  emptyText: { fontSize: 16, color: theme.colors.mutedForeground, textAlign: "center" },
   eventCard: {
-    backgroundColor: "#fff", borderRadius: 12, overflow: "hidden",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    backgroundColor: theme.colors.card, borderRadius: 12, overflow: "hidden",
+    shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1, shadowRadius: 8, elevation: 3, marginBottom: 16,
   },
   imageContainer: { position: "relative", height: 192 },
@@ -437,65 +434,65 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between",
   },
   themeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  registeredBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: "#22c55e" },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  registeredBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: shared.success },
+  badgeText: { color: theme.colors.primaryForeground, fontSize: 12, fontWeight: "600" },
   cardContent: { padding: 16 },
-  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 18, color: "#303030", marginBottom: 4 },
-  orgaName: { fontSize: 13, color: "#6b7280", marginBottom: 10 },
+  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 18, color: theme.colors.foreground, marginBottom: 4 },
+  orgaName: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 10 },
   infoContainer: { gap: 8 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoText: { fontSize: 14, color: "#4b5563", flex: 1 },
+  infoText: { fontSize: 14, color: theme.colors.textSecondary, flex: 1 },
   progressBar: {
-    width: "100%", height: 8, backgroundColor: "#E0E7FF",
+    width: "100%", height: 8, backgroundColor: theme.colors.accent,
     borderRadius: 4, marginTop: 12, overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: "#1271FF", borderRadius: 4 },
+  progressFill: { height: "100%", backgroundColor: theme.colors.primary, borderRadius: 4 },
   actionContainer: { padding: 16, paddingTop: 0 },
-  enterButton: { backgroundColor: "#303030", paddingVertical: 12, borderRadius: 8, alignItems: "center" },
-  enterButtonText: { fontFamily: "Poppins", color: "#fff", fontSize: 16, fontWeight: "600" },
+  enterButton: { backgroundColor: theme.colors.accentSolid, paddingVertical: 12, borderRadius: 8, alignItems: "center" },
+  enterButtonText: { fontFamily: "Poppins", color: theme.colors.accentSolidText, fontSize: 16, fontWeight: "600" },
   filterTabs: { position: "absolute", left: 16, right: 16, zIndex: 10 },
   tabsContainer: {
-    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 50, padding: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    flexDirection: "row", backgroundColor: theme.colors.card,
+    borderRadius: 50, padding: 4, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
   },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 50, alignItems: "center" },
-  tabActive: { backgroundColor: "rgba(48,48,48,0.9)" },
-  tabText: { fontFamily: "Poppins", fontSize: 14, color: "#303030" },
-  tabTextActive: { color: "#fff" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%" },
+  tabActive: { backgroundColor: theme.colors.tabActive },
+  tabText: { fontFamily: "Poppins", fontSize: 14, color: theme.colors.foreground },
+  tabTextActive: { color: theme.colors.primaryForeground },
+  modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
+  modalContent: { backgroundColor: theme.colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%" },
   modalHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 20, borderBottomWidth: 1, borderBottomColor: "#f3f4f6",
+    padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
-  modalTitle: { fontFamily: "Poppins", fontSize: 20, fontWeight: "600", color: "#303030" },
+  modalTitle: { fontFamily: "Poppins", fontSize: 20, fontWeight: "600", color: theme.colors.foreground },
   modalBody: { padding: 20 },
   filterSection: { marginBottom: 24 },
-  filterLabel: { fontSize: 16, fontWeight: "600", color: "#303030", marginBottom: 12 },
-  filterSubLabel: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+  filterLabel: { fontSize: 16, fontWeight: "600", color: theme.colors.foreground, marginBottom: 12 },
+  filterSubLabel: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
   distanceButtons: { flexDirection: "row", gap: 8 },
-  distanceButton: { flex: 1, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: "#e5e7eb", alignItems: "center" },
-  distanceButtonActive: { backgroundColor: "#1271FF", borderColor: "#1271FF" },
-  distanceButtonText: { fontSize: 14, color: "#303030" },
-  distanceButtonTextActive: { color: "#fff" },
+  distanceButton: { flex: 1, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.border, alignItems: "center" },
+  distanceButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  distanceButtonText: { fontSize: 14, color: theme.colors.foreground },
+  distanceButtonTextActive: { color: theme.colors.primaryForeground },
   optionsContainer: { gap: 8 },
-  optionButton: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff" },
-  optionButtonActive: { backgroundColor: "#303030", borderColor: "#303030" },
-  optionButtonText: { fontSize: 16, color: "#303030" },
-  optionButtonTextActive: { color: "#fff" },
+  optionButton: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.card },
+  optionButtonActive: { backgroundColor: theme.colors.accentSolid, borderColor: theme.colors.accentSolid },
+  optionButtonText: { fontSize: 16, color: theme.colors.foreground },
+  optionButtonTextActive: { color: theme.colors.accentSolidText },
   switchContainer: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 16, backgroundColor: "#F5F5F5", borderRadius: 8,
+    padding: 16, backgroundColor: theme.colors.background, borderRadius: 8,
   },
   switchLabel: { flex: 1 },
-  switch: { width: 51, height: 31, borderRadius: 16, backgroundColor: "#e5e7eb", padding: 2, justifyContent: "center" },
-  switchActive: { backgroundColor: "#1271FF" },
-  switchThumb: { width: 27, height: 27, borderRadius: 14, backgroundColor: "#fff" },
+  switch: { width: 51, height: 31, borderRadius: 16, backgroundColor: theme.colors.border, padding: 2, justifyContent: "center" },
+  switchActive: { backgroundColor: theme.colors.primary },
+  switchThumb: { width: 27, height: 27, borderRadius: 14, backgroundColor: theme.colors.card },
   switchThumbActive: { alignSelf: "flex-end" },
-  modalActions: { flexDirection: "row", gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: "#f3f4f6" },
-  resetButton: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", alignItems: "center" },
-  resetButtonText: { fontSize: 16, fontWeight: "600", color: "#303030" },
-  applyButton: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: "#303030", alignItems: "center" },
-  applyButtonText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  modalActions: { flexDirection: "row", gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: theme.colors.secondary },
+  resetButton: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, alignItems: "center" },
+  resetButtonText: { fontSize: 16, fontWeight: "600", color: theme.colors.foreground },
+  applyButton: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: theme.colors.accentSolid, alignItems: "center" },
+  applyButtonText: { fontSize: 16, fontWeight: "600", color: theme.colors.accentSolidText },
 });
