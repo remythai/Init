@@ -18,7 +18,7 @@
   --card-bg: #ffffff;
   --text-primary: #303030;
   --text-secondary: rgba(48, 48, 48, 0.6);
-  --text-muted: rgba(48, 48, 48, 0.4);
+  --text-muted: rgba(48, 48, 48, 0.8);
   --border-color: #e5e5e5;
   --input-bg: #f0f0f0;
   --nav-bg: #F5F5F5;
@@ -27,7 +27,7 @@
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --received-msg-bg: #ffffff;
   --modal-bg: #ffffff;
-  --badge-bg: #f3f4f6;
+  --badge-bg: #e8e8e8;
   --accent-solid: #303030;
   --accent-solid-text: #ffffff;
   --scrollbar-thumb: rgba(0, 0, 0, 0.12);
@@ -41,7 +41,7 @@
   --card-bg: #3a3a3a;
   --text-primary: #ededed;
   --text-secondary: rgba(237, 237, 237, 0.6);
-  --text-muted: rgba(237, 237, 237, 0.4);
+  --text-muted: rgba(237, 237, 237, 0.8);
   --border-color: #4a4a4a;
   --input-bg: #444444;
   --nav-bg: #303030;

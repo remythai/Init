@@ -2,19 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, MessageCircle, User } from "lucide-react";
+import { Calendar, MessageCircle, User, Users } from "lucide-react";
 import { useUnreadMessagesContext } from "../contexts/UnreadMessagesContext";
 import ThemeToggle from "./ThemeToggle";
 
-export default function DesktopNav() {
-  const pathname = usePathname();
-  const { hasUnreadGeneral: hasUnreadMessages } = useUnreadMessagesContext();
+interface DesktopNavProps {
+  eventId?: string;
+}
 
-  const links = [
-    { name: "Profil", href: "/profile", icon: User, isActive: pathname === "/profile" },
-    { name: "Événements", href: "/events", icon: Calendar, isActive: pathname === "/events" },
-    { name: "Messages", href: "/messages", icon: MessageCircle, isActive: pathname === "/messages", showBadge: hasUnreadMessages },
-  ];
+export default function DesktopNav({ eventId }: DesktopNavProps) {
+  const pathname = usePathname();
+  const { hasUnreadGeneral: hasUnreadMessages, hasUnreadForEvent } = useUnreadMessagesContext();
+
+  const links = eventId
+    ? [
+        { name: "Profil", href: `/events/${eventId}/environment/profile`, icon: User, isActive: pathname.includes("/profile") },
+        { name: "Swiper", href: `/events/${eventId}/environment/swiper`, icon: Users, isActive: pathname.includes("/swiper") },
+        { name: "Messages", href: `/events/${eventId}/environment/messages`, icon: MessageCircle, isActive: pathname.includes("/messages"), showBadge: hasUnreadForEvent(eventId) },
+      ]
+    : [
+        { name: "Profil", href: "/profile", icon: User, isActive: pathname === "/profile" },
+        { name: "Événements", href: "/events", icon: Calendar, isActive: pathname === "/events" },
+        { name: "Messages", href: "/messages", icon: MessageCircle, isActive: pathname === "/messages", showBadge: hasUnreadMessages },
+      ];
 
   return (
     <nav className="hidden md:flex items-center gap-10">
@@ -35,7 +45,6 @@ export default function DesktopNav() {
           )}
         </Link>
       ))}
-      <ThemeToggle />
     </nav>
   );
 }

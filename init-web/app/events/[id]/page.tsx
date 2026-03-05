@@ -573,7 +573,7 @@ export default function EventDetailPage() {
           </div>
           <DesktopNav />
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="md:hidden"><ThemeToggle /></div>
+            <ThemeToggle />
             {userType === "orga" ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -608,7 +608,7 @@ export default function EventDetailPage() {
             <img
               src={event.image}
               alt={event.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-3xl"
             />
             <div className="absolute bottom-4 left-4">
               <span
@@ -649,7 +649,7 @@ export default function EventDetailPage() {
               )}
 
               {/* App availability dates (always shown) */}
-              <div className="flex items-start gap-3 p-4 bg-[#1271FF]/10 rounded-xl">
+              <div className="flex items-start gap-3 p-4 bg-[#1271FF]/10 rounded-xl shadow-sm">
                 <Calendar className="w-5 h-5 text-[#1271FF] mt-0.5" />
                 <div>
                   <p className="font-semibold text-sm text-primary">Disponibilite de l'app</p>
@@ -803,7 +803,7 @@ export default function EventDetailPage() {
               <button
                 onClick={handleUnregister}
                 disabled={registering}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-red-500 text-red-500 font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-red-500 text-red-500 font-semibold hover:bg-red-500 hover:text-white cursor-pointer transition-colors disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
                 {registering ? "Chargement..." : "Se desinscrire"}
