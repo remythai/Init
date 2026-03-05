@@ -2,6 +2,8 @@
 import { eventService, CustomField, getFieldId, EventResponse } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -435,13 +437,7 @@ export default function EditEventScreen() {
     ]);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   // Show field editor inline (full screen overlay feel)
   if (editingField) {
@@ -450,13 +446,7 @@ export default function EditEventScreen() {
         style={{ flex: 1, backgroundColor: theme.colors.card }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.editorHeader}>
-          <Pressable onPress={() => setEditingField(null)} style={styles.headerButton}>
-            <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-          </Pressable>
-          <Text style={styles.editorHeaderTitle}>Champ personnalisé</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <ScreenHeader title="Champ personnalisé" onBack={() => setEditingField(null)} />
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <CustomFieldEditor
             field={editingField.field}
@@ -475,14 +465,7 @@ export default function EditEventScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Modifier l'événement</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader title="Modifier l'événement" />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -736,37 +719,6 @@ export default function EditEventScreen() {
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
-
-  // Editor header (custom field editor)
-  editorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  editorHeaderTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 16, color: theme.colors.foreground },
-
   // Card
   card: {
     backgroundColor: theme.colors.card,

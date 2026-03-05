@@ -3,6 +3,13 @@ import { reportService, Report, ReportStats, ReportDetails, ReportStatus, Report
 import { eventService } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { FilterTabs } from '@/components/ui/FilterTabs';
+import { StatsBanner } from '@/components/ui/StatsBanner';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -20,7 +27,6 @@ import {
   View,
 } from 'react-native';
 
-// Semantic status colors — kept as-is for both light and dark mode
 const TYPE_CONFIG: Record<ReportType, { icon: keyof typeof MaterialIcons.glyphMap; color: string; bg: string; label: string }> = {
   photo:   { icon: 'image',         color: '#7c3aed', bg: '#ede9fe', label: 'Photo' },
   profile: { icon: 'person',        color: '#1271FF', bg: '#dbeafe', label: 'Profil' },
@@ -34,22 +40,13 @@ const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: st
   dismissed: { label: 'Ignoré',     color: '#6b7280', bg: '#f3f4f6' },
 };
 
-const FILTER_TABS: Array<{ key: ReportStatus | 'all'; label: string }> = [
+const FILTER_TABS: Array<{ key: string; label: string }> = [
   { key: 'all',       label: 'Tous' },
   { key: 'pending',   label: 'A traiter' },
   { key: 'reviewed',  label: 'En cours' },
   { key: 'resolved',  label: 'Bloqués' },
   { key: 'dismissed', label: 'Ignorés' },
 ];
-
-function Avatar({ name, size = 32, bg = '#303030', theme }: { name: string; size?: number; bg?: string; theme: Theme }) {
-  const initials = name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
-  return (
-    <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={[{ color: '#fff', fontWeight: '700', fontSize: size * 0.36 }]}>{initials}</Text>
-    </View>
-  );
-}
 
 export default function ReportsScreen() {
   const router = useRouter();
@@ -166,7 +163,6 @@ export default function ReportsScreen() {
       >
         {isPending && <View style={styles.pendingDot} />}
 
-        {/* Top row: type icon + info + status */}
         <View style={styles.cardTop}>
           <View style={[styles.typeIcon, { backgroundColor: type.bg }]}>
             <MaterialIcons name={type.icon} size={18} color={type.color} />
@@ -182,17 +178,16 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        {/* Signaleur -> Signale */}
         <View style={styles.usersRow}>
           <View style={styles.userPill}>
-            <Avatar name={`${item.reporter.firstname} ${item.reporter.lastname}`} size={24} bg="#6b7280" theme={theme} />
+            <Avatar firstname={item.reporter.firstname} lastname={item.reporter.lastname} size={24} bgColor="#6b7280" />
             <Text style={styles.userPillText} numberOfLines={1}>
               {item.reporter.firstname} {item.reporter.lastname}
             </Text>
           </View>
           <MaterialIcons name="arrow-forward" size={14} color={theme.colors.placeholder} />
           <View style={[styles.userPill, { backgroundColor: '#fee2e2' }]}>
-            <Avatar name={`${item.reported_user.firstname} ${item.reported_user.lastname}`} size={24} bg="#dc2626" theme={theme} />
+            <Avatar firstname={item.reported_user.firstname} lastname={item.reported_user.lastname} size={24} bgColor="#dc2626" />
             <Text style={[styles.userPillText, { color: '#dc2626' }]} numberOfLines={1}>
               {item.reported_user.firstname} {item.reported_user.lastname}
             </Text>
@@ -206,80 +201,32 @@ export default function ReportsScreen() {
     );
   };
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={styles.headerTitle}>Signalements</Text>
-          {stats && stats.pending > 0 && (
-            <Text style={styles.headerSub}>{stats.pending} en attente</Text>
-          )}
-        </View>
-        <Pressable onPress={() => load(true)} style={styles.headerBtn}>
-          <MaterialIcons name="refresh" size={22} color={theme.colors.foreground} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Signalements"
+        subtitle={stats && stats.pending > 0 ? `${stats.pending} en attente` : undefined}
+        subtitleColor="#f97316"
+        rightAction={
+          <Pressable onPress={() => load(true)} style={{ padding: 8, borderRadius: 8 }}>
+            <MaterialIcons name="refresh" size={22} color={theme.colors.foreground} />
+          </Pressable>
+        }
+      />
 
-      {/* Stats banner */}
       {stats && (
-        <View style={styles.statsBanner}>
-          {[
-            { label: 'A traiter', value: stats.pending,   color: '#f97316' },
-            { label: 'En cours',  value: stats.reviewed,  color: '#1271FF' },
-            { label: 'Bloqués',   value: stats.resolved,  color: '#dc2626' },
-            { label: 'Ignorés',   value: stats.dismissed, color: '#9ca3af' },
-          ].map((s, i) => (
-            <View key={i} style={styles.statItem}>
-              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+        <StatsBanner stats={[
+          { label: 'A traiter', value: stats.pending,   color: '#f97316' },
+          { label: 'En cours',  value: stats.reviewed,  color: '#1271FF' },
+          { label: 'Bloqués',   value: stats.resolved,  color: '#dc2626' },
+          { label: 'Ignorés',   value: stats.dismissed, color: '#9ca3af' },
+        ]} />
       )}
 
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <MaterialIcons name="search" size={20} color={theme.colors.placeholder} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Nom, type de signalement..."
-          placeholderTextColor={theme.colors.placeholder}
-        />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')}>
-            <MaterialIcons name="close" size={18} color={theme.colors.placeholder} />
-          </Pressable>
-        )}
-      </View>
-
-      {/* Filter tabs */}
-      <ScrollView
-        horizontal showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8, gap: 6 }}
-      >
-        {FILTER_TABS.map(tab => (
-          <Pressable
-            key={tab.key}
-            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
-            onPress={() => setFilter(tab.key)}
-          >
-            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <SearchBar value={search} onChangeText={setSearch} placeholder="Nom, type de signalement..." />
+      <FilterTabs tabs={FILTER_TABS} selected={filter} onSelect={k => setFilter(k as ReportStatus | 'all')} scrollable />
 
       <FlatList
         data={filtered}
@@ -288,10 +235,7 @@ export default function ReportsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={theme.colors.primary} />}
         contentContainerStyle={{ padding: 12, paddingBottom: 40, gap: 10 }}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <MaterialIcons name="flag" size={44} color={theme.colors.border} />
-            <Text style={styles.emptyText}>{search || filter !== 'all' ? 'Aucun résultat' : 'Aucun signalement'}</Text>
-          </View>
+          <EmptyState icon="flag" title={search || filter !== 'all' ? 'Aucun résultat' : 'Aucun signalement'} />
         }
       />
 
@@ -310,7 +254,6 @@ export default function ReportsScreen() {
               </View>
             ) : selected ? (
               <>
-                {/* Modal header */}
                 <View style={styles.modalHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.modalTitle}>Signalement #{selected.id}</Text>
@@ -329,12 +272,11 @@ export default function ReportsScreen() {
                 </View>
 
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
-                  {/* Users */}
                   <View style={styles.usersBox}>
                     <View style={styles.usersBoxRow}>
                       <Text style={styles.usersBoxRole}>Signaleur</Text>
                       <View style={styles.usersBoxPill}>
-                        <Avatar name={`${selected.reporter.firstname} ${selected.reporter.lastname}`} size={30} bg="#6b7280" theme={theme} />
+                        <Avatar firstname={selected.reporter.firstname} lastname={selected.reporter.lastname} size={30} bgColor="#6b7280" />
                         <Text style={styles.usersBoxName}>{selected.reporter.firstname} {selected.reporter.lastname}</Text>
                       </View>
                     </View>
@@ -342,7 +284,7 @@ export default function ReportsScreen() {
                     <View style={styles.usersBoxRow}>
                       <Text style={[styles.usersBoxRole, { color: '#dc2626' }]}>Signale</Text>
                       <View style={[styles.usersBoxPill, { backgroundColor: '#fee2e2' }]}>
-                        <Avatar name={`${selected.reported_user.firstname} ${selected.reported_user.lastname}`} size={30} bg="#dc2626" theme={theme} />
+                        <Avatar firstname={selected.reported_user.firstname} lastname={selected.reported_user.lastname} size={30} bgColor="#dc2626" />
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.usersBoxName, { color: '#dc2626' }]}>
                             {selected.reported_user.firstname} {selected.reported_user.lastname}
@@ -355,7 +297,6 @@ export default function ReportsScreen() {
                     </View>
                   </View>
 
-                  {/* Description */}
                   {selected.description && (
                     <View style={styles.descBox}>
                       <Text style={styles.descBoxTitle}>Description</Text>
@@ -363,7 +304,6 @@ export default function ReportsScreen() {
                     </View>
                   )}
 
-                  {/* Messages (si report message) */}
                   {selected.messages && selected.messages.length > 0 && (
                     <View style={styles.descBox}>
                       <Text style={styles.descBoxTitle}>Conversation ({selected.messages.length} messages)</Text>
@@ -383,14 +323,12 @@ export default function ReportsScreen() {
                     </View>
                   )}
 
-                  {/* Photos (si report photo) */}
                   {selected.photos && selected.photos.length > 0 && (
                     <View style={styles.descBox}>
                       <Text style={styles.descBoxTitle}>Photos signalées</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 4 }}>
                         {selected.photos.map(photo => (
                           <View key={photo.id} style={[styles.photoThumb, photo.is_primary && styles.photoThumbPrimary]}>
-                            {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
                             <View style={{ width: 100, height: 100, backgroundColor: theme.colors.border, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
                               <MaterialIcons name="image" size={32} color={theme.colors.placeholder} />
                             </View>
@@ -400,7 +338,6 @@ export default function ReportsScreen() {
                     </View>
                   )}
 
-                  {/* Notes orga */}
                   <View>
                     <Text style={styles.descBoxTitle}>Notes organisateur</Text>
                     <TextInput
@@ -415,29 +352,16 @@ export default function ReportsScreen() {
                   </View>
                 </ScrollView>
 
-                {/* Actions */}
                 <View style={styles.modalActions}>
                   {selected.status === 'pending' || selected.status === 'reviewed' ? (
                     <View style={styles.actionsRow}>
-                      <Pressable
-                        style={styles.dismissBtn}
-                        onPress={() => updateStatus('dismissed')}
-                        disabled={updating}
-                      >
+                      <Pressable style={styles.dismissBtn} onPress={() => updateStatus('dismissed')} disabled={updating}>
                         {updating ? <ActivityIndicator size="small" color={theme.colors.mutedForeground} /> : <Text style={styles.dismissBtnText}>Ignorer</Text>}
                       </Pressable>
-                      <Pressable
-                        style={styles.reviewBtn}
-                        onPress={() => updateStatus('reviewed')}
-                        disabled={updating || selected.status === 'reviewed'}
-                      >
+                      <Pressable style={styles.reviewBtn} onPress={() => updateStatus('reviewed')} disabled={updating || selected.status === 'reviewed'}>
                         <Text style={[styles.reviewBtnText, selected.status === 'reviewed' && { opacity: 0.4 }]}>En cours</Text>
                       </Pressable>
-                      <Pressable
-                        style={styles.blockBtn}
-                        onPress={handleBlock}
-                        disabled={updating}
-                      >
+                      <Pressable style={styles.blockBtn} onPress={handleBlock} disabled={updating}>
                         <MaterialIcons name="block" size={16} color="#fff" />
                         <Text style={styles.blockBtnText}>Bloquer</Text>
                       </Pressable>
@@ -449,11 +373,7 @@ export default function ReportsScreen() {
                           {STATUS_CONFIG[selected.status].label}
                         </Text>
                       </View>
-                      <Pressable
-                        style={styles.reopenBtn}
-                        onPress={() => updateStatus('pending')}
-                        disabled={updating}
-                      >
+                      <Pressable style={styles.reopenBtn} onPress={() => updateStatus('pending')} disabled={updating}>
                         <Text style={styles.reopenBtnText}>Remettre en attente</Text>
                       </Pressable>
                     </View>
@@ -470,31 +390,6 @@ export default function ReportsScreen() {
 
 const createStyles = (theme: Theme) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
-  headerBtn: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
-  headerSub: { fontSize: 12, color: '#f97316', fontWeight: '600' },
-  statsBanner: { flexDirection: 'row', backgroundColor: theme.colors.foreground, paddingVertical: 14 },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 20 },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: theme.colors.card, paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: theme.colors.foreground },
-  filterScroll: { backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary, maxHeight: 52 },
-  filterTab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: theme.colors.background },
-  filterTabActive: { backgroundColor: theme.colors.accentSolid },
-  filterTabText: { fontSize: 12, fontWeight: '600', color: theme.colors.mutedForeground },
-  filterTabTextActive: { color: theme.colors.accentSolidText },
-  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyText: { color: theme.colors.placeholder, fontSize: 14 },
   // Cards
   card: { backgroundColor: theme.colors.card, borderRadius: 14, padding: 14 },
   cardPending: { borderLeftWidth: 3, borderLeftColor: '#f97316' },

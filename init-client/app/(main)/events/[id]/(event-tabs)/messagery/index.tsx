@@ -3,11 +3,13 @@ import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -15,13 +17,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-
-function getPhotoUri(filePath?: string): string | null {
-  if (!filePath) return null;
-  return filePath.startsWith('http') ? filePath : `${API_URL}${filePath}`;
-}
 
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -87,24 +82,16 @@ export default function EventMessageryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Chargement...</Text>
-        </View>
+        <ScreenLoader />
       ) : conversations.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
-            <MaterialIcons name="chat-bubble-outline" size={48} color={theme.colors.placeholder} />
-          </View>
-          <Text style={styles.emptyTitle}>Pas encore de matchs</Text>
-          <Text style={styles.emptySub}>Commencez à swiper pour matcher avec d'autres participants !</Text>
-        </View>
+        <EmptyState
+          icon="chat-bubble-outline"
+          title="Pas encore de matchs"
+          subtitle="Commencez à swiper pour matcher avec d'autres participants !"
+        />
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {conversations.map((conv) => {
-            const photo = conv.user?.photos?.[0]?.file_path
-              ? getPhotoUri(conv.user.photos[0].file_path)
-              : null;
             const isDisabled = conv.is_blocked || conv.is_other_user_blocked;
             const unread = conv.unread_count || 0;
 
@@ -117,15 +104,13 @@ export default function EventMessageryScreen() {
               >
                 {/* Avatar */}
                 <View style={styles.avatarWrapper}>
-                  {photo ? (
-                    <Image source={{ uri: photo }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarFallbackText}>
-                        {conv.user?.firstname?.[0] || '?'}
-                      </Text>
-                    </View>
-                  )}
+                  <Avatar
+                    firstname={conv.user?.firstname}
+                    lastname={conv.user?.lastname}
+                    photo={conv.user?.photos?.[0]?.file_path}
+                    size={56}
+                    bgColor={theme.colors.border}
+                  />
                   {unread > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
@@ -169,7 +154,6 @@ export default function EventMessageryScreen() {
 const createStyles = (theme: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  loadingText: { marginTop: 12, color: theme.colors.placeholder, fontSize: 14 },
 
   header: {
     backgroundColor: theme.colors.foreground,
@@ -196,13 +180,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   convItemDisabled: { opacity: 0.55 },
 
   avatarWrapper: { position: 'relative' },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarFallback: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: theme.colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarFallbackText: { fontSize: 20, fontWeight: '700', color: theme.colors.foreground },
   badge: {
     position: 'absolute', top: -2, right: -2,
     minWidth: 20, height: 20, borderRadius: 10,
@@ -219,15 +196,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   convTime: { fontSize: 12, color: theme.colors.placeholder, marginLeft: 8 },
   convLast: { fontSize: 13, color: theme.colors.placeholder },
   convLastUnread: { color: theme.colors.foreground, fontWeight: '500' },
-
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  emptyIcon: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: theme.colors.border,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-  },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: theme.colors.foreground, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: theme.colors.placeholder, textAlign: 'center', lineHeight: 20 },
 
   errorText: { color: theme.colors.destructive, fontSize: 15, marginBottom: 16 },
   errorButton: { backgroundColor: theme.colors.foreground, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },

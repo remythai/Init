@@ -2,6 +2,8 @@
 import { eventService, EventStatistics } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -113,28 +115,19 @@ export default function StatisticsScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={styles.headerTitle}>Statistiques</Text>
-          {eventName ? <Text style={styles.headerSub}>{eventName}</Text> : null}
-        </View>
-        <Pressable onPress={onRefresh} style={styles.headerButton}>
-          <MaterialIcons name="refresh" size={22} color={theme.colors.foreground} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Statistiques"
+        subtitle={eventName || undefined}
+        rightAction={
+          <Pressable onPress={onRefresh} style={styles.headerButton}>
+            <MaterialIcons name="refresh" size={22} color={theme.colors.foreground} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
@@ -251,16 +244,8 @@ export default function StatisticsScreen() {
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   empty: { textAlign: 'center', color: theme.colors.placeholder, marginTop: 40, fontSize: 14 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
   headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
-  headerSub: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 1 },
   summaryBanner: {
     flexDirection: 'row', backgroundColor: theme.colors.primary, borderRadius: 16,
     padding: 16, marginBottom: 12, alignItems: 'center',

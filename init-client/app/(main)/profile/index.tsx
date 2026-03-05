@@ -1,7 +1,8 @@
-import { View, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert } from "react-native";
 import { Profile, UserProfile, OrgaProfile } from "@/components/Profile";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import { ScreenLoader } from "@/components/ui/ScreenLoader";
 import { useState, useEffect, useMemo } from "react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "expo-router";
@@ -112,11 +113,7 @@ export default function MyProfileScreen() {
   };
 
   if (loading || !profile || !profileType) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.foreground} />
-      </View>
-    );
+    return <ScreenLoader color={theme.colors.foreground} />;
   }
 
   return (
@@ -132,12 +129,5 @@ export default function MyProfileScreen() {
   );
 }
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
-    center: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: theme.colors.background,
-    },
-  });
+const createStyles = (_theme: Theme) =>
+  StyleSheet.create({});

@@ -2,6 +2,8 @@
 import { eventService, EventResponse } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -100,24 +102,11 @@ export default function SettingsScreen() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Paramètres</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader title="Paramètres" />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {event?.name && (
@@ -204,14 +193,6 @@ export default function SettingsScreen() {
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
   eventName: { fontSize: 14, color: theme.colors.mutedForeground, marginBottom: 12 },
   card: { backgroundColor: theme.colors.card, borderRadius: 16, padding: 16, marginBottom: 12 },
   dangerCard: { borderWidth: 2, borderColor: '#fee2e2' },

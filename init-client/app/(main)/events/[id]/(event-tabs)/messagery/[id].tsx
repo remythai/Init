@@ -4,6 +4,8 @@ import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
 import { reportService, ReportType } from '@/services/report.service';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -236,13 +238,13 @@ export default function ConversationPage() {
           <MaterialIcons name="arrow-back" size={24} color={theme.colors.primaryForeground} />
         </Pressable>
         <View style={styles.headerCenter}>
-          {otherUserPhoto ? (
-            <Image source={{ uri: otherUserPhoto }} style={styles.headerAvatar} />
-          ) : (
-            <View style={styles.headerAvatarFallback}>
-              <Text style={styles.headerAvatarText}>{otherUserName.charAt(0)}</Text>
-            </View>
-          )}
+          <Avatar
+            firstname={otherUserName.split(' ')[0]}
+            lastname={otherUserName.split(' ')[1]}
+            photo={otherUserPhoto ?? undefined}
+            size={40}
+            bgColor={theme.colors.card}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
             <Text style={styles.headerSub} numberOfLines={1}>Match via {eventName}</Text>
@@ -255,9 +257,7 @@ export default function ConversationPage() {
 
       {/* Messages */}
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        <ScreenLoader />
       ) : (
         <ScrollView
           ref={scrollViewRef}
@@ -426,9 +426,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   headerBtn: { padding: 8, borderRadius: 8 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
-  headerAvatar: { width: 40, height: 40, borderRadius: 20 },
-  headerAvatarFallback: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.card, alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText: { fontWeight: '700', color: theme.colors.foreground, fontSize: 16 },
   headerName: { fontWeight: '600', color: theme.colors.primaryForeground, fontSize: 15 },
   headerSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
   messagesContainer: { flex: 1, backgroundColor: theme.colors.background },

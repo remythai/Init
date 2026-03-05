@@ -2,6 +2,12 @@
 import { authService } from '@/services/auth.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { FilterTabs } from '@/components/ui/FilterTabs';
+import { StatsBanner } from '@/components/ui/StatsBanner';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +15,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -37,7 +42,7 @@ const STATUS_CONFIG: Record<WhitelistStatus, { label: string; color: string; bg:
   removed:    { label: 'Retiré',     color: '#6b7280', bg: '#f3f4f6', icon: 'remove-circle' },
 };
 
-const FILTER_TABS: Array<{ key: WhitelistStatus | 'all'; label: string }> = [
+const FILTER_TABS: Array<{ key: string; label: string }> = [
   { key: 'all',        label: 'Tous' },
   { key: 'pending',    label: 'En attente' },
   { key: 'registered', label: 'Inscrits' },
@@ -182,69 +187,28 @@ export default function WhitelistScreen() {
     );
   };
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Whitelist</Text>
-        <Pressable style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-          <MaterialIcons name="add" size={22} color={theme.colors.primaryForeground} />
-        </Pressable>
-      </View>
-
-      {/* Stats banner */}
-      <View style={styles.statsBanner}>
-        {[
-          { label: 'Total', value: stats.total, color: theme.colors.primaryForeground },
-          { label: 'En attente', value: stats.pending, color: '#f97316' },
-          { label: 'Inscrits', value: stats.registered, color: '#22c55e' },
-          { label: 'Retirés', value: stats.removed, color: '#9ca3af' },
-        ].map((s, i) => (
-          <View key={i} style={styles.statItem}>
-            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <MaterialIcons name="search" size={20} color={theme.colors.placeholder} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Numéro ou nom..."
-          placeholderTextColor={theme.colors.placeholder}
-        />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')}>
-            <MaterialIcons name="close" size={18} color={theme.colors.placeholder} />
+      <ScreenHeader
+        title="Whitelist"
+        rightAction={
+          <Pressable style={styles.addBtn} onPress={() => setShowAddModal(true)}>
+            <MaterialIcons name="add" size={22} color={theme.colors.primaryForeground} />
           </Pressable>
-        )}
-      </View>
+        }
+      />
 
-      {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {FILTER_TABS.map(tab => (
-          <Pressable
-            key={tab.key}
-            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
-            onPress={() => setFilter(tab.key)}
-          >
-            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <StatsBanner stats={[
+        { label: 'Total', value: stats.total, color: theme.colors.primaryForeground },
+        { label: 'En attente', value: stats.pending, color: '#f97316' },
+        { label: 'Inscrits', value: stats.registered, color: '#22c55e' },
+        { label: 'Retirés', value: stats.removed, color: '#9ca3af' },
+      ]} />
+
+      <SearchBar value={search} onChangeText={setSearch} placeholder="Numéro ou nom..." />
+      <FilterTabs tabs={FILTER_TABS} selected={filter} onSelect={k => setFilter(k as WhitelistStatus | 'all')} />
 
       <FlatList
         data={filtered}
@@ -256,79 +220,46 @@ export default function WhitelistScreen() {
       />
 
       {/* Add modal */}
-      <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={() => setShowAddModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ajouter des numéros</Text>
-              <Pressable onPress={() => setShowAddModal(false)}>
-                <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
-              </Pressable>
-            </View>
-            <Text style={styles.modalSub}>Un numéro par ligne, format international (+33...) ou local</Text>
-            <TextInput
-              style={styles.numbersInput}
-              value={newNumbers}
-              onChangeText={setNewNumbers}
-              placeholder={'+33612345678\n+33698765432\n0612345678'}
-              placeholderTextColor={theme.colors.placeholder}
-              multiline
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Text style={styles.countHint}>
-              {newNumbers.split('\n').filter(l => l.trim()).length} numéro(s)
-            </Text>
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelBtn} onPress={() => setShowAddModal(false)} disabled={addLoading}>
-                <Text style={styles.cancelBtnText}>Annuler</Text>
-              </Pressable>
-              <Pressable style={styles.confirmBtn} onPress={handleAdd} disabled={addLoading}>
-                {addLoading ? (
-                  <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
-                ) : (
-                  <Text style={styles.confirmBtnText}>Ajouter</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
+      <BottomSheet visible={showAddModal} onClose={() => setShowAddModal(false)}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Ajouter des numéros</Text>
+          <Pressable onPress={() => setShowAddModal(false)}>
+            <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
+          </Pressable>
         </View>
-      </Modal>
+        <Text style={styles.modalSub}>Un numéro par ligne, format international (+33...) ou local</Text>
+        <TextInput
+          style={styles.numbersInput}
+          value={newNumbers}
+          onChangeText={setNewNumbers}
+          placeholder={'+33612345678\n+33698765432\n0612345678'}
+          placeholderTextColor={theme.colors.placeholder}
+          multiline
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Text style={styles.countHint}>
+          {newNumbers.split('\n').filter(l => l.trim()).length} numéro(s)
+        </Text>
+        <View style={styles.modalActions}>
+          <Pressable style={styles.cancelBtn} onPress={() => setShowAddModal(false)} disabled={addLoading}>
+            <Text style={styles.cancelBtnText}>Annuler</Text>
+          </Pressable>
+          <Pressable style={styles.confirmBtn} onPress={handleAdd} disabled={addLoading}>
+            {addLoading ? (
+              <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+            ) : (
+              <Text style={styles.confirmBtnText}>Ajouter</Text>
+            )}
+          </Pressable>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
-  headerBtn: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
   addBtn: { backgroundColor: theme.colors.primary, borderRadius: 10, padding: 8 },
-  statsBanner: {
-    flexDirection: 'row', backgroundColor: theme.colors.foreground, paddingVertical: 14, paddingHorizontal: 8,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 18 },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: theme.colors.card, paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: theme.colors.foreground },
-  filterRow: {
-    flexDirection: 'row', backgroundColor: theme.colors.card,
-    paddingHorizontal: 12, paddingVertical: 8, gap: 6,
-    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
-  },
-  filterTab: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: theme.colors.background },
-  filterTabActive: { backgroundColor: theme.colors.accentSolid },
-  filterTabText: { fontSize: 12, fontWeight: '600', color: theme.colors.mutedForeground },
-  filterTabTextActive: { color: theme.colors.accentSolidText },
   empty: { textAlign: 'center', color: theme.colors.placeholder, marginTop: 40, fontSize: 14 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -341,8 +272,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
   statusText: { fontSize: 11, fontWeight: '600' },
   removeBtn: { padding: 6 },
-  modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: theme.colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   modalTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
   modalSub: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 14 },

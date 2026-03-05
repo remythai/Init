@@ -2,6 +2,11 @@
 import { eventService } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +14,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -28,15 +32,6 @@ interface Participant {
   tel?: string;
   registered_at: string;
   profil_info?: Record<string, unknown>;
-}
-
-function Avatar({ firstname, lastname, size = 44, theme }: { firstname: string; lastname: string; size?: number; theme: Theme }) {
-  const initials = `${firstname?.[0] ?? ''}${lastname?.[0] ?? ''}`.toUpperCase();
-  return (
-    <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: theme.colors.foreground, justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={[{ color: theme.colors.primaryForeground, fontWeight: '700', fontSize: size * 0.35 }]}>{initials}</Text>
-    </View>
-  );
 }
 
 export default function ParticipantsScreen() {
@@ -134,7 +129,7 @@ export default function ParticipantsScreen() {
 
   const renderItem = ({ item }: { item: Participant }) => (
     <Pressable style={styles.participantRow} onPress={() => setSelectedUser(item)}>
-      <Avatar firstname={item.firstname} lastname={item.lastname} theme={theme} />
+      <Avatar firstname={item.firstname} lastname={item.lastname} />
       <View style={styles.participantInfo}>
         <Text style={styles.participantName}>{item.firstname} {item.lastname}</Text>
         <Text style={styles.participantMail}>{item.mail}</Text>
@@ -146,37 +141,12 @@ export default function ParticipantsScreen() {
     </Pressable>
   );
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Participants ({participants.length})</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <MaterialIcons name="search" size={20} color={theme.colors.placeholder} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Rechercher un participant..."
-          placeholderTextColor={theme.colors.placeholder}
-        />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')}>
-            <MaterialIcons name="close" size={18} color={theme.colors.placeholder} />
-          </Pressable>
-        )}
-      </View>
+      <ScreenHeader title={`Participants (${participants.length})`} />
+      <SearchBar value={search} onChangeText={setSearch} placeholder="Rechercher un participant..." />
 
       <FlatList
         data={filtered}
@@ -193,122 +163,99 @@ export default function ParticipantsScreen() {
       />
 
       {/* Participant detail modal */}
-      <Modal visible={!!selectedUser} animationType="slide" transparent onRequestClose={() => setSelectedUser(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedUser && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Avatar firstname={selectedUser.firstname} lastname={selectedUser.lastname} size={56} theme={theme} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.modalName}>{selectedUser.firstname} {selectedUser.lastname}</Text>
-                    <Text style={styles.modalMail}>{selectedUser.mail}</Text>
-                    {selectedUser.tel && <Text style={styles.modalMail}>{selectedUser.tel}</Text>}
+      <BottomSheet visible={!!selectedUser} onClose={() => setSelectedUser(null)}>
+        {selectedUser && (
+          <>
+            <View style={styles.modalHeader}>
+              <Avatar firstname={selectedUser.firstname} lastname={selectedUser.lastname} size={56} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.modalName}>{selectedUser.firstname} {selectedUser.lastname}</Text>
+                <Text style={styles.modalMail}>{selectedUser.mail}</Text>
+                {selectedUser.tel && <Text style={styles.modalMail}>{selectedUser.tel}</Text>}
+              </View>
+              <Pressable onPress={() => setSelectedUser(null)}>
+                <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Inscrit le {new Date(selectedUser.registered_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </Text>
+
+            {selectedUser.profil_info && Object.keys(selectedUser.profil_info).length > 0 && (
+              <View style={styles.profilInfoBox}>
+                <Text style={styles.profilInfoTitle}>Informations d'inscription</Text>
+                {Object.entries(selectedUser.profil_info).map(([k, v]) => (
+                  <View key={k} style={styles.profilInfoRow}>
+                    <Text style={styles.profilInfoKey}>{k}</Text>
+                    <Text style={styles.profilInfoValue}>{Array.isArray(v) ? v.join(', ') : String(v)}</Text>
                   </View>
-                  <Pressable onPress={() => setSelectedUser(null)}>
-                    <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
-                  </Pressable>
-                </View>
-
-                <Text style={styles.modalSub}>
-                  Inscrit le {new Date(selectedUser.registered_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </Text>
-
-                {/* Profil info */}
-                {selectedUser.profil_info && Object.keys(selectedUser.profil_info).length > 0 && (
-                  <View style={styles.profilInfoBox}>
-                    <Text style={styles.profilInfoTitle}>Informations d'inscription</Text>
-                    {Object.entries(selectedUser.profil_info).map(([k, v]) => (
-                      <View key={k} style={styles.profilInfoRow}>
-                        <Text style={styles.profilInfoKey}>{k}</Text>
-                        <Text style={styles.profilInfoValue}>{Array.isArray(v) ? v.join(', ') : String(v)}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <View style={styles.modalActions}>
-                  <Pressable
-                    style={styles.removeButton}
-                    onPress={() => handleRemove('delete')}
-                    disabled={actionLoading}
-                  >
-                    <MaterialIcons name="person-remove" size={18} color={shared.warning} />
-                    <Text style={styles.removeButtonText}>Retirer</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.blockButton}
-                    onPress={() => handleRemove('block')}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? (
-                      <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
-                    ) : (
-                      <>
-                        <MaterialIcons name="block" size={18} color={theme.colors.primaryForeground} />
-                        <Text style={styles.blockButtonText}>Bloquer</Text>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
-              </>
+                ))}
+              </View>
             )}
-          </View>
-        </View>
-      </Modal>
 
-      {/* Block reason modal */}
-      <Modal visible={showBlockReason} animationType="slide" transparent onRequestClose={() => setShowBlockReason(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalName}>Raison du blocage</Text>
-            <Text style={styles.modalSub}>Optionnel — cette raison sera enregistrée</Text>
-            <TextInput
-              style={[styles.searchInput, { borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10, padding: 12, marginTop: 12, minHeight: 80, textAlignVertical: 'top' }]}
-              value={blockReason}
-              onChangeText={setBlockReason}
-              placeholder="Ex: Comportement inapproprié..."
-              placeholderTextColor={theme.colors.placeholder}
-              multiline
-            />
             <View style={styles.modalActions}>
-              <Pressable style={styles.removeButton} onPress={() => setShowBlockReason(false)}>
-                <Text style={[styles.removeButtonText, { color: theme.colors.mutedForeground }]}>Annuler</Text>
+              <Pressable
+                style={styles.removeButton}
+                onPress={() => handleRemove('delete')}
+                disabled={actionLoading}
+              >
+                <MaterialIcons name="person-remove" size={18} color={shared.warning} />
+                <Text style={styles.removeButtonText}>Retirer</Text>
               </Pressable>
               <Pressable
                 style={styles.blockButton}
-                onPress={() => executeRemove('block', blockReason || undefined)}
+                onPress={() => handleRemove('block')}
                 disabled={actionLoading}
               >
                 {actionLoading ? (
                   <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
                 ) : (
-                  <Text style={styles.blockButtonText}>Confirmer le blocage</Text>
+                  <>
+                    <MaterialIcons name="block" size={18} color={theme.colors.primaryForeground} />
+                    <Text style={styles.blockButtonText}>Bloquer</Text>
+                  </>
                 )}
               </Pressable>
             </View>
-          </View>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* Block reason modal */}
+      <BottomSheet visible={showBlockReason} onClose={() => setShowBlockReason(false)}>
+        <Text style={styles.modalName}>Raison du blocage</Text>
+        <Text style={styles.modalSub}>Optionnel — cette raison sera enregistrée</Text>
+        <TextInput
+          style={[styles.blockReasonInput]}
+          value={blockReason}
+          onChangeText={setBlockReason}
+          placeholder="Ex: Comportement inapproprié..."
+          placeholderTextColor={theme.colors.placeholder}
+          multiline
+        />
+        <View style={styles.modalActions}>
+          <Pressable style={styles.removeButton} onPress={() => setShowBlockReason(false)}>
+            <Text style={[styles.removeButtonText, { color: theme.colors.mutedForeground }]}>Annuler</Text>
+          </Pressable>
+          <Pressable
+            style={styles.blockButton}
+            onPress={() => executeRemove('block', blockReason || undefined)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+            ) : (
+              <Text style={styles.blockButtonText}>Confirmer le blocage</Text>
+            )}
+          </Pressable>
         </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: theme.colors.card, paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: theme.colors.foreground },
   empty: { textAlign: 'center', color: theme.colors.placeholder, marginTop: 40, fontSize: 14 },
   participantRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -318,8 +265,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   participantName: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 15, color: theme.colors.foreground },
   participantMail: { fontSize: 13, color: theme.colors.mutedForeground, marginTop: 2 },
   participantDate: { fontSize: 11, color: theme.colors.placeholder, marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: theme.colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   modalName: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: theme.colors.foreground },
   modalMail: { fontSize: 13, color: theme.colors.mutedForeground, marginTop: 2 },
@@ -340,4 +285,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 6, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.destructive,
   },
   blockButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.primaryForeground },
+  blockReasonInput: {
+    flex: 1, fontSize: 15, color: theme.colors.foreground,
+    borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10,
+    padding: 12, marginTop: 12, minHeight: 80, textAlignVertical: 'top',
+  },
 });

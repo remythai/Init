@@ -2,10 +2,11 @@
 import { Profile, UserProfile } from "@/components/Profile";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import { ScreenLoader } from "@/components/ui/ScreenLoader";
 import { authService } from "@/services/auth.service";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -41,13 +42,7 @@ export default function UserProfileScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.foreground} />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader color={theme.colors.foreground} />;
 
   if (error || !userProfile) {
     return (

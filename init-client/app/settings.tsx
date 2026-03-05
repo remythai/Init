@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { type Theme } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { authService } from '@/services/auth.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -23,16 +24,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.accentSolidText} />
-        </Pressable>
-        <ThemedText style={styles.headerTitle}>Paramètres</ThemedText>
-      </View>
+      <ScreenHeader title="Paramètres" variant="solid" />
 
       <ScrollView style={styles.scrollContent}>
         <View style={styles.content}>
@@ -148,25 +140,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    header: {
-      backgroundColor: theme.colors.accentSolid,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      paddingTop: 48,
-      gap: 12,
-    },
-    backButton: {
-      padding: 8,
-      borderRadius: 8,
-    },
-    headerTitle: {
-      fontFamily: 'Poppins',
-      fontWeight: '600',
-      fontSize: 18,
-      color: theme.colors.accentSolidText,
     },
     scrollContent: {
       flex: 1,

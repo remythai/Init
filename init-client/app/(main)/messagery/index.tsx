@@ -4,12 +4,13 @@ import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,38 +19,9 @@ import {
   View,
 } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-
 interface EventConversations {
   event: { id: number; name: string };
   conversations: Conversation[];
-}
-
-function getPhotoUri(photos?: { file_path: string }[]): string | null {
-  if (photos && photos.length > 0 && photos[0].file_path) {
-    const p = photos[0].file_path;
-    return p.startsWith('http') ? p : `${API_URL}${p}`;
-  }
-  return null;
-}
-
-function Avatar({ photos, firstname, lastname, size = 48, theme }: {
-  photos?: { file_path: string }[];
-  firstname: string;
-  lastname: string;
-  size?: number;
-  theme: Theme;
-}) {
-  const uri = getPhotoUri(photos);
-  const initials = `${firstname?.[0] || ''}${lastname?.[0] || ''}`.toUpperCase();
-  if (uri) {
-    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
-  }
-  return (
-    <View style={[{ backgroundColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[{ fontWeight: '700', color: theme.colors.mutedForeground, fontSize: size * 0.34 }]}>{initials}</Text>
-    </View>
-  );
 }
 
 function formatTime(dateStr?: string): string {
@@ -113,13 +85,7 @@ export default function GlobalMessageryScreen() {
 
   const totalConvs = eventGroups.reduce((sum, g) => sum + g.conversations.length, 0);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -146,18 +112,16 @@ export default function GlobalMessageryScreen() {
         }
       >
         {eventGroups.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="chat-bubble-outline" size={44} color={theme.colors.placeholder} />
-            </View>
-            <Text style={styles.emptyTitle}>Pas encore de matchs</Text>
-            <Text style={styles.emptySubtitle}>
-              Inscrivez-vous à des événements et commencez à swiper !
-            </Text>
-            <Pressable style={styles.emptyBtn} onPress={() => router.push('/(main)/events')}>
-              <Text style={styles.emptyBtnText}>Voir les événements</Text>
-            </Pressable>
-          </View>
+          <EmptyState
+            icon="chat-bubble-outline"
+            title="Pas encore de matchs"
+            subtitle="Inscrivez-vous à des événements et commencez à swiper !"
+            action={
+              <Pressable style={styles.emptyBtn} onPress={() => router.push('/(main)/events')}>
+                <Text style={styles.emptyBtnText}>Voir les événements</Text>
+              </Pressable>
+            }
+          />
         ) : (
           eventGroups.map(group => {
             const isCollapsed = collapsed.has(group.event.id);
@@ -208,11 +172,11 @@ export default function GlobalMessageryScreen() {
                           {/* Avatar + badge */}
                           <View style={styles.avatarWrapper}>
                             <Avatar
-                              photos={conv.user?.photos}
                               firstname={conv.user?.firstname || '?'}
                               lastname={conv.user?.lastname || ''}
+                              photo={conv.user?.photos?.[0]?.file_path}
                               size={48}
-                              theme={theme}
+                              bgColor={theme.colors.border}
                             />
                             {hasUnread && (
                               <View style={styles.unreadBadge}>
@@ -267,7 +231,6 @@ export default function GlobalMessageryScreen() {
 }
 
 const createStyles = (theme: Theme) => StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   header: {
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
     backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
@@ -277,10 +240,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   headerSub: { fontSize: 13, color: theme.colors.placeholder },
   unreadTotal: { backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
   unreadTotalText: { color: theme.colors.primaryForeground, fontSize: 11, fontWeight: '700' },
-  emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
-  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 16, color: theme.colors.foreground, marginBottom: 8 },
-  emptySubtitle: { fontSize: 13, color: theme.colors.placeholder, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   emptyBtn: { backgroundColor: theme.colors.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 24 },
   emptyBtnText: { color: theme.colors.primaryForeground, fontWeight: '600', fontSize: 14 },
   // Groups
