@@ -39,7 +39,7 @@ export default function EnvironmentLayout({
       showBadge: false,
     },
     {
-      name: "Découvrir",
+      name: "Swiper",
       href: `/events/${eventId}/environment/swiper`,
       icon: Users,
       isActive: pathname.includes("/swiper"),
@@ -72,9 +72,9 @@ export default function EnvironmentLayout({
               <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
             </Link>
           </div>
-          <DesktopNav />
+          <DesktopNav eventId={eventId} />
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="md:hidden"><ThemeToggle /></div>
+            <ThemeToggle />
             <button
               onClick={handleLogout}
               className="font-poppins text-sm text-secondary hover:text-primary transition-colors"

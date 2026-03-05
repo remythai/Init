@@ -318,7 +318,7 @@ function GeneralMessagesContent() {
         </Link>
         <DesktopNav />
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="md:hidden"><ThemeToggle /></div>
+          <ThemeToggle />
           <button
             onClick={async () => { await authService.logout(); router.push("/"); }}
             className="font-poppins text-sm text-secondary hover:text-primary transition-colors"
