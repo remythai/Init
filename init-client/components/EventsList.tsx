@@ -16,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CreateEventDialog } from "./CreateEventDialog";
 
 export interface Event {
@@ -59,7 +60,8 @@ export function EventsList({
   onCreateEvent,
 }: EventsListProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
   const [activeFilter, setActiveFilter] = useState<"all" | "registered">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -414,12 +416,12 @@ export function EventsList({
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background, position: "relative" },
 
   // Search
   searchContainer: {
-    position: "absolute", top: 16, left: 16, right: 16, zIndex: 10, gap: 8,
+    position: "absolute", top: topInset + 8, left: 16, right: 16, zIndex: 10, gap: 8,
   },
   searchRow: { flexDirection: "row", gap: 8 },
   searchWrapper: {
@@ -449,7 +451,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
 
   // List
   scrollView: { flex: 1 },
-  scrollContent: { paddingTop: 124, paddingHorizontal: 16, paddingBottom: 110, gap: 16 },
+  scrollContent: { paddingTop: topInset + 116, paddingHorizontal: 16, paddingBottom: 110, gap: 16 },
 
   // Empty
   emptyState: { paddingVertical: 64, alignItems: "center", gap: 8 },
