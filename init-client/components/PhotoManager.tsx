@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { photoService } from "@/services/photo.service";
 import type { Photo } from "@/services/photo.service";
+import ImageCropper from "@/components/ImageCropper";
 
 const GAP = 8;
 const COLUMNS = 3;
@@ -61,6 +62,8 @@ export default function PhotoManager({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Photo | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<Photo | null>(null);
+  const [cropUri, setCropUri] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const photoSize = containerWidth > 0 ? (containerWidth - GAP * (COLUMNS - 1)) / COLUMNS : 0;
 
@@ -191,7 +194,18 @@ export default function PhotoManager({
         dragTranslate.setValue({ x: 0, y: 0 });
         dragOpacity.setValue(1);
 
-        if (!wasDragging || from === null) return;
+        if (!wasDragging || from === null) {
+          // Short tap — open preview
+          if (!wasDragging && Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
+            const locX = gesture.x0 - gridPageX.current;
+            const locY = gesture.y0 - gridPageY.current;
+            const tappedIdx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current);
+            if (tappedIdx !== null && photosRef.current[tappedIdx]) {
+              setPreviewPhoto(photosRef.current[tappedIdx]);
+            }
+          }
+          return;
+        }
 
         const sz = photoSizeRef.current;
         const origin = getPosition(from, sz);
@@ -236,7 +250,7 @@ export default function PhotoManager({
     }
   };
 
-  const uploadPhoto = async () => {
+  const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission refusee", "Autorisez l'acces a la galerie.");
@@ -245,16 +259,20 @@ export default function PhotoManager({
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (result.canceled || !result.assets[0]) return;
+    setCropUri(result.assets[0].uri);
+  };
 
+  const uploadCroppedPhoto = async (croppedUri: string) => {
+    setCropUri(null);
     try {
       setUploading(true);
       setError("");
-      const newPhoto = await photoService.uploadPhoto(result.assets[0].uri, eventId);
+      const newPhoto = await photoService.uploadPhoto(croppedUri, eventId);
       const updated = [...photos, newPhoto];
       setPhotos(updated);
       onPhotosChange?.(updated);
@@ -393,7 +411,7 @@ export default function PhotoManager({
                 styles.addCell,
                 { position: "absolute", left: addPos.x, top: addPos.y, width: photoSize, height: photoSize },
               ]}
-              onPress={uploadPhoto}
+              onPress={pickPhoto}
               disabled={uploading}
             >
               {uploading ? (
@@ -450,6 +468,38 @@ export default function PhotoManager({
           </View>
         </View>
       </Modal>
+
+      {/* Photo preview modal */}
+      <Modal
+        visible={!!previewPhoto}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={() => setPreviewPhoto(null)}
+      >
+        <Pressable style={styles.previewOverlay} onPress={() => setPreviewPhoto(null)}>
+          {previewPhoto && (
+            <Image
+              source={{ uri: photoService.getPhotoUrl(previewPhoto.file_path) }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          )}
+          <View style={styles.previewCloseBtn}>
+            <MaterialIcons name="close" size={28} color="#fff" />
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Custom crop screen */}
+      {cropUri && (
+        <ImageCropper
+          uri={cropUri}
+          visible={true}
+          onCrop={uploadCroppedPhoto}
+          onCancel={() => setCropUri(null)}
+        />
+      )}
     </View>
   );
 }
@@ -573,4 +623,25 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   modalDeleteBtn: { backgroundColor: "#ef4444" },
   modalCancelText: { fontWeight: "600", color: theme.colors.foreground },
   modalDeleteText: { fontWeight: "600", color: "#fff" },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  previewCloseBtn: {
+    position: "absolute",
+    top: 54,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

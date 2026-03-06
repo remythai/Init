@@ -4,6 +4,7 @@ import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { authService } from "@/services/auth.service";
 import { photoService, type Photo } from "@/services/photo.service";
+import ImageCropper from "@/components/ImageCropper";
 import * as ImagePicker from "expo-image-picker";
 import { Edit2, Save, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
@@ -69,6 +70,7 @@ export function Profile({
   const [editedProfile, setEditedProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [cropLogoUri, setCropLogoUri] = useState<string | null>(null);
   const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -129,21 +131,24 @@ export function Profile({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        mediaTypes: "images",
+        allowsEditing: false,
+        quality: 1,
       });
 
       if (result.canceled || !result.assets[0]) return;
+      setCropLogoUri(result.assets[0].uri);
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message || "Impossible de sélectionner l'image");
+    }
+  };
 
-      const asset = result.assets[0];
-      const fileName = asset.uri.split("/").pop() || "logo.jpg";
-      const fileType = asset.mimeType || "image/jpeg";
-
+  const handleCroppedLogo = async (croppedUri: string) => {
+    setCropLogoUri(null);
+    try {
+      const fileName = croppedUri.split("/").pop() || "logo.jpg";
       setUploadingLogo(true);
-      const logoPath = await authService.uploadOrgaLogo(asset.uri, fileName, fileType);
-
+      const logoPath = await authService.uploadOrgaLogo(croppedUri, fileName, "image/jpeg");
       setEditedProfile((prev) => ({ ...prev, logo_path: logoPath }));
       Alert.alert("Succès", "Logo mis à jour !");
     } catch (error: any) {
@@ -448,6 +453,15 @@ export function Profile({
           )}
         </View>
       </ScrollView>
+
+      {cropLogoUri && (
+        <ImageCropper
+          uri={cropLogoUri}
+          visible={true}
+          onCrop={handleCroppedLogo}
+          onCancel={() => setCropLogoUri(null)}
+        />
+      )}
     </View>
   );
 }
