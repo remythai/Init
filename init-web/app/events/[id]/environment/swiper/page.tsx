@@ -9,7 +9,7 @@ import { matchService, Profile, ApiError } from "../../../../services/match.serv
 import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
-import PathDrawing from "@/app/components/PathDrawing";
+
 
 
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
@@ -632,8 +632,8 @@ export default function SwiperPage() {
       )}
 
       {/* Card Container */}
-      <div className="flex-1 px-6 pt-1 min-h-0 md:flex-none">
-        <div className="h-[100%] max-w-lg md:max-w-5xl md:h-[75vh] mx-auto relative">
+      <div className="flex-1 px-6 pt-1 min-h-0 overflow-hidden md:flex-none">
+        <div className="h-full max-w-lg md:max-w-5xl md:h-[75vh] mx-auto relative">
           {!isFinished && currentProfile ? (
             <>
               {/* Next Card (behind) */}
@@ -1043,11 +1043,6 @@ export default function SwiperPage() {
       {/* Match Modal */}
       {showMatch && matchedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-hidden">
-          {/* Blue thread animation - behind content */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginTop: "-20px" }}>
-            <PathDrawing />
-          </div>
-
           <div className="text-center px-6 max-w-sm w-full relative z-10">
             <div className="w-32 h-32 rounded-full overflow-hidden border-[3px] border-white mx-auto mb-6 shadow-2xl">
               <img

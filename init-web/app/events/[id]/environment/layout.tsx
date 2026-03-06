@@ -55,7 +55,7 @@ export default function EnvironmentLayout({
   ];
 
   return (
-    <div className="h-screen bg-page flex flex-col overflow-hidden">
+    <div className="h-dvh bg-page flex flex-col overflow-hidden">
       {/* Header - hidden on mobile when in conversation */}
       <header className={`flex-shrink-0 ${isInConversation ? "hidden md:block" : ""}`}>
         <div className="absolute inset-x-0 top-0 bg-page pointer-events-none h-0" />
