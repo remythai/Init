@@ -532,22 +532,26 @@ export default function EventsPage() {
 
     setIsGeocoding(true);
 
-    for (const location of uniqueLocations) {
-      try {
-        const response = await fetch(`/api/geocode?q=${encodeURIComponent(location)}`);
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          geocodeCache.current.set(location, {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          });
-        } else {
-          geocodeCache.current.set(location, null);
+    // Batch geocode in a single request
+    try {
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locations: uniqueLocations }),
+      });
+      const data = await response.json();
+      if (data && typeof data === 'object' && !data.error) {
+        for (const [loc, coords] of Object.entries(data)) {
+          if (coords && typeof coords === 'object' && 'lat' in coords && 'lon' in coords) {
+            const c = coords as { lat: string; lon: string };
+            geocodeCache.current.set(loc, { lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
+          } else {
+            geocodeCache.current.set(loc, null);
+          }
         }
-      } catch {
-        geocodeCache.current.set(location, null);
       }
-      await new Promise(resolve => setTimeout(resolve, 1100));
+    } catch {
+      uniqueLocations.forEach(loc => geocodeCache.current.set(loc, null));
     }
 
     const result: Record<string, { lat: number; lng: number } | null> = {};
@@ -573,6 +577,7 @@ export default function EventsPage() {
       theme: e.theme,
       participants: e.participants,
       maxParticipants: e.maxParticipants,
+      image: e.image,
     }));
 
   const eventsByTheme = useMemo(() => {

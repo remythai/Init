@@ -290,3 +290,21 @@ body::-webkit-scrollbar {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Custom map popup styling */
+.custom-map-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: none;
+}
+
+.custom-map-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.custom-map-popup .leaflet-popup-tip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

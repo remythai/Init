@@ -720,7 +720,7 @@ export default function EventDetailPage() {
       </main>
 
       {/* Fixed Action Buttons */}
-      <div ref={footerRef} className="fixed bottom-0 left-0 right-0 p-6">
+      <div ref={footerRef} className="fixed bottom-0 left-0 right-0 p-6 bg-page/40 backdrop-blur-xs">
         <div className="max-w-4xl mx-auto">
           {userType === "orga" ? (
             /* Organizer actions - Modify, Delete, View Participants */
