@@ -1,15 +1,15 @@
 // app/(main)/events/[id]/reports/index.tsx
-import { reportService, Report, ReportStats, ReportDetails, ReportStatus, ReportType } from '@/services/report.service';
-import { eventService } from '@/services/event.service';
-import { useTheme, shared } from '@/context/ThemeContext';
-import { type Theme } from '@/constants/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FilterTabs } from '@/components/ui/FilterTabs';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenLoader } from '@/components/ui/ScreenLoader';
-import { Avatar } from '@/components/ui/Avatar';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { FilterTabs } from '@/components/ui/FilterTabs';
 import { StatsBanner } from '@/components/ui/StatsBanner';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { type Theme } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { eventService } from '@/services/event.service';
+import { Report, ReportDetails, ReportStats, ReportStatus, ReportType, reportService } from '@/services/report.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -282,7 +282,7 @@ export default function ReportsScreen() {
                     </View>
                     <MaterialIcons name="arrow-downward" size={16} color={theme.colors.placeholder} style={{ alignSelf: 'center', marginVertical: 2 }} />
                     <View style={styles.usersBoxRow}>
-                      <Text style={[styles.usersBoxRole, { color: '#dc2626' }]}>Signale</Text>
+                      <Text style={[styles.usersBoxRole, { color: '#dc2626' }]}>Signalé</Text>
                       <View style={[styles.usersBoxPill, { backgroundColor: '#fee2e2' }]}>
                         <Avatar firstname={selected.reported_user.firstname} lastname={selected.reported_user.lastname} size={30} bgColor="#dc2626" />
                         <View style={{ flex: 1 }}>
@@ -431,7 +431,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     padding: 12, fontSize: 14, color: theme.colors.foreground, minHeight: 80,
     textAlignVertical: 'top', marginTop: 6, backgroundColor: theme.colors.card,
   },
-  modalActions: { padding: 16, borderTopWidth: 1, borderTopColor: theme.colors.secondary, backgroundColor: theme.colors.background },
+  modalActions: { padding: 16, borderTopWidth: 1, borderTopColor: theme.colors.secondary, backgroundColor: theme.colors.card },
   actionsRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   dismissBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: theme.colors.secondary, alignItems: 'center' },
   dismissBtnText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 13, color: theme.colors.mutedForeground },

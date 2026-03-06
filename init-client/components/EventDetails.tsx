@@ -356,7 +356,6 @@ export function EventDetail({
     }
   };
 
-  // ── Orga action buttons (mirrors web footer) ──────────────────────────────
   const renderOrgaActions = () => (
     <View style={styles.orgaActions}>
       <View style={styles.orgaRow}>
@@ -406,7 +405,6 @@ export function EventDetail({
     </View>
   );
 
-  // ── User action buttons ───────────────────────────────────────────────────
   const renderUserActions = () => {
     if (event.isBlocked) {
       return (
@@ -467,7 +465,11 @@ export function EventDetail({
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={isOrga ? styles.scrollContentOrga : styles.scrollContentUser}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Image */}
         <View style={styles.imageContainer}>
           <Image source={{ uri: event.image }} style={styles.eventImage} />
@@ -613,12 +615,14 @@ export function EventDetail({
 const createStyles = (theme: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.card },
   scrollView: { flex: 1 },
+  scrollContentOrga: { paddingBottom: 240 },
+  scrollContentUser: { paddingBottom: 110 },
   imageContainer: { position: "relative", height: 256 },
   eventImage: { width: "100%", height: "100%" },
   badgeContainer: { position: "absolute", bottom: 16, left: 16 },
   themeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   badgeText: { color: theme.colors.primaryForeground, fontSize: 12, fontWeight: "600" },
-  content: { padding: 24, paddingBottom: 100 },
+  content: { padding: 24 },
   eventName: {
     fontFamily: "Poppins",
     fontWeight: "700",
