@@ -415,7 +415,7 @@ function GeneralMessagesContent() {
                                 setIsEventExpired(conv.is_event_expired || false);
                               }}
                               className={`w-full px-5 py-7 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
-                                selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF]" : ""
+                                selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF] !border-b-0" : ""
                               } ${conv.is_archived ? "opacity-50" : ""}`}
                             >
                               <div className="relative flex-shrink-0">

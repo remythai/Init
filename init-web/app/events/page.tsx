@@ -929,7 +929,7 @@ export default function EventsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
                                   >
-                                    Acceéer a l'environnement
+                                    Accéder a l'environnement
                                   </Link>
                                 )}
                               </div>
