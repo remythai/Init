@@ -374,7 +374,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-full flex overflow-hidden px-0 md:px-6 lg:px-10">
       {/* Left Panel - Conversations List (Desktop) */}
       <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-card md:rounded-t-2xl md:mt-4 md:mr-4 md:shadow-sm overflow-hidden ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {/* Conversations List */}
