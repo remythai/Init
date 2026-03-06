@@ -57,6 +57,13 @@ function RootLayoutInner() {
     }
   }, [isReady, isAuthenticated]);
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync(theme.colors.background);
+      NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
+    }
+  }, [isDark, theme.colors.background]);
+
   if (!isReady || isAuthenticated === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.card }}>
@@ -64,13 +71,6 @@ function RootLayoutInner() {
       </View>
     );
   }
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      NavigationBar.setBackgroundColorAsync(theme.colors.background);
-      NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
-    }
-  }, [isDark, theme.colors.background]);
 
   const statusBarStyle = isDark ? 'light' : 'dark';
 
