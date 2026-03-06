@@ -48,15 +48,15 @@ export default function BottomNavigation({ userType, hidden }: BottomNavigationP
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-50 flex justify-center md:hidden ${hidden ? "hidden" : ""}`}>
-      <nav className="flex items-center w-full bg-[#303030] rounded-none px-10 pt-1.5" style={{ paddingBottom: 'calc(0.375rem + env(safe-area-inset-bottom, 0px))' }}>
+      <nav className="flex items-center w-full bg-card border-t border-border rounded-none px-10 pt-1.5" style={{ paddingBottom: 'calc(0.375rem + env(safe-area-inset-bottom, 0px))' }}>
         {tabs.map((tab) => (
           <Link
             key={tab.name}
             href={tab.href}
             className={`flex flex-col items-center flex-1 px-7 py-1.5 transition-colors ${
               tab.isActive
-                ? "text-white"
-                : "text-white/50 hover:text-white/70"
+                ? "text-primary"
+                : "text-muted hover:text-primary"
             }`}
           >
             <div className="relative">
@@ -67,7 +67,7 @@ export default function BottomNavigation({ userType, hidden }: BottomNavigationP
             </div>
             <span className="text-xs mt-0.5">{tab.name}</span>
             {tab.subtitle && (
-              <span className="text-[10px] text-white/40">{tab.subtitle}</span>
+              <span className="text-[10px] text-secondary">{tab.subtitle}</span>
             )}
           </Link>
         ))}
