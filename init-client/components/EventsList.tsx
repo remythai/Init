@@ -125,10 +125,12 @@ export function EventsList({
     setOnlyAvailable(false);
     setDateFilter("all");
     setLocationQuery("");
+    setActiveFilter("all");
   };
 
   const hasActiveAdvancedFilters =
-    maxDistance !== 50 || selectedTheme !== "all" || onlyAvailable || dateFilter !== "all" || !!locationQuery;
+    maxDistance !== 50 || selectedTheme !== "all" || onlyAvailable ||
+    dateFilter !== "all" || !!locationQuery || activeFilter !== "all";
 
   const getThemeColor = (eventTheme: string) => {
     return shared.eventTheme[eventTheme.toLowerCase()] || shared.eventTheme.général;
@@ -306,30 +308,6 @@ export function EventsList({
         )}
       </ScrollView>
 
-      {/* Filter Tabs */}
-      {/* {userType === "user" && (
-        <Animated.View style={[styles.filterTabs, { bottom: Animated.add(24, keyboardOffset) }]}>
-          <View style={styles.tabsContainer}>
-            <Pressable
-              style={[styles.tab, activeFilter === "all" && styles.tabActive]}
-              onPress={() => setActiveFilter("all")}
-            >
-              <Text style={[styles.tabText, activeFilter === "all" && styles.tabTextActive]}>
-                Tous les événements
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, activeFilter === "registered" && styles.tabActive]}
-              onPress={() => setActiveFilter("registered")}
-            >
-              <Text style={[styles.tabText, activeFilter === "registered" && styles.tabTextActive]}>
-                Mes événements
-              </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      )} */}
-
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
@@ -347,6 +325,31 @@ export function EventsList({
             </View>
 
             <ScrollView style={styles.modalBody}>
+              {/* Affichage — uniquement pour les users */}
+              {userType === "user" && (
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterLabel}>Affichage</Text>
+                  <View style={styles.chipsContainer}>
+                    <Pressable
+                      style={[styles.chip, activeFilter === "all" && styles.chipActive]}
+                      onPress={() => setActiveFilter("all")}
+                    >
+                      <Text style={[styles.chipText, activeFilter === "all" && styles.chipTextActive]}>
+                        Tous les événements
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.chip, activeFilter === "registered" && styles.chipActive]}
+                      onPress={() => setActiveFilter("registered")}
+                    >
+                      <Text style={[styles.chipText, activeFilter === "registered" && styles.chipTextActive]}>
+                        Mes événements
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+
               {/* Theme Filter */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Type d'événement</Text>
@@ -506,18 +509,6 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     borderRadius: 10, alignItems: "center",
   },
   enterButtonText: { fontFamily: "Poppins", color: theme.colors.accentSolidText, fontSize: 15, fontWeight: "600" },
-
-  // Tabs
-  filterTabs: { position: "absolute", left: 16, right: 16, zIndex: 10 },
-  tabsContainer: {
-    flexDirection: "row", backgroundColor: theme.colors.card,
-    borderRadius: 50, padding: 4, shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
-  },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 50, alignItems: "center" },
-  tabActive: { backgroundColor: theme.colors.tabActive },
-  tabText: { fontFamily: "Poppins", fontSize: 13, color: theme.colors.foreground },
-  tabTextActive: { color: theme.colors.primaryForeground },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },

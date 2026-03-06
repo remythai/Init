@@ -1,5 +1,5 @@
-import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
@@ -10,7 +10,7 @@ export default function MainLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const segments = useSegments();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
@@ -45,7 +45,13 @@ export default function MainLayout() {
     <View style={styles.container}>
       {!shouldHideHeader && (
         <View style={styles.header}>
-          <Image style={styles.logo} source={require('../../assets/images/initLogoGray.png')} />
+          <Image
+            style={styles.logo}
+            source={isDark
+              ? require('../../assets/images/initLogoGray.png')
+              : require('../../assets/images/InitLogoTransparent.png')
+            }
+          />
           <Pressable onPress={() => router.push('/settings')}>
             <MaterialIcons name="settings" size={24} color={theme.colors.foreground} />
           </Pressable>
@@ -120,8 +126,8 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: topInset,
     paddingBottom: 10,
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 0,
     borderBottomColor: theme.colors.border,
   },
   logo: { width: 53, height: 53, resizeMode: 'contain' },

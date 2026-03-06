@@ -187,7 +187,6 @@ export function Profile({
 
   const age = isUserProfile(profile) ? calculateAge(profile.birthday) : null;
 
-  // Logo orga courant (priorité à editedProfile pour refléter l'upload immédiat)
   const currentLogoPath = isOrgaProfile(editedProfile) ? editedProfile.logo_path : undefined;
 
   return (
@@ -441,7 +440,7 @@ const createStyles = (theme: Theme) =>
     scrollView: { flex: 1 },
     scrollContent: { paddingBottom: 80 },
     header: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.background,
       paddingHorizontal: 24,
       paddingTop: 32,
       paddingBottom: 80,
