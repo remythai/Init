@@ -1,8 +1,9 @@
 import { type Theme } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { authService } from '@/services/auth.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +14,11 @@ export default function MainLayout() {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
+  const [isOrga, setIsOrga] = useState(false);
+
+  useEffect(() => {
+    authService.getUserType().then((type) => setIsOrga(type === 'orga'));
+  }, []);
 
   const isInEventTabs = segments.includes('(event-tabs)');
   const isInEventDetail = pathname.match(/\/events\/[^/]+/) !== null;
@@ -20,7 +26,7 @@ export default function MainLayout() {
   const isInGlobalMessagery = pathname.startsWith('/messagery');
   const isInEvents = pathname === '/events';
 
-  const shouldHideNavigation = isInEventTabs || isInEventDetail || isInConversation;
+  const shouldHideNavigation = isOrga || isInEventTabs || isInEventDetail || isInConversation;
   const shouldHideHeader = shouldHideNavigation || isInGlobalMessagery || isInEvents;
 
   useEffect(() => {
