@@ -3,9 +3,10 @@ import PhotoManager from "@/components/PhotoManager";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { authService } from "@/services/auth.service";
+import { photoService, type Photo } from "@/services/photo.service";
 import * as ImagePicker from "expo-image-picker";
 import { Edit2, Save, X } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -68,8 +69,17 @@ export function Profile({
   const [editedProfile, setEditedProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  useEffect(() => {
+    if (profileType === "user") {
+      photoService.getPhotos().then((photos) => {
+        setPrimaryPhoto(photoService.getPrimaryPhoto(photos));
+      }).catch(() => {});
+    }
+  }, [profileType]);
 
   const handleSave = async () => {
     try {
@@ -223,7 +233,12 @@ export function Profile({
 
           {/* Avatar / Logo */}
           <View style={styles.avatarContainer}>
-            {profileType === "orga" && currentLogoPath ? (
+            {profileType === "user" && primaryPhoto ? (
+              <Image
+                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
+                style={styles.avatarImage}
+              />
+            ) : profileType === "orga" && currentLogoPath ? (
               <Image
                 source={{ uri: `${API_URL}${currentLogoPath}` }}
                 style={styles.avatarImage}
@@ -334,7 +349,10 @@ export function Profile({
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Mes photos</Text>
-                <PhotoManager onPhotosChange={() => {}} />
+                <PhotoManager onPhotosChange={(photos) => {
+                  const valid = photos.filter(Boolean);
+                  setPrimaryPhoto(photoService.getPrimaryPhoto(valid));
+                }} />
               </View>
 
               <View style={styles.card}>

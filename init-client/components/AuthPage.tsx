@@ -4,7 +4,7 @@ import { AuthButton, AuthError, AuthInput } from "@/components/auth";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -16,6 +16,27 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+function PasswordInput({ label, value, onChangeText, show, onToggle, editable, styles, mutedColor }: {
+  label: string; value: string; onChangeText: (t: string) => void; show: boolean; onToggle: () => void;
+  editable: boolean; styles: any; mutedColor: string;
+}) {
+  return (
+    <View>
+      <AuthInput
+        label={label}
+        placeholder="••••••••"
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={!show}
+        editable={editable}
+      />
+      <Pressable onPress={onToggle} style={styles.eyeButton}>
+        <MaterialIcons name={show ? "visibility-off" : "visibility"} size={20} color={mutedColor} />
+      </Pressable>
+    </View>
+  );
+}
 
 interface AuthPageProps {
   onAuth: (
@@ -109,27 +130,6 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
     }
   };
 
-  const PasswordInput = ({ label, value, onChangeText, show, onToggle }: {
-    label: string; value: string; onChangeText: (t: string) => void; show: boolean; onToggle: () => void;
-  }) => (
-    <View>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.passwordContainer}>
-        <AuthInput
-          label=""
-          placeholder="••••••••"
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={!show}
-          editable={!loading}
-        />
-        <Pressable onPress={onToggle} style={styles.eyeButton}>
-          <MaterialIcons name={show ? "visibility-off" : "visibility"} size={20} color={theme.colors.mutedForeground} />
-        </Pressable>
-      </View>
-    </View>
-  );
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -218,7 +218,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                   />
                   <Text style={styles.hint}>Format: 10-20 caractères (chiffres, +, -, (), espaces)</Text>
                 </View>
-                <PasswordInput label="Mot de passe *" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+                <PasswordInput label="Mot de passe *" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
               </>
             )}
 
@@ -237,7 +237,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                   />
                   <Text style={styles.hint}>Format: exemple@email.com</Text>
                 </View>
-                <PasswordInput label="Mot de passe *" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+                <PasswordInput label="Mot de passe *" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
               </>
             )}
 
@@ -258,8 +258,8 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                 </View>
                 <DatePicker value={birthDate} onChange={setBirthDate} editable={!loading} />
                 <AuthInput label="Email (optionnel)" placeholder="votre@email.com" value={userEmail} onChangeText={setUserEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
-                <PasswordInput label="Mot de passe * (min. 8 caractères)" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-                <PasswordInput label="Confirmer le mot de passe *" value={confirmPassword} onChangeText={setConfirmPassword} show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} />
+                <PasswordInput label="Mot de passe * (min. 8 caractères)" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
+                <PasswordInput label="Confirmer le mot de passe *" value={confirmPassword} onChangeText={setConfirmPassword} show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
               </>
             )}
 
@@ -270,8 +270,8 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
                 <AuthInput label="Email *" placeholder="organisation@email.com" value={organizerEmail} onChangeText={setOrganizerEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
                 <AuthInput label="Téléphone (optionnel)" placeholder="0612345678" value={organizerPhone} onChangeText={setOrganizerPhone} keyboardType="phone-pad" editable={!loading} />
                 <AuthInput label="Description (optionnel)" placeholder="Description de votre organisation..." value={description} onChangeText={setDescription} multiline numberOfLines={3} editable={!loading} />
-                <PasswordInput label="Mot de passe * (min. 8 caractères)" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-                <PasswordInput label="Confirmer le mot de passe *" value={confirmPassword} onChangeText={setConfirmPassword} show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} />
+                <PasswordInput label="Mot de passe * (min. 8 caractères)" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
+                <PasswordInput label="Confirmer le mot de passe *" value={confirmPassword} onChangeText={setConfirmPassword} show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} editable={!loading} styles={styles} mutedColor={theme.colors.mutedForeground} />
               </>
             )}
 
