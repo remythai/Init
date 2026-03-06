@@ -4,6 +4,7 @@ import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
 import { reportService, ReportType } from '@/services/report.service';
+import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { Avatar } from '@/components/ui/Avatar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -27,6 +28,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SlideUpModal } from '@/components/ui/SlideUpModal';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -94,6 +96,28 @@ export default function ConversationPage() {
   const [isArchived, setIsArchived] = useState(false);
   const [isEventExpired, setIsEventExpired] = useState(false);
   const [isOtherUserBlocked, setIsOtherUserBlocked] = useState(false);
+
+  // Real-time messages
+  const handleRealTimeMessage = useCallback((message: { id: number; content: string; sender_id: number; sent_at: string; match_id: number }) => {
+    const mapped: Message = {
+      id: message.id.toString(),
+      senderId: 'other',
+      text: message.content,
+      timestamp: formatMsgTime(message.sent_at),
+      date: toDateKey(message.sent_at),
+    };
+    setMessages(prev => {
+      if (prev.some(m => m.id === mapped.id)) return prev;
+      return [...prev, mapped];
+    });
+    // Mark as read since we're viewing the conversation
+    if (matchId) matchService.markConversationMessagesAsRead(matchId).catch(() => {});
+  }, [matchId]);
+
+  const { typingUsers, sendTyping } = useRealTimeMessages({
+    matchId: matchId || null,
+    onNewMessage: handleRealTimeMessage,
+  });
 
   // Report modal
   const [showMenu, setShowMenu] = useState(false);
@@ -163,6 +187,8 @@ export default function ConversationPage() {
         date: toDateKey(m.sent_at),
       }));
       setMessages(mapped);
+      // Mark all as read
+      matchService.markConversationMessagesAsRead(matchId).catch(() => {});
     } catch (e) {
       console.error('Erreur chargement messages:', e);
     } finally {
@@ -174,6 +200,7 @@ export default function ConversationPage() {
     if (!messageText.trim() || !matchId || sending || isArchived || isEventExpired || isOtherUserBlocked) return;
     const content = messageText.trim();
     setMessageText('');
+    sendTyping(false);
     const now = new Date().toISOString();
     const optimistic: Message = {
       id: Date.now().toString(),
@@ -303,6 +330,18 @@ export default function ConversationPage() {
         </ScrollView>
       )}
 
+      {/* Typing indicator */}
+      {typingUsers.length > 0 && (
+        <View style={styles.typingContainer}>
+          <View style={styles.typingDots}>
+            <View style={[styles.typingDot, styles.typingDot1]} />
+            <View style={[styles.typingDot, styles.typingDot2]} />
+            <View style={[styles.typingDot, styles.typingDot3]} />
+          </View>
+          <Text style={styles.typingText}>{otherUserName.split(' ')[0]} écrit...</Text>
+        </View>
+      )}
+
       {/* Input zone */}
       <View style={styles.inputContainer}>
         {isArchived ? (
@@ -324,7 +363,11 @@ export default function ConversationPage() {
           <View style={styles.inputRow}>
             <TextInput
               value={messageText}
-              onChangeText={setMessageText}
+              onChangeText={(text) => {
+                setMessageText(text);
+                sendTyping(text.length > 0);
+              }}
+              onBlur={() => sendTyping(false)}
               placeholder="Écrivez un message..."
               placeholderTextColor={theme.colors.placeholder}
               style={styles.input}
@@ -358,8 +401,7 @@ export default function ConversationPage() {
       </Modal>
 
       {/* Report modal — multi-step like web */}
-      <Modal visible={showReport} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowReport(false)}>
-        <View style={styles.reportOverlay}>
+      <SlideUpModal visible={showReport} onRequestClose={() => setShowReport(false)} overlayColor={theme.colors.overlay} position="center">
           <View style={styles.reportBox}>
             <View style={styles.reportHeader}>
               <Text style={styles.reportTitle}>Signaler {otherUserName}</Text>
@@ -412,8 +454,7 @@ export default function ConversationPage() {
               </>
             )}
           </View>
-        </View>
-      </Modal>
+      </SlideUpModal>
     </KeyboardAvoidingView>
   );
 }
@@ -452,6 +493,13 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   bubbleTime: { fontSize: 11, marginTop: 3 },
   bubbleTimeMe: { color: theme.colors.textMuted, textAlign: 'right' },
   bubbleTimeOther: { color: theme.colors.placeholder },
+  typingContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: theme.colors.background },
+  typingDots: { flexDirection: 'row', gap: 3, alignItems: 'center' },
+  typingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.placeholder },
+  typingDot1: { opacity: 0.4 },
+  typingDot2: { opacity: 0.6 },
+  typingDot3: { opacity: 0.8 },
+  typingText: { fontSize: 12, color: theme.colors.placeholder, fontStyle: 'italic' },
   inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingVertical: 10 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   input: { flex: 1, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: theme.colors.foreground, maxHeight: 100, fontSize: 14 },

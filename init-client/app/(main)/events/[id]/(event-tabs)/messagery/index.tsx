@@ -3,14 +3,15 @@ import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
+import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
+import { useSocket } from '@/context/SocketContext';
 import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,30 +34,62 @@ export default function EventMessageryScreen() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { isConnected } = useSocket();
+  const conversationsRef = useRef(conversations);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+
+  const loadConversations = useCallback(async () => {
+    if (!eventId) { setLoading(false); return; }
+    try {
+      setLoading(true);
+      const data = await matchService.getEventConversations(String(eventId));
+      setConversations(data?.conversations || []);
+    } catch (error: any) {
+      console.error('Conversations error:', error.message);
+      setConversations([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId]);
+
   useFocusEffect(
     useCallback(() => {
       if (eventId && eventId !== currentEventId) {
         setCurrentEventId(eventId);
       }
-      if (!eventId) {
-        setLoading(false);
-        return;
-      }
-      const loadConversations = async () => {
-        try {
-          setLoading(true);
-          const data = await matchService.getEventConversations(String(eventId));
-          setConversations(data?.conversations || []);
-        } catch (error: any) {
-          console.error('❌ Conversations error:', error.message);
-          setConversations([]);
-        } finally {
-          setLoading(false);
-        }
-      };
       loadConversations();
     }, [eventId])
   );
+
+  // Real-time: update conversation list when a new message arrives
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubConv = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      setConversations(prev => {
+        const idx = prev.findIndex(c => c.match_id === data.match_id);
+        if (idx === -1) return prev;
+        const updated = [...prev];
+        updated[idx] = {
+          ...updated[idx],
+          last_message: data.last_message,
+          unread_count: (updated[idx].unread_count || 0) + (data.last_message.is_mine ? 0 : 1),
+        };
+        // Move to top
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+        return updated;
+      });
+    });
+
+    const unsubMatch = socketService.onNewMatch((data: SocketMatch) => {
+      if (data.event_id !== eventId) return;
+      // Reload to get the new conversation
+      loadConversations();
+    });
+
+    return () => { unsubConv(); unsubMatch(); };
+  }, [isConnected, eventId, loadConversations]);
 
   const handleMatchPress = (matchId: number, conv: any) => {
     router.push(`/(main)/events/${eventId}/(event-tabs)/messagery/${matchId}`);

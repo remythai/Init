@@ -4,12 +4,14 @@ import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
+import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
+import { useSocket } from '@/context/SocketContext';
 import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -49,9 +51,9 @@ export default function GlobalMessageryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
 
-  useEffect(() => { load(); }, []);
+  const { isConnected } = useSocket();
 
-  const load = async (isRefresh = false) => {
+  const load = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -63,7 +65,36 @@ export default function GlobalMessageryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Real-time: update conversations when new message arrives
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubConv = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      setEventGroups(prev => prev.map(group => {
+        const idx = group.conversations.findIndex(c => c.match_id === data.match_id);
+        if (idx === -1) return group;
+        const updated = [...group.conversations];
+        updated[idx] = {
+          ...updated[idx],
+          last_message: data.last_message,
+          unread_count: (updated[idx].unread_count || 0) + (data.last_message.is_mine ? 0 : 1),
+        };
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+        return { ...group, conversations: updated };
+      }));
+    });
+
+    const unsubMatch = socketService.onNewMatch(() => {
+      load(); // Reload all conversations to include the new match
+    });
+
+    return () => { unsubConv(); unsubMatch(); };
+  }, [isConnected, load]);
 
   const toggleCollapse = (eventId: number) => {
     setCollapsed(prev => {
