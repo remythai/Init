@@ -202,7 +202,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-page">
       {renderHeader()}
 
-      <main className="pt-20 md:pt-24 pb-24 md:pb-8">
+      <main className="pt-20 md:pt-24 pb-30 md:pb-8">
         <div className="max-w-2xl mx-auto px-4 md:px-6">
 
           {/* Avatar + Name card */}

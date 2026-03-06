@@ -855,7 +855,7 @@ export default function MessagesPage() {
 
                         // Handle regular values
                         return (
-                          <div key={key} className="bg-badge p-3 rounded-xl border border-border overflow-hidden">
+                          <div key={key} className="bg-badge p-3 rounded-xl overflow-hidden">
                             <p className="text-sm font-semibold text-primary mb-1">{formatLabel(key)}</p>
                             <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                           </div>

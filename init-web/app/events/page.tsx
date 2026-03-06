@@ -828,7 +828,7 @@ export default function EventsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute bottom-3 left-3 right-3 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-2 rounded-lg font-medium transition-colors text-center text-sm"
                                   >
-                                    Acceder
+                                    Accéder
                                   </Link>
                                 )}
                               </div>
@@ -924,7 +924,7 @@ export default function EventsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
                                   >
-                                    Acceder a l'environnement
+                                    Acceéer a l'environnement
                                   </Link>
                                 )}
                               </div>
@@ -1209,7 +1209,7 @@ export default function EventsPage() {
                   Disponibilite de l'app *
                 </h3>
                 <p className="text-sm text-secondary">
-                  Periode pendant laquelle les utilisateurs peuvent acceder au swiper, matcher et discuter.
+                  Periode pendant laquelle les utilisateurs peuvent accéder au swiper, matcher et discuter.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
