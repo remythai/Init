@@ -15,8 +15,11 @@ export default function MainLayout() {
   const isInEventTabs = segments.includes('(event-tabs)');
   const isInEventDetail = pathname.match(/\/events\/[^/]+/) !== null;
   const isInConversation = pathname.match(/\/messagery\/[^/]+$/) !== null;
+  const isInGlobalMessagery = pathname.startsWith('/messagery');
+  const isInEvents = pathname === '/events';
 
   const shouldHideNavigation = isInEventTabs || isInEventDetail || isInConversation;
+  const shouldHideHeader = shouldHideNavigation || isInGlobalMessagery || isInEvents;
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -38,7 +41,7 @@ export default function MainLayout() {
 
   return (
     <View style={styles.container}>
-      {!shouldHideNavigation && (
+      {!shouldHideHeader && (
         <View style={styles.header}>
           <Image style={styles.logo} source={require('../../assets/images/initLogoGray.png')} />
           <Pressable onPress={() => router.push('/settings')}>

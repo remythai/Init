@@ -1,5 +1,5 @@
-import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
@@ -22,7 +22,6 @@ export function ScreenHeader({ title, subtitle, subtitleColor, onBack, rightActi
   const isSolid = variant === 'solid';
   const iconColor = isSolid ? theme.colors.accentSolidText : theme.colors.foreground;
 
-  // If there's a subtitle, left-align the title block. Otherwise, center it.
   const hasSubtitle = !!subtitle;
 
   return (
