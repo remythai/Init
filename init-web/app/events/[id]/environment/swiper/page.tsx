@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Heart, Sparkles, User, UserPlus, Clock, Flag, AlertTriangle } from "lucide-react";
+import { X, Heart, User, UserPlus, Clock, Flag, AlertTriangle } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
 import { matchService, Profile, ApiError } from "../../../../services/match.service";
 import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 import { useMatchNotifications } from "../../../../hooks/useMatchNotifications";
 import { SocketUserJoined, SocketMatch } from "../../../../services/socket.service";
+import PathDrawing from "@/app/components/PathDrawing";
 
 
 const SWIPE_THRESHOLD = 100; // Minimum distance to trigger swipe
@@ -62,7 +63,7 @@ export default function SwiperPage() {
   // Feedback animation (heart/cross icon)
   const [actionFeedback, setActionFeedback] = useState<"like" | "pass" | null>(null);
 
-  // Drag state
+  // Drag state - use refs for performance, state only for re-renders
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     startX: number;
@@ -70,7 +71,16 @@ export default function SwiperPage() {
     currentX: number;
     currentY: number;
   } | null>(null);
+  const dragRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+  const rafRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const nextCardRef = useRef<HTMLDivElement>(null);
 
   // Handler for when a new user joins the event
   const handleUserJoined = useCallback((data: SocketUserJoined) => {
@@ -263,18 +273,24 @@ export default function SwiperPage() {
     return null;
   };
 
+  const swipeFromDrag = useRef(false);
+
   const handleSwipe = async (direction: "left" | "right") => {
     if (!currentProfile || swiping) return;
 
     setSwiping(true);
     const cardIndex = currentIndex;
     const targetUserId = currentProfile.user_id;
+    const isDragSwipe = swipeFromDrag.current;
+    swipeFromDrag.current = false;
 
     // Show feedback icon
     setActionFeedback(direction === "right" ? "like" : "pass");
 
-    // Start exit animation for current card
-    setExitingCard({ index: cardIndex, direction });
+    // Only use React exiting card for button swipes (not drag)
+    if (!isDragSwipe) {
+      setExitingCard({ index: cardIndex, direction });
+    }
 
     // Make API call
     let matchResult: { matched: boolean; match?: { id: number } } | null = null;
@@ -286,7 +302,6 @@ export default function SwiperPage() {
       }
     } catch (err: unknown) {
       console.error("Swipe error:", err);
-      // Handle event expiry during swipe
       if (err instanceof ApiError && err.code === 'EVENT_EXPIRED') {
         setIsEventExpired(true);
         setSwiping(false);
@@ -297,14 +312,23 @@ export default function SwiperPage() {
 
     // Wait for animation to complete
     setTimeout(() => {
-      // Move to next card
+      // Reset DOM styles from drag animation
+      if (cardRef.current) {
+        cardRef.current.style.transform = '';
+        cardRef.current.style.transition = '';
+      }
+      if (nextCardRef.current) {
+        nextCardRef.current.style.transform = '';
+        nextCardRef.current.style.opacity = '';
+        nextCardRef.current.style.transition = '';
+      }
+
       setCurrentIndex((prev) => prev + 1);
       setCurrentImageIndex(0);
       setExitingCard(null);
       setActionFeedback(null);
       setSwiping(false);
 
-      // Show match modal after card is gone
       if (matchResult?.matched && matchResult.match) {
         setMatchedUser(currentProfile);
         setMatchId(matchResult.match.id);
@@ -313,43 +337,104 @@ export default function SwiperPage() {
     }, 400);
   };
 
+  // Apply drag transform directly to DOM for smooth 60fps animation
+  const applyDragTransform = useCallback(() => {
+    const drag = dragRef.current;
+    if (!drag?.isDragging) return;
+
+    const deltaX = drag.currentX - drag.startX;
+    const deltaY = (drag.currentY - drag.startY) * 0.3;
+    const rotation = deltaX * ROTATION_FACTOR;
+    const progress = Math.min(Math.abs(deltaX) / SWIPE_THRESHOLD, 1);
+    const likeOpacity = deltaX > 0 ? progress : 0;
+    const nopeOpacity = deltaX < 0 ? progress : 0;
+
+    // Update card transform directly
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotation}deg)`;
+      cardRef.current.style.transition = 'none';
+
+    }
+
+    // Update next card scale
+    if (nextCardRef.current) {
+      const scale = 0.95 + (0.05 * progress);
+      const opacity = 0.5 + (0.5 * progress);
+      nextCardRef.current.style.transform = `scale(${scale})`;
+      nextCardRef.current.style.opacity = String(opacity);
+      nextCardRef.current.style.transition = 'none';
+    }
+  }, []);
+
   // Drag handlers
   const handleDragStart = useCallback((clientX: number, clientY: number) => {
     if (swiping || !currentProfile) return;
-    setDragState({
+    const state = {
       isDragging: true,
       startX: clientX,
       startY: clientY,
       currentX: clientX,
       currentY: clientY,
-    });
+    };
+    dragRef.current = state;
+    setDragState(state);
   }, [swiping, currentProfile]);
 
   const handleDragMove = useCallback((clientX: number, clientY: number) => {
-    if (!dragState?.isDragging) return;
-    setDragState((prev) => prev ? {
-      ...prev,
-      currentX: clientX,
-      currentY: clientY,
-    } : null);
-  }, [dragState?.isDragging]);
+    if (!dragRef.current?.isDragging) return;
+    dragRef.current.currentX = clientX;
+    dragRef.current.currentY = clientY;
+
+    // Use rAF for smooth updates
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(applyDragTransform);
+  }, [applyDragTransform]);
 
   const handleDragEnd = useCallback(() => {
-    if (!dragState?.isDragging) return;
+    if (!dragRef.current?.isDragging) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-    const deltaX = dragState.currentX - dragState.startX;
+    const deltaX = dragRef.current.currentX - dragRef.current.startX;
     const absX = Math.abs(deltaX);
 
-    if (absX > SWIPE_THRESHOLD) {
-      // Trigger swipe
-      const direction = deltaX > 0 ? "right" : "left";
-      setDragState(null);
-      handleSwipe(direction);
+    const willSwipe = absX > SWIPE_THRESHOLD;
+
+    if (!willSwipe) {
+      // Snap back - reset DOM styles with smooth transition
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        cardRef.current.style.transform = '';
+      }
+      if (nextCardRef.current) {
+        nextCardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        nextCardRef.current.style.transform = 'scale(0.95)';
+        nextCardRef.current.style.opacity = '0.5';
+      }
     } else {
-      // Snap back
-      setDragState(null);
+      // Swipe - animate card out from current position
+      const direction = deltaX > 0 ? "right" : "left";
+      if (cardRef.current) {
+        const exitX = direction === "left" ? "-120%" : "120%";
+        const exitRotation = direction === "left" ? "-20deg" : "20deg";
+        cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        cardRef.current.style.transform = `translate3d(${exitX}, 0, 0) rotate(${exitRotation})`;
+      }
+      if (nextCardRef.current) {
+        nextCardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        nextCardRef.current.style.transform = 'scale(1)';
+        nextCardRef.current.style.opacity = '1';
+      }
     }
-  }, [dragState, handleSwipe]);
+
+    dragRef.current = null;
+    setDragState(null);
+
+    if (willSwipe) {
+      const direction = deltaX > 0 ? "right" : "left";
+      swipeFromDrag.current = true;
+      handleSwipe(direction);
+    }
+  }, [handleSwipe]);
 
   // Mouse event handlers
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -366,10 +451,10 @@ export default function SwiperPage() {
   }, [handleDragEnd]);
 
   const onMouseLeave = useCallback(() => {
-    if (dragState?.isDragging) {
+    if (dragRef.current?.isDragging) {
       handleDragEnd();
     }
-  }, [dragState?.isDragging, handleDragEnd]);
+  }, [handleDragEnd]);
 
   // Touch event handlers
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -386,27 +471,11 @@ export default function SwiperPage() {
     handleDragEnd();
   }, [handleDragEnd]);
 
-  // Calculate drag transform
+  // Calculate drag transform (fallback for initial render)
   const getDragTransform = () => {
-    if (!dragState?.isDragging) return {};
-    const deltaX = dragState.currentX - dragState.startX;
-    const deltaY = (dragState.currentY - dragState.startY) * 0.3; // Reduce vertical movement
-    const rotation = deltaX * ROTATION_FACTOR;
-    return {
-      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotation}deg)`,
-      transition: 'none',
-    };
+    return {};
   };
 
-  const getDragOpacity = () => {
-    if (!dragState?.isDragging) return { likeOpacity: 0, nopeOpacity: 0 };
-    const deltaX = dragState.currentX - dragState.startX;
-    const progress = Math.min(Math.abs(deltaX) / SWIPE_THRESHOLD, 1);
-    return {
-      likeOpacity: deltaX > 0 ? progress : 0,
-      nopeOpacity: deltaX < 0 ? progress : 0,
-    };
-  };
 
   const handlePreviousImage = () => {
     if (currentProfile?.photos && currentProfile.photos.length > 1) {
@@ -563,17 +632,16 @@ export default function SwiperPage() {
       )}
 
       {/* Card Container */}
-      <div className="flex-1 px-6 pb-3 pt-1 min-h-0">
-        <div className="h-[95%] max-w-lg mx-auto relative">
+      <div className="flex-1 px-6 pt-1 min-h-0 md:flex-none">
+        <div className="h-[100%] max-w-lg md:max-w-5xl md:h-[75vh] mx-auto relative">
           {!isFinished && currentProfile ? (
             <>
-              {/* Next Card (behind) - shown during animation or when there's a next profile */}
+              {/* Next Card (behind) */}
               {(() => {
                 const nextIndex = currentIndex + 1;
                 const nextProfile = profiles[nextIndex];
                 if (!nextProfile) return null;
 
-                // Calculate scale based on drag progress
                 let scale = 0.95;
                 let opacity = 0.5;
                 if (exitingCard) {
@@ -588,39 +656,316 @@ export default function SwiperPage() {
 
                 return (
                   <div
-                    className="absolute inset-0"
+                    ref={nextCardRef}
+                    className="absolute inset-0 rounded-2xl overflow-hidden md:flex md:gap-0 md:bg-card md:rounded-2xl md:shadow-xl"
                     style={{
                       transform: `scale(${scale})`,
                       opacity,
-                      transition: dragState?.isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transition: dragRef.current?.isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    <div className="w-full h-full bg-card rounded-none shadow-lg overflow-hidden">
+                    {/* Photo side */}
+                    <div className="w-full h-full md:flex-1 relative">
+                      <div className="w-full h-full bg-card rounded-2xl md:rounded-none shadow-lg md:shadow-none overflow-hidden">
+                        <div
+                          className="w-full h-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${getProfileImage(nextProfile)})` }}
+                        >
+                          <div className="absolute inset-0 bg-black/10" />
+                          {nextProfile.photos && nextProfile.photos.length > 1 && (
+                            <div className="absolute top-3 left-4 right-4 flex gap-1 z-20">
+                              {nextProfile.photos.map((_, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex-1 h-[3px] rounded-full ${
+                                    idx === 0 ? "bg-white" : "bg-white/50"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4 md:hidden">
+                            <div className="flex items-center justify-between">
+                              <h2 className="text-white text-[28px] font-bold flex-1">
+                                {nextProfile.firstname}
+                                {getAge(nextProfile) && (
+                                  <span className="font-normal">, {getAge(nextProfile)}</span>
+                                )}
+                              </h2>
+                              <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center ml-3">
+                                <User className="w-6 h-6 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Description side (desktop) */}
+                    <div className="hidden md:flex md:flex-1 flex-col h-full relative">
+                      <div className="p-6 flex-1 overflow-y-auto select-none">
+                        <h2 className="text-5xl font-bold text-primary mb-1">
+                          {nextProfile.firstname}
+                          {getAge(nextProfile) && (
+                            <span className="font-normal text-muted">, {getAge(nextProfile)}</span>
+                          )}
+                        </h2>
+
+                        {nextProfile.profil_info && Object.keys(nextProfile.profil_info).length > 0 ? (
+                          <div className="mt-6 space-y-3">
+                            {Object.entries(nextProfile.profil_info).map(([key, value]) => {
+                              if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+                              if (Array.isArray(value)) {
+                                return (
+                                  <div key={key} className="bg-badge p-3 rounded-xl">
+                                    <p className="text-sm font-semibold text-primary mb-2">{formatFieldLabel(key)}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {value.map((item, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="px-3 py-1.5 bg-card text-primary rounded-full text-sm border border-border"
+                                        >
+                                          {String(item)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={key} className="bg-badge p-3 rounded-xl overflow-hidden">
+                                  <p className="text-sm font-semibold text-primary mb-1">{formatFieldLabel(key)}</p>
+                                  <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="mt-6 text-center py-8">
+                            <p className="text-muted">Aucune information de profil</p>
+                          </div>
+                        )}
+                      </div>
+                      {/* Report button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReportModal();
+                        }}
+                        className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-badge flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors z-20"
+                        title="Signaler"
+                      >
+                        <Flag className="w-5 h-5 text-muted hover:text-red-500 transition-colors" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Current Card */}
+              {!exitingCard && (
+                <div
+                  ref={cardRef}
+                  className="absolute inset-1 md:inset-0 cursor-grab active:cursor-grabbing rounded-2xl overflow-hidden md:flex md:gap-0 md:bg-card md:rounded-2xl md:shadow-xl"
+                  style={{
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  onMouseLeave={onMouseLeave}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
+                  {/* Photo side */}
+                  <div className="w-full h-full md:flex-1 md:h-full relative">
+                    <div className="w-full h-full bg-card rounded-2xl md:rounded-none shadow-xl md:shadow-none overflow-hidden">
                       <div
-                        className="w-full h-full bg-cover bg-center"
-                        style={{ backgroundImage: `url(${getProfileImage(nextProfile)})` }}
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${getProfileImage(currentProfile, currentImageIndex)})` }}
                       >
                         <div className="absolute inset-0 bg-black/10" />
-                        {/* Pagination for next card */}
-                        {nextProfile.photos && nextProfile.photos.length > 1 && (
+
+                        {actionFeedback && (
+                          <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+                            <div className={`animate-feedback-pop ${actionFeedback === "like" ? "text-emerald-400" : "text-red-400"}`}>
+                              {actionFeedback === "like" ? (
+                                <Heart className="w-28 h-28 fill-current drop-shadow-lg" />
+                              ) : (
+                                <X className="w-28 h-28 drop-shadow-lg" strokeWidth={3} />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+
+                        {currentProfile.photos && currentProfile.photos.length > 1 && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!dragState?.isDragging) handlePreviousImage();
+                              }}
+                              className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
+                              aria-label="Image precedente"
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!dragState?.isDragging) handleNextImage();
+                              }}
+                              className="absolute right-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
+                              aria-label="Image suivante"
+                            />
+                          </>
+                        )}
+
+                        {currentProfile.photos && currentProfile.photos.length > 1 && (
                           <div className="absolute top-3 left-4 right-4 flex gap-1 z-20">
-                            {nextProfile.photos.map((_, idx) => (
+                            {currentProfile.photos.map((_, idx) => (
                               <div
                                 key={idx}
-                                className={`flex-1 h-[3px] rounded-full ${
-                                  idx === 0 ? "bg-white" : "bg-white/50"
+                                className={`flex-1 h-[3px] rounded-full transition-colors ${
+                                  idx === currentImageIndex ? "bg-white" : "bg-white/50"
                                 }`}
                               />
                             ))}
                           </div>
                         )}
-                        {/* Name for next card */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
+
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4 md:hidden">
+                          <div className="flex items-center justify-between">
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!dragState?.isDragging) setShowProfileModal(true);
+                                }}
+                                className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/40 transition-colors z-20"
+                              >
+                                <User className="w-6 h-6 text-white" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!dragState?.isDragging) openReportModal();
+                                }}
+                                className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-red-500/50 transition-colors z-20"
+                                title="Signaler"
+                              >
+                                <Flag className="w-5 h-5 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description side (desktop) */}
+                  <div className="hidden md:flex md:flex-1 flex-col h-full relative">
+                    <div className="p-6 flex-1 overflow-y-auto select-none">
+                      <h2 className="text-5xl font-bold text-primary mb-1">
+                        {currentProfile.firstname}
+                        {getAge(currentProfile) && (
+                          <span className="font-normal text-muted">, {getAge(currentProfile)}</span>
+                        )}
+                      </h2>
+
+                      {currentProfile.profil_info && Object.keys(currentProfile.profil_info).length > 0 ? (
+                        <div className="mt-6 space-y-3">
+                          {Object.entries(currentProfile.profil_info).map(([key, value]) => {
+                            if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+                            if (Array.isArray(value)) {
+                              return (
+                                <div key={key} className="bg-badge p-3 rounded-xl">
+                                  <p className="text-sm font-semibold text-primary mb-2">{formatFieldLabel(key)}</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {value.map((item, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1.5 bg-card text-primary rounded-full text-sm border border-border"
+                                      >
+                                        {String(item)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div key={key} className="bg-badge p-3 rounded-xl overflow-hidden">
+                                <p className="text-sm font-semibold text-primary mb-1">{formatFieldLabel(key)}</p>
+                                <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="mt-6 text-center py-8">
+                          <p className="text-muted">Aucune information de profil</p>
+                        </div>
+                      )}
+                    </div>
+                    {/* Report button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openReportModal();
+                      }}
+                      className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-badge flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors z-20"
+                      title="Signaler"
+                    >
+                      <Flag className="w-5 h-5 text-muted hover:text-red-500 transition-colors" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Exiting Card (animating out) */}
+              {exitingCard && exitingCard.index < profiles.length && (
+                <div
+                  className="absolute inset-0 z-10 rounded-2xl overflow-hidden md:flex md:gap-0 md:bg-card md:rounded-2xl md:shadow-xl"
+                  style={{
+                    transform: exitingCard.direction === "left"
+                      ? "translate3d(-120%, 0, 0) rotate(-20deg)"
+                      : "translate3d(120%, 0, 0) rotate(20deg)",
+                    transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                  }}
+                >
+                  {/* Photo side */}
+                  <div className="w-full h-full md:flex-1 md:h-full relative">
+                    <div className="w-full h-full bg-card rounded-2xl md:rounded-none shadow-xl md:shadow-none overflow-hidden">
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${getProfileImage(profiles[exitingCard.index], currentImageIndex)})` }}
+                      >
+                        <div className="absolute inset-0 bg-black/10" />
+
+                        {profiles[exitingCard.index].photos && profiles[exitingCard.index].photos!.length > 1 && (
+                          <div className="absolute top-3 left-4 right-4 flex gap-1 z-20">
+                            {profiles[exitingCard.index].photos!.map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={`flex-1 h-[3px] rounded-full ${
+                                  idx === currentImageIndex ? "bg-white" : "bg-white/50"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4 md:hidden">
                           <div className="flex items-center justify-between">
                             <h2 className="text-white text-[28px] font-bold flex-1">
-                              {nextProfile.firstname}
-                              {getAge(nextProfile) && (
-                                <span className="font-normal">, {getAge(nextProfile)}</span>
+                              {profiles[exitingCard.index].firstname}
+                              {getAge(profiles[exitingCard.index]) && (
+                                <span className="font-normal">, {getAge(profiles[exitingCard.index])}</span>
                               )}
                             </h2>
                             <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center ml-3">
@@ -631,196 +976,15 @@ export default function SwiperPage() {
                       </div>
                     </div>
                   </div>
-                );
-              })()}
-
-              {/* Current/Exiting Card */}
-              {!exitingCard && (
-                <div
-                  ref={cardRef}
-                  className="absolute inset-1 md:inset-0 cursor-grab active:cursor-grabbing"
-                  style={{
-                    ...getDragTransform(),
-                    transition: dragState?.isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                  onMouseDown={onMouseDown}
-                  onMouseMove={onMouseMove}
-                  onMouseUp={onMouseUp}
-                  onMouseLeave={onMouseLeave}
-                  onTouchStart={onTouchStart}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={onTouchEnd}
-                >
-                  <div className="w-full h-full bg-card rounded-none shadow-xl overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${getProfileImage(currentProfile, currentImageIndex)})` }}
-                    >
-                      <div className="absolute inset-0 bg-black/10" />
-
-                      {/* Action feedback overlay */}
-                      {actionFeedback && (
-                        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
-                          <div className={`animate-feedback-pop ${actionFeedback === "like" ? "text-emerald-400" : "text-red-400"}`}>
-                            {actionFeedback === "like" ? (
-                              <Heart className="w-28 h-28 fill-current drop-shadow-lg" />
-                            ) : (
-                              <X className="w-28 h-28 drop-shadow-lg" strokeWidth={3} />
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* LIKE indicator during drag */}
-                      <div
-                        className="absolute top-1/2 left-8 -translate-y-1/2 px-6 py-3 border-4 border-green-500 rounded-xl transform -rotate-12 pointer-events-none z-30"
-                        style={{ opacity: getDragOpacity().likeOpacity }}
-                      >
-                        <span className="font-bold text-3xl text-green-500">LIKE</span>
-                      </div>
-
-                      {/* NOPE indicator during drag */}
-                      <div
-                        className="absolute top-1/2 right-8 -translate-y-1/2 px-6 py-3 border-4 border-red-500 rounded-xl transform rotate-12 pointer-events-none z-30"
-                        style={{ opacity: getDragOpacity().nopeOpacity }}
-                      >
-                        <span className="font-bold text-3xl text-red-500">NOPE</span>
-                      </div>
-
-                      {/* Touch zones for image navigation */}
-                      {currentProfile.photos && currentProfile.photos.length > 1 && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!dragState?.isDragging) handlePreviousImage();
-                            }}
-                            className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
-                            aria-label="Image precedente"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!dragState?.isDragging) handleNextImage();
-                            }}
-                            className="absolute right-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer pointer-events-auto"
-                            aria-label="Image suivante"
-                          />
-                        </>
-                      )}
-
-                      {/* Pagination bars */}
-                      {currentProfile.photos && currentProfile.photos.length > 1 && (
-                        <div className="absolute top-3 left-4 right-4 flex gap-1 z-20">
-                          {currentProfile.photos.map((_, idx) => (
-                            <div
-                              key={idx}
-                              className={`flex-1 h-[3px] rounded-full transition-colors ${
-                                idx === currentImageIndex ? "bg-white" : "bg-white/50"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Bottom gradient with name */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-white text-[28px] font-bold flex-1">
-                            {currentProfile.firstname}
-                            {getAge(currentProfile) && (
-                              <span className="font-normal">, {getAge(currentProfile)}</span>
-                            )}
-                          </h2>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!dragState?.isDragging) setShowProfileModal(true);
-                              }}
-                              className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/40 transition-colors z-20"
-                            >
-                              <User className="w-6 h-6 text-white" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!dragState?.isDragging) openReportModal();
-                              }}
-                              className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center hover:bg-red-500/50 transition-colors z-20"
-                              title="Signaler"
-                            >
-                              <Flag className="w-5 h-5 text-white" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Exiting Card (animating out) */}
-              {exitingCard && exitingCard.index < profiles.length && (
-                <div
-                  className="absolute inset-0 z-10"
-                  style={{
-                    transform: exitingCard.direction === "left"
-                      ? "translate3d(-120%, 0, 0) rotate(-20deg)"
-                      : "translate3d(120%, 0, 0) rotate(20deg)",
-                    transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                  }}
-                >
-                  <div className="w-full h-full bg-card rounded-none shadow-xl overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${getProfileImage(profiles[exitingCard.index], currentImageIndex)})` }}
-                    >
-                      <div className="absolute inset-0 bg-black/10" />
-
-                      {/* Pagination bars */}
-                      {profiles[exitingCard.index].photos && profiles[exitingCard.index].photos!.length > 1 && (
-                        <div className="absolute top-3 left-4 right-4 flex gap-1 z-20">
-                          {profiles[exitingCard.index].photos!.map((_, idx) => (
-                            <div
-                              key={idx}
-                              className={`flex-1 h-[3px] rounded-full ${
-                                idx === currentImageIndex ? "bg-white" : "bg-white/50"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* LIKE / NOPE indicators */}
-                      <div
-                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 border-4 rounded-xl transform transition-opacity ${
-                          exitingCard.direction === "right"
-                            ? "border-green-500 -rotate-12"
-                            : "border-red-500 rotate-12"
-                        }`}
-                      >
-                        <span className={`font-bold text-4xl ${
-                          exitingCard.direction === "right" ? "text-green-500" : "text-red-500"
-                        }`}>
-                          {exitingCard.direction === "right" ? "LIKE" : "NOPE"}
-                        </span>
-                      </div>
-
-                      {/* Bottom gradient with name */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4">
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-white text-[28px] font-bold flex-1">
-                            {profiles[exitingCard.index].firstname}
-                            {getAge(profiles[exitingCard.index]) && (
-                              <span className="font-normal">, {getAge(profiles[exitingCard.index])}</span>
-                            )}
-                          </h2>
-                          <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center ml-3">
-                            <User className="w-6 h-6 text-white" />
-                          </div>
-                        </div>
-                      </div>
+                  {/* Description side (desktop) */}
+                  <div className="hidden md:flex md:flex-1 flex-col h-full">
+                    <div className="p-6 flex-1 overflow-y-auto select-none">
+                      <h2 className="text-5xl font-bold text-primary mb-1">
+                        {profiles[exitingCard.index].firstname}
+                        {getAge(profiles[exitingCard.index]) && (
+                          <span className="font-normal text-muted">, {getAge(profiles[exitingCard.index])}</span>
+                        )}
+                      </h2>
                     </div>
                   </div>
                 </div>
@@ -857,57 +1021,58 @@ export default function SwiperPage() {
 
       {/* Action Buttons */}
       {!isFinished && currentProfile && (
-        <div className="flex-shrink-0 flex items-center justify-center gap-5 py-3 pb-6">
+        <div className="flex-shrink-0 flex items-center justify-center gap-8 py-2 md:mt-10">
           <button
             onClick={() => handleSwipe("left")}
             disabled={swiping}
-            className="w-[60px] h-[60px] bg-card rounded-full shadow-lg flex items-center justify-center border-2 border-red-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+            className="w-[72px] h-[72px] md:w-[80px] md:h-[80px] inline-flex items-center justify-center rounded-full bg-gray-200 border border-transparent text-red-500 hover:bg-red-300 focus:outline-hidden focus:bg-red-300 disabled:opacity-50 disabled:pointer-events-none dark:text-red-500 dark:bg-red-800/30 dark:hover:bg-red-500/20 dark:focus:bg-red-500/20 cursor-pointer hover:scale-105 transition-transform duration-200"
           >
-            <X className="w-7 h-7 text-red-500" />
+            <X className="w-8 h-8 md:w-9 md:h-9" />
           </button>
 
           <button
             onClick={() => handleSwipe("right")}
             disabled={swiping}
-            className="w-[60px] h-[60px] bg-card rounded-full shadow-lg flex items-center justify-center border-2 border-emerald-300 hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+            className="w-[72px] h-[72px] md:w-[80px] md:h-[80px] inline-flex items-center justify-center rounded-full bg-gray-200 border border-transparent text-emerald-500 hover:bg-emerald-300 focus:outline-hidden focus:bg-emerald-300 disabled:opacity-50 disabled:pointer-events-none dark:text-emerald-500 dark:bg-emerald-800/30 dark:hover:bg-emerald-500/20 dark:focus:bg-emerald-500/20 cursor-pointer hover:scale-105 transition-transform duration-200"
           >
-            <Heart className="w-7 h-7 text-emerald-500" />
+            <Heart className="w-8 h-8 md:w-9 md:h-9" fill="currentColor" />
           </button>
         </div>
       )}
 
       {/* Match Modal */}
       {showMatch && matchedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-pink-500 to-purple-600">
-          <div className="text-center text-white p-8">
-            <div className="mb-8">
-              <Sparkles className="w-16 h-16 mx-auto mb-4" />
-              <h2 className="text-4xl font-bold mb-2">It's a Match !</h2>
-              <p className="text-secondary">
-                Vous et {matchedUser.firstname} vous êtes likés mutuellement
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-hidden">
+          {/* Blue thread animation - behind content */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginTop: "-20px" }}>
+            <PathDrawing />
+          </div>
+
+          <div className="text-center px-6 max-w-sm w-full relative z-10">
+            <div className="w-32 h-32 rounded-full overflow-hidden border-[3px] border-white mx-auto mb-6 shadow-2xl">
+              <img
+                src={getProfileImage(matchedUser)}
+                alt={matchedUser.firstname}
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            <div className="flex justify-center gap-4 mb-8">
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white">
-                <img
-                  src={getProfileImage(matchedUser)}
-                  alt={matchedUser.firstname}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
+            <h2 className="text-white text-3xl font-bold mb-1">It's a Match !</h2>
+            <p className="text-white/60 text-sm mb-8">
+              Vous et {matchedUser.firstname} vous êtes likés mutuellement
+            </p>
 
             <div className="space-y-3">
               <Link
                 href={`/events/${eventId}/environment/messages?match=${matchId}`}
-                className="block w-full bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-white/80 transition-colors"
+                className="block w-full bg-[#1271FF] text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-[#0d5dd8] transition-colors relative z-10"
               >
                 Envoyer un message
               </Link>
+
               <button
                 onClick={closeMatch}
-                className="block w-full text-secondary hover:text-white transition-colors"
+                className="block w-full text-white/50 text-sm hover:text-white transition-colors py-2"
               >
                 Continuer à swiper
               </button>
