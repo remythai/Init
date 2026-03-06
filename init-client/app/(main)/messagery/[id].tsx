@@ -342,6 +342,7 @@ export default function ConversationPage() {
       <Modal
         visible={showDropdownMenu}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowDropdownMenu(false)}
       >
@@ -368,6 +369,7 @@ export default function ConversationPage() {
       <Modal
         visible={showReportDialog}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowReportDialog(false)}
       >

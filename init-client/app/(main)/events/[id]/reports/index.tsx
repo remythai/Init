@@ -244,6 +244,7 @@ export default function ReportsScreen() {
         visible={!!selected || loadingDetails}
         animationType="slide"
         transparent
+        statusBarTranslucent
         onRequestClose={() => { setSelected(null); }}
       >
         <View style={styles.modalOverlay}>

@@ -17,7 +17,7 @@ interface StatsBannerProps {
 export function StatsBanner({ stats, backgroundColor }: StatsBannerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const bg = backgroundColor ?? theme.colors.foreground;
+  const bg = backgroundColor ?? theme.colors.card;
 
   return (
     <View style={[styles.banner, { backgroundColor: bg }]}>
@@ -36,5 +36,5 @@ const createStyles = (theme: Theme) =>
     banner: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 8 },
     item: { flex: 1, alignItems: 'center' },
     value: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 18 },
-    label: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+    label: { fontSize: 11, color: theme.colors.mutedForeground, marginTop: 2 },
   });

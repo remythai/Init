@@ -503,10 +503,11 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+// AuthPage always uses a fixed palette (grey bg + white card) regardless of theme
+const createStyles = (_theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: '#F5F5F5',
   },
   scrollContent: {
     padding: 16,
@@ -527,11 +528,11 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     resizeMode: "contain",
   },
   tagline: {
-    color: theme.colors.textSecondary,
+    color: 'rgba(48, 48, 48, 0.6)',
     fontSize: 14,
   },
   card: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     marginBottom: 32,
@@ -540,7 +541,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 16,
-    backgroundColor: theme.colors.card,
+    backgroundColor: '#f3f4f6',
     padding: 4,
     borderRadius: 8,
   },
@@ -551,7 +552,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     alignItems: "center",
   },
   toggleButtonActive: {
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: '#303030',
   },
   toggleButtonInactive: {
     backgroundColor: "transparent",
@@ -561,10 +562,10 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: "500",
   },
   toggleTextActive: {
-    color: theme.colors.background,
+    color: '#ffffff',
   },
   toggleTextInactive: {
-    color: theme.colors.foreground,
+    color: '#303030',
   },
   userTypeSection: {
     marginBottom: 24,
@@ -573,7 +574,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginBottom: 12,
     fontSize: 14,
     fontWeight: "500",
-    color: theme.colors.foreground,
+    color: '#303030',
   },
   radioContainer: {
     flexDirection: "row",
@@ -583,7 +584,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.card,
+    backgroundColor: '#f3f4f6',
     padding: 12,
     borderRadius: 8,
     borderWidth: 2,
@@ -594,22 +595,22 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: theme.colors.foreground,
+    borderColor: '#303030',
     alignItems: "center",
     justifyContent: "center",
   },
   radioCircleSelected: {
-    borderColor: theme.colors.primary,
+    borderColor: '#1271FF',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#1271FF',
   },
   radioLabel: {
     fontSize: 14,
-    color: theme.colors.foreground,
+    color: '#303030',
   },
   formContent: {
     gap: 16,
@@ -619,12 +620,12 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginTop: 16,
   },
   forgotPasswordText: {
-    color: theme.colors.foreground,
+    color: '#303030',
     fontSize: 14,
   },
   hint: {
     fontSize: 12,
-    color: theme.colors.mutedForeground,
+    color: '#6b7280',
     marginTop: 4,
     marginLeft: 4,
   },

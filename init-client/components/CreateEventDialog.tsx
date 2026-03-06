@@ -420,6 +420,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         visible={open}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
         <View style={styles.modalOverlay}>
@@ -1026,6 +1027,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         visible={showLocationPicker}
         animationType="slide"
         transparent={false}
+        statusBarTranslucent
         onRequestClose={() => setShowLocationPicker(false)}
       >
         <View style={styles.locationModalContainer}>
@@ -1090,7 +1092,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 const createStyles = (theme: Theme) => StyleSheet.create({
   fab: {
     position: "absolute",
-    bottom: 80,
+    bottom: 24,
     right: 24,
     width: 64,
     height: 64,

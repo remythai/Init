@@ -260,6 +260,7 @@ export default function PhotoManager({
       <Modal
         visible={!!deleteTarget}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setDeleteTarget(null)}
       >

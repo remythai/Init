@@ -67,7 +67,7 @@ export default function MainLayout() {
           tabBarStyle: shouldHideNavigation
             ? { display: "none" }
             : {
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderTopWidth: 1,
                 borderTopColor: theme.colors.border,
                 paddingTop: 6,

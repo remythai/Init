@@ -82,6 +82,7 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
       <Modal
         visible={showPicker}
         transparent={true}
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowPicker(false)}
       >

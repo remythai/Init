@@ -7,9 +7,11 @@ import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -291,6 +293,10 @@ export default function EditEventScreen() {
   const [accessPassword, setAccessPassword] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
 
+  // Banner
+  const [bannerPath, setBannerPath] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+
   // Custom field editor
   const [editingField, setEditingField] = useState<{ index: number | null; field: CustomField } | null>(null);
 
@@ -328,6 +334,7 @@ export default function EditEventScreen() {
     setHasLinkAccess(data.has_link_access ?? true);
     setHasPasswordAccess(data.has_password_access ?? false);
     setCustomFields(data.custom_fields || []);
+    setBannerPath(data.banner_path || null);
   };
 
   const validate = (): string | null => {
@@ -394,6 +401,55 @@ export default function EditEventScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePickBanner = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission refusée', "Autorisez l'accès à la galerie.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const fileName = asset.uri.split('/').pop() || 'banner.jpg';
+    const fileType = asset.mimeType || 'image/jpeg';
+    setUploadingBanner(true);
+    try {
+      const path = await eventService.uploadEventBanner(id, asset.uri, fileName, fileType);
+      setBannerPath(path);
+      Alert.alert('Succès', 'Bannière mise à jour !');
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message || "Impossible d'uploader la bannière");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
+  const handleDeleteBanner = () => {
+    Alert.alert('Supprimer la bannière', 'Confirmer la suppression ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer', style: 'destructive',
+        onPress: async () => {
+          setUploadingBanner(true);
+          try {
+            await eventService.deleteEventBanner(id);
+            setBannerPath(null);
+            Alert.alert('Succès', 'Bannière supprimée');
+          } catch (err: any) {
+            Alert.alert('Erreur', err.message || 'Impossible de supprimer la bannière');
+          } finally {
+            setUploadingBanner(false);
+          }
+        },
+      },
+    ]);
   };
 
   const openNewField = () => {
@@ -522,6 +578,36 @@ export default function EditEventScreen() {
               {description.length}/1000
             </Text>
           </View>
+        </View>
+
+        {/* -- Banniere -- */}
+        <View style={styles.card}>
+          <SectionHeader title="Image de bannière" styles={styles} />
+          {bannerPath ? (
+            <View style={{ gap: 10 }}>
+              <Image
+                source={{ uri: `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${bannerPath}` }}
+                style={styles.bannerPreview}
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable style={[styles.bannerButton, { flex: 1 }]} onPress={handlePickBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="photo-camera" size={18} color={theme.colors.primary} />
+                  <Text style={styles.bannerButtonText}>{uploadingBanner ? '...' : 'Changer'}</Text>
+                </Pressable>
+                <Pressable style={[styles.bannerButton, { flex: 1, borderColor: shared.error }]} onPress={handleDeleteBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="delete" size={18} color={shared.error} />
+                  <Text style={[styles.bannerButtonText, { color: shared.error }]}>Supprimer</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable style={styles.bannerPlaceholder} onPress={handlePickBanner} disabled={uploadingBanner}>
+              <MaterialIcons name="add-photo-alternate" size={32} color={theme.colors.placeholder} />
+              <Text style={styles.bannerPlaceholderText}>
+                {uploadingBanner ? 'Upload en cours...' : 'Ajouter une bannière'}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* -- Disponibilite app -- */}
@@ -849,6 +935,20 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.accentSolidText },
+
+  // Banner
+  bannerPreview: { width: '100%', height: 160, borderRadius: 12 },
+  bannerButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.primary,
+  },
+  bannerButtonText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
+  bannerPlaceholder: {
+    height: 120, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.border,
+    borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: theme.colors.background,
+  },
+  bannerPlaceholderText: { fontSize: 13, color: theme.colors.placeholder },
 
   // Footer save
   footer: {

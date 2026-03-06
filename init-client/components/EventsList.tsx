@@ -313,6 +313,7 @@ export function EventsList({
         visible={isAdvancedOpen}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setIsAdvancedOpen(false)}
       >
         <View style={styles.modalOverlay}>

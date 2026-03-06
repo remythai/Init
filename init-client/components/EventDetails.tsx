@@ -576,6 +576,7 @@ export function EventDetail({
         visible={showProfileModal}
         animationType="slide"
         transparent
+        statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
       >
         <View style={styles.modalOverlay}>
@@ -762,7 +763,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     borderRadius: 12,
     backgroundColor: shared.errorLight,
     borderWidth: 1,
-    borderColor: shared.errorLight,
+    borderColor: shared.error,
   },
   orgaButtonReportsText: {
     fontFamily: "Poppins",

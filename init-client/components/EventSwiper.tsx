@@ -315,6 +315,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
         visible={showProfileModal}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
       >
         <View style={styles.modalOverlay}>

@@ -70,6 +70,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 6,
       borderRadius: 20,
       backgroundColor: theme.colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     tabActive: { backgroundColor: theme.colors.accentSolid },
     tabText: { fontSize: 12, fontWeight: '600', color: theme.colors.mutedForeground },

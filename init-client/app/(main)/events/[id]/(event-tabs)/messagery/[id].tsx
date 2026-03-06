@@ -343,7 +343,7 @@ export default function ConversationPage() {
       </View>
 
       {/* Dropdown menu */}
-      <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
+      <Modal visible={showMenu} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setShowMenu(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
           <View style={styles.menuBox}>
             <TouchableOpacity
@@ -358,7 +358,7 @@ export default function ConversationPage() {
       </Modal>
 
       {/* Report modal — multi-step like web */}
-      <Modal visible={showReport} transparent animationType="slide" onRequestClose={() => setShowReport(false)}>
+      <Modal visible={showReport} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowReport(false)}>
         <View style={styles.reportOverlay}>
           <View style={styles.reportBox}>
             <View style={styles.reportHeader}>

@@ -14,7 +14,7 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.content}>{children}</View>
       </View>
