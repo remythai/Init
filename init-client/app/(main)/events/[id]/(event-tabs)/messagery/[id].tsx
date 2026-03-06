@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Alert,
@@ -71,7 +72,8 @@ function toDateKey(dateStr: string): string {
 export default function ConversationPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const { currentEventId } = useEvent();
   const { id: matchIdParam } = useLocalSearchParams<{ id: string }>();
   const globalParams = useGlobalSearchParams<{ from?: string }>();
@@ -416,12 +418,12 @@ export default function ConversationPage() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.card },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 8, paddingTop: 50, paddingBottom: 12,
+    paddingHorizontal: 8, paddingTop: topInset, paddingBottom: 12,
     backgroundColor: theme.colors.foreground,
   },
   headerBtn: { padding: 8, borderRadius: 8 },

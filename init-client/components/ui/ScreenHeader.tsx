@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ScreenHeaderProps {
   title: string;
@@ -17,7 +18,8 @@ interface ScreenHeaderProps {
 export function ScreenHeader({ title, subtitle, subtitleColor, onBack, rightAction, variant = 'card' }: ScreenHeaderProps) {
   const router = useRouter();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme, variant), [theme, variant]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, variant, insets.top), [theme, variant, insets.top]);
 
   const isSolid = variant === 'solid';
   const iconColor = isSolid ? theme.colors.accentSolidText : theme.colors.foreground;
@@ -42,7 +44,7 @@ export function ScreenHeader({ title, subtitle, subtitleColor, onBack, rightActi
   );
 }
 
-const createStyles = (theme: Theme, variant: 'card' | 'solid') => {
+const createStyles = (theme: Theme, variant: 'card' | 'solid', topInset: number) => {
   const isSolid = variant === 'solid';
   return StyleSheet.create({
     header: {
@@ -50,7 +52,7 @@ const createStyles = (theme: Theme, variant: 'card' | 'solid') => {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingTop: 52,
+      paddingTop: topInset,
       paddingBottom: 12,
       backgroundColor: isSolid ? theme.colors.accentSolid : theme.colors.card,
       borderBottomWidth: 1,

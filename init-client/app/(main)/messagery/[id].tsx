@@ -8,6 +8,7 @@ import {
   Send,
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -32,7 +33,8 @@ interface Message {
 export default function ConversationPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const { id } = useLocalSearchParams();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -399,7 +401,7 @@ export default function ConversationPage() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.card,
@@ -410,7 +412,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: topInset,
     paddingBottom: 16,
     backgroundColor: theme.colors.foreground,
     borderBottomWidth: 1,

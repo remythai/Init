@@ -3,8 +3,10 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { authService } from '@/services/auth.service';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
 
 SplashScreen.preventAutoHideAsync();
@@ -12,7 +14,7 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutInner() {
   const router = useRouter();
   const segments = useSegments();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const hasNavigated = useRef(false);
@@ -61,8 +63,11 @@ function RootLayoutInner() {
     );
   }
 
+  const statusBarStyle = isDark ? 'light' : 'dark';
+
   return (
     <EventProvider>
+      <StatusBar style={statusBarStyle} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
         <Stack.Screen name="(main)" options={{ animation: 'none' }} />
@@ -97,7 +102,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <RootLayoutInner />
+      <SafeAreaProvider>
+        <RootLayoutInner />
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }

@@ -5,13 +5,15 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventTabsLayout() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const segments = useSegments();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
   const isInConversation = segments[segments.length - 2] === 'messagery' &&
     segments[segments.length - 1] !== 'index';
@@ -128,14 +130,14 @@ export default function EventTabsLayout() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: topInset,
     paddingBottom: 10,
     backgroundColor: theme.colors.accentSolid,
     borderBottomWidth: 1,

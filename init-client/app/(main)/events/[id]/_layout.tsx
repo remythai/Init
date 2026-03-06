@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventLayout() {
   const router = useRouter();
@@ -14,7 +15,8 @@ export default function EventLayout() {
   const segments = useSegments();
   const pathname = usePathname();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
   const [userType, setUserType] = useState<'user' | 'organizer' | null>(null);
   const [pendingReports, setPendingReports] = useState(0);
@@ -177,14 +179,14 @@ export default function EventLayout() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.card },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: topInset,
     paddingBottom: 10,
     backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
