@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, Modal } from "react-native";
 
 interface DatePickerProps {
@@ -8,19 +10,22 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange, editable = true }: DatePickerProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [showPicker, setShowPicker] = useState(false);
   const [tempDay, setTempDay] = useState('');
   const [tempMonth, setTempMonth] = useState('');
   const [tempYear, setTempYear] = useState('');
-  
+
   const parseDate = (dateStr: string) => {
     if (!dateStr) return { day: '', month: '', year: '' };
     const [year, month, day] = dateStr.split('-');
     return { day: day || '', month: month || '', year: year || '' };
   };
-  
+
   const { day, month, year } = parseDate(value);
-  
+
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
   const months = [
     { value: '01', label: 'Janvier' },
@@ -38,31 +43,31 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - 18 - i));
-  
+
   const openPicker = () => {
     setTempDay(day || '01');
     setTempMonth(month || '01');
     setTempYear(year || String(currentYear - 18));
     setShowPicker(true);
   };
-  
+
   const confirmDate = () => {
     if (tempDay && tempMonth && tempYear) {
       onChange(`${tempYear}-${tempMonth}-${tempDay}`);
     }
     setShowPicker(false);
   };
-  
+
   const getDisplayText = () => {
     if (!day || !month || !year) return 'Sélectionner une date';
     const monthLabel = months.find(m => m.value === month)?.label || month;
     return `${day} ${monthLabel} ${year}`;
   };
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Date de naissance * (18 ans minimum)</Text>
-      
+
       <Pressable
         style={styles.displayButton}
         onPress={() => editable && openPicker()}
@@ -73,28 +78,29 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
         </Text>
         <Text style={styles.arrow}>▼</Text>
       </Pressable>
-      
+
       <Modal
         visible={showPicker}
         transparent={true}
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowPicker(false)}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => setShowPicker(false)}
         >
-          <Pressable 
+          <Pressable
             style={styles.modalContent}
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.modalTitle}>Sélectionner votre date de naissance</Text>
-            
+
             <View style={styles.pickerRow}>
               {/* Jour */}
               <View style={styles.pickerColumn}>
                 <Text style={styles.pickerLabel}>Jour</Text>
-                <ScrollView 
+                <ScrollView
                   style={styles.scrollView}
                   showsVerticalScrollIndicator={false}
                 >
@@ -111,11 +117,11 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
                   ))}
                 </ScrollView>
               </View>
-              
+
               {/* Mois */}
               <View style={styles.pickerColumn}>
                 <Text style={styles.pickerLabel}>Mois</Text>
-                <ScrollView 
+                <ScrollView
                   style={styles.scrollView}
                   showsVerticalScrollIndicator={false}
                 >
@@ -132,11 +138,11 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
                   ))}
                 </ScrollView>
               </View>
-              
+
               {/* Année */}
               <View style={styles.pickerColumn}>
                 <Text style={styles.pickerLabel}>Année</Text>
-                <ScrollView 
+                <ScrollView
                   style={styles.scrollView}
                   showsVerticalScrollIndicator={false}
                 >
@@ -154,7 +160,7 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
                 </ScrollView>
               </View>
             </View>
-            
+
             <View style={styles.buttonRow}>
               <Pressable
                 style={[styles.button, styles.cancelButton]}
@@ -162,7 +168,7 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
               >
                 <Text style={styles.cancelButtonText}>Annuler</Text>
               </Pressable>
-              
+
               <Pressable
                 style={[styles.button, styles.confirmButton]}
                 onPress={confirmDate}
@@ -173,7 +179,7 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
           </Pressable>
         </Pressable>
       </Modal>
-      
+
       <Text style={styles.hint}>
         Vous devez avoir au moins 18 ans pour vous inscrire
       </Text>
@@ -181,30 +187,30 @@ export function DatePicker({ value, onChange, editable = true }: DatePickerProps
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: { width: '100%' },
-  label: { fontSize: 14, fontWeight: '500', color: '#303030', marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: 8 },
   displayButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.card,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.colors.border,
   },
-  displayText: { fontSize: 16, color: '#303030' },
-  placeholder: { color: '#999' },
-  arrow: { fontSize: 12, color: '#666' },
+  displayText: { fontSize: 16, color: theme.colors.foreground },
+  placeholder: { color: theme.colors.placeholder },
+  arrow: { fontSize: 12, color: theme.colors.mutedForeground },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.card,
     borderRadius: 16,
     padding: 20,
     width: '90%',
@@ -213,13 +219,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 16,
     textAlign: 'center',
   },
-  pickerRow: { 
-    flexDirection: 'row', 
-    gap: 12, 
+  pickerRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 16,
     height: 200,
   },
@@ -227,23 +233,23 @@ const styles = StyleSheet.create({
   pickerLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.mutedForeground,
     marginBottom: 8,
     textAlign: 'center',
   },
-  scrollView: { 
-    backgroundColor: '#F8F8F8', 
+  scrollView: {
+    backgroundColor: theme.colors.secondary,
     borderRadius: 8,
   },
   option: {
     padding: 12,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.colors.border,
   },
-  optionSelected: { backgroundColor: '#1271FF' },
-  optionText: { fontSize: 14, color: '#303030' },
-  optionTextSelected: { color: 'white', fontWeight: '600' },
+  optionSelected: { backgroundColor: theme.colors.primary },
+  optionText: { fontSize: 14, color: theme.colors.foreground },
+  optionTextSelected: { color: theme.colors.primaryForeground, fontWeight: '600' },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
@@ -255,20 +261,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.colors.secondary,
   },
   cancelButtonText: {
-    color: '#303030',
+    color: theme.colors.foreground,
     fontSize: 14,
     fontWeight: '600',
   },
   confirmButton: {
-    backgroundColor: '#1271FF',
+    backgroundColor: theme.colors.primary,
   },
-  confirmButtonText: { 
-    color: 'white', 
-    fontSize: 14, 
-    fontWeight: '600' 
+  confirmButtonText: {
+    color: theme.colors.primaryForeground,
+    fontSize: 14,
+    fontWeight: '600'
   },
-  hint: { fontSize: 12, color: '#666', marginTop: 4, marginLeft: 4 },
+  hint: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 4, marginLeft: 4 },
 });

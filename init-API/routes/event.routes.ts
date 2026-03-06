@@ -24,7 +24,7 @@ router.get(
 router.get(
   '/:id',
   authMiddleware,
-  requireRole('orga'),
+  requireRole('user', 'orga'),
   asyncHandler(EventController.getEventByID)
 );
 

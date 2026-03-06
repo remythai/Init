@@ -290,12 +290,7 @@ class EventService {
       if (!evt) throw new Error('Événement non trouvé');
       return evt;
     }
-    const userType = authService.getUserType();
-    const endpoint = userType === 'orga'
-      ? `/api/events/${id}`
-      : `/api/events/users/list`;
-
-    const response = await authService.authenticatedFetch(endpoint);
+    const response = await authService.authenticatedFetch(`/api/events/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -303,16 +298,7 @@ class EventService {
     }
 
     const data = await response.json();
-    if (userType === 'orga') {
-      return data.data;
-    }
-
-    const event = data.data.events.find((e: EventResponse) => e.id === parseInt(id));
-    if (!event) {
-      throw new Error('Événement non trouvé');
-    }
-
-    return event;
+    return data.data;
   }
 
   async updateEvent(eventId: string, updates: Partial<{

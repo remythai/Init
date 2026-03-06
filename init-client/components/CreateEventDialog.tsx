@@ -1,8 +1,10 @@
 // components/CreateEventDialog.tsx
+import { type Theme } from "@/constants/theme";
+import { useTheme, shared } from "@/context/ThemeContext";
 import { CustomField, getFieldId, eventService } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from 'expo-location';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +41,9 @@ interface AddressSuggestion {
 }
 
 export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -407,7 +412,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
     <>
       {/* Floating Action Button */}
       <Pressable style={styles.fab} onPress={() => setOpen(true)}>
-        <MaterialIcons name="add" size={28} color="#FFFFFF" />
+        <MaterialIcons name="add" size={28} color={theme.colors.primaryForeground} />
       </Pressable>
 
       {/* Modal Principal */}
@@ -415,6 +420,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         visible={open}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
         <View style={styles.modalOverlay}>
@@ -423,7 +429,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Créer un nouvel événement</Text>
               <Pressable onPress={() => setOpen(false)} disabled={loading}>
-                <MaterialIcons name="close" size={26} color="#303030" />
+                <MaterialIcons name="close" size={26} color={theme.colors.foreground} />
               </Pressable>
             </View>
 
@@ -443,7 +449,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                     setFormData({ ...formData, name: text })
                   }
                   placeholder="Ex: Soirée Networking"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.colors.placeholder}
                   editable={!loading}
                   maxLength={100}
                 />
@@ -490,7 +496,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                     setFormData({ ...formData, description: text })
                   }
                   placeholder="Décrivez votre événement..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.colors.placeholder}
                   multiline
                   numberOfLines={4}
                   editable={!loading}
@@ -503,7 +509,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
 
               {/* Banner Info */}
               <View style={styles.infoBox}>
-                <MaterialIcons name="info-outline" size={20} color="#1271FF" />
+                <MaterialIcons name="info-outline" size={20} color={theme.colors.primary} />
                 <Text style={styles.infoText}>
                   Image de bannière : Vous pourrez ajouter une image de bannière personnalisée après la création de l'événement.
                 </Text>
@@ -524,12 +530,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         style={[styles.input, styles.dateInput]}
                         value={appStartDate ? formatDateTime(appStartDate) : ''}
                         placeholder="Sélectionner la date et l'heure"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={theme.colors.placeholder}
                         editable={false}
                       />
                     </View>
                     <View style={styles.inputIcon}>
-                      <MaterialIcons name="event" size={20} color="#6B7280" />
+                      <MaterialIcons name="event" size={20} color={theme.colors.mutedForeground} />
                     </View>
                   </Pressable>
                 </View>
@@ -542,12 +548,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         style={[styles.input, styles.dateInput]}
                         value={appEndDate ? formatDateTime(appEndDate) : ''}
                         placeholder="Sélectionner la date et l'heure"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={theme.colors.placeholder}
                         editable={false}
                       />
                     </View>
                     <View style={styles.inputIcon}>
-                      <MaterialIcons name="event" size={20} color="#6B7280" />
+                      <MaterialIcons name="event" size={20} color={theme.colors.mutedForeground} />
                     </View>
                   </Pressable>
                 </View>
@@ -598,12 +604,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                             style={[styles.input, styles.dateInput]}
                             value={physicalStartDate ? formatDateTime(physicalStartDate) : ''}
                             placeholder="Sélectionner la date et l'heure"
-                            placeholderTextColor="#9CA3AF"
+                            placeholderTextColor={theme.colors.placeholder}
                             editable={false}
                           />
                         </View>
                         <View style={styles.inputIcon}>
-                          <MaterialIcons name="event" size={20} color="#6B7280" />
+                          <MaterialIcons name="event" size={20} color={theme.colors.mutedForeground} />
                         </View>
                       </Pressable>
                     </View>
@@ -616,12 +622,12 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                             style={[styles.input, styles.dateInput]}
                             value={physicalEndDate ? formatDateTime(physicalEndDate) : ''}
                             placeholder="Sélectionner la date et l'heure"
-                            placeholderTextColor="#9CA3AF"
+                            placeholderTextColor={theme.colors.placeholder}
                             editable={false}
                           />
                         </View>
                         <View style={styles.inputIcon}>
-                          <MaterialIcons name="event" size={20} color="#6B7280" />
+                          <MaterialIcons name="event" size={20} color={theme.colors.mutedForeground} />
                         </View>
                       </Pressable>
                     </View>
@@ -634,7 +640,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         <MaterialIcons
                           name="location-on"
                           size={20}
-                          color="#6B7280"
+                          color={theme.colors.mutedForeground}
                           style={styles.locationInputIcon}
                         />
                         <TextInput
@@ -647,7 +653,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                             }
                           }}
                           placeholder="Commencez à taper une adresse..."
-                          placeholderTextColor="#9CA3AF"
+                          placeholderTextColor={theme.colors.placeholder}
                           editable={!loading}
                           onFocus={() => {
                             if (addressSuggestions.length > 0) {
@@ -658,7 +664,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         {loadingSuggestions && (
                           <ActivityIndicator
                             size="small"
-                            color="#1271FF"
+                            color={theme.colors.primary}
                             style={styles.locationLoadingIcon}
                           />
                         )}
@@ -678,7 +684,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                                 style={styles.suggestionItem}
                                 onPress={() => selectAddress(item)}
                               >
-                                <MaterialIcons name="place" size={18} color="#6B7280" />
+                                <MaterialIcons name="place" size={18} color={theme.colors.mutedForeground} />
                                 <Text style={styles.suggestionText} numberOfLines={2}>
                                   {item.display_name}
                                 </Text>
@@ -708,7 +714,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                           }
                         }}
                       >
-                        <MaterialIcons name="map" size={18} color="#1271FF" />
+                        <MaterialIcons name="map" size={18} color={theme.colors.primary} />
                         <Text style={styles.mapPickerButtonText}>
                           Ou sélectionner sur la carte
                         </Text>
@@ -730,7 +736,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                     setFormData({ ...formData, max_participants: text })
                   }
                   placeholder="Ex: 50"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.colors.placeholder}
                   keyboardType="number-pad"
                   editable={!loading}
                 />
@@ -882,7 +888,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                         })
                       }
                       placeholder="Entrez un mot de passe"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={theme.colors.placeholder}
                       secureTextEntry
                       editable={!loading}
                     />
@@ -911,7 +917,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                       setFormData({ ...formData, cooldown: text })
                     }
                     placeholder="Ex: 24"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={theme.colors.placeholder}
                     keyboardType="number-pad"
                     editable={!loading}
                   />
@@ -924,7 +930,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
               {/* Error Message */}
               {error && (
                 <View style={styles.errorContainer}>
-                  <MaterialIcons name="error-outline" size={20} color="#DC2626" />
+                  <MaterialIcons name="error-outline" size={20} color={theme.colors.destructive} />
                   <Text style={styles.errorText}>{error}</Text>
                 </View>
               )}
@@ -947,7 +953,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={theme.colors.card} />
                 ) : (
                   <Text style={styles.submitButtonText}>
                     Créer l'événement
@@ -1021,16 +1027,17 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
         visible={showLocationPicker}
         animationType="slide"
         transparent={false}
+        statusBarTranslucent
         onRequestClose={() => setShowLocationPicker(false)}
       >
         <View style={styles.locationModalContainer}>
           <View style={styles.locationModalHeader}>
             <Pressable onPress={() => setShowLocationPicker(false)}>
-              <MaterialIcons name="close" size={28} color="#303030" />
+              <MaterialIcons name="close" size={28} color={theme.colors.foreground} />
             </Pressable>
             <Text style={styles.locationModalTitle}>Sélectionner un lieu</Text>
             <Pressable onPress={getCurrentLocation}>
-              <MaterialIcons name="my-location" size={28} color="#1271FF" />
+              <MaterialIcons name="my-location" size={28} color={theme.colors.primary} />
             </Pressable>
           </View>
 
@@ -1050,7 +1057,7 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
           </MapView>
 
           <View style={styles.mapInstructions}>
-            <MaterialIcons name="info-outline" size={20} color="#6B7280" />
+            <MaterialIcons name="info-outline" size={20} color={theme.colors.mutedForeground} />
             <Text style={styles.mapInstructionsText}>
               Tapez sur la carte pour placer un marqueur ou déplacez-le
             </Text>
@@ -1082,18 +1089,18 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   fab: {
     position: "absolute",
-    bottom: 80,
+    bottom: 24,
     right: 24,
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#1271FF",
+    backgroundColor: theme.colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -1102,15 +1109,15 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: "92%",
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -1123,12 +1130,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: theme.colors.secondary,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#303030",
+    color: theme.colors.foreground,
     flex: 1,
     letterSpacing: -0.5,
   },
@@ -1142,19 +1149,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 10,
     letterSpacing: -0.2,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
+    borderColor: theme.colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#303030",
-    backgroundColor: "#FFFFFF",
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
   },
   dateInput: {
     paddingRight: 40,
@@ -1189,10 +1196,10 @@ const styles = StyleSheet.create({
     right: 0,
     maxHeight: 200,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
+    backgroundColor: theme.colors.card,
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -1209,12 +1216,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: theme.colors.secondary,
   },
   suggestionText: {
     flex: 1,
     fontSize: 14,
-    color: '#303030',
+    color: theme.colors.foreground,
     lineHeight: 20,
   },
   mapPickerButton: {
@@ -1227,17 +1234,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.secondary,
   },
   mapPickerButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1271FF',
+    color: theme.colors.primary,
   },
   locationModalContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.card,
   },
   locationModalHeader: {
     flexDirection: 'row',
@@ -1246,12 +1253,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   locationModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#303030',
+    color: theme.colors.foreground,
   },
   map: {
     flex: 1,
@@ -1262,14 +1269,14 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.secondary,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.colors.border,
   },
   mapInstructionsText: {
     flex: 1,
     fontSize: 13,
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
   },
   locationModalActions: {
     flexDirection: 'row',
@@ -1277,7 +1284,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.colors.border,
   },
   textarea: {
     minHeight: 100,
@@ -1286,12 +1293,12 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 13,
-    color: "#6B7280",
+    color: theme.colors.mutedForeground,
     marginTop: 6,
     lineHeight: 18,
   },
   warningText: {
-    color: "#F59E0B",
+    color: shared.warning,
     fontWeight: "600",
   },
   infoBox: {
@@ -1313,7 +1320,7 @@ const styles = StyleSheet.create({
   },
   physicalEventSection: {
     padding: 16,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.colors.secondary,
     borderRadius: 12,
     marginTop: 12,
     gap: 16,
@@ -1323,10 +1330,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   publicStatus: {
-    color: "#16A34A",
+    color: shared.success,
   },
   privateStatus: {
-    color: "#DC2626",
+    color: theme.colors.destructive,
   },
   themeGrid: {
     flexDirection: "row",
@@ -1338,24 +1345,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
   },
   themeButtonActive: {
-    backgroundColor: "#303030",
-    borderColor: "#303030",
+    backgroundColor: theme.colors.foreground,
+    borderColor: theme.colors.foreground,
   },
   themeButtonText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   themeButtonTextActive: {
-    color: "#FFFFFF",
+    color: theme.colors.background,
   },
   sectionDivider: {
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: theme.colors.secondary,
     paddingTop: 24,
     marginTop: 8,
     marginBottom: 4,
@@ -1363,7 +1370,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 12,
     letterSpacing: -0.3,
   },
@@ -1373,11 +1380,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.colors.secondary,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: theme.colors.border,
   },
   switchLabel: {
     flex: 1,
@@ -1386,26 +1393,26 @@ const styles = StyleSheet.create({
   switchLabelText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 4,
   },
   switch: {
     width: 51,
     height: 31,
     borderRadius: 16,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: theme.colors.border,
     padding: 2,
     justifyContent: "center",
   },
   switchActive: {
-    backgroundColor: "#1271FF",
+    backgroundColor: theme.colors.primary,
   },
   switchThumb: {
     width: 27,
     height: 27,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
+    backgroundColor: theme.colors.card,
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -1417,7 +1424,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: shared.errorLight,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -1428,7 +1435,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
-    color: "#DC2626",
+    color: theme.colors.destructive,
     fontSize: 14,
     fontWeight: "500",
     lineHeight: 20,
@@ -1439,30 +1446,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: theme.colors.secondary,
+    backgroundColor: theme.colors.card,
   },
   cancelButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
+    borderColor: theme.colors.border,
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   submitButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#303030",
+    backgroundColor: theme.colors.foreground,
     alignItems: "center",
-    shadowColor: "#303030",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -1471,7 +1478,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: theme.colors.background,
   },
   buttonDisabled: {
     opacity: 0.5,

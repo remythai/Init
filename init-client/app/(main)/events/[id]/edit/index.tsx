@@ -1,11 +1,17 @@
 // app/(main)/events/[id]/edit/index.tsx
 import { eventService, CustomField, getFieldId, EventResponse } from '@/services/event.service';
+import { useTheme, shared } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -46,7 +52,7 @@ function parseDateTimeLocal(str: string): string {
   return new Date(str).toISOString();
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, styles }: { title: string; styles: ReturnType<typeof createStyles> }) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionHeaderText}>{title}</Text>
@@ -59,11 +65,15 @@ function ToggleRow({
   subtitle,
   value,
   onValueChange,
+  styles,
+  theme,
 }: {
   label: string;
   subtitle?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }) {
   return (
     <Pressable style={styles.toggleRow} onPress={() => onValueChange(!value)}>
@@ -74,8 +84,8 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#e5e7eb', true: '#1271FF' }}
-        thumbColor="#fff"
+        trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+        thumbColor={theme.colors.card}
       />
     </Pressable>
   );
@@ -87,12 +97,16 @@ function DateTimeInput({
   onChange,
   required,
   placeholder,
+  styles,
+  theme,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   required?: boolean;
   placeholder?: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }) {
   return (
     <View style={styles.fieldBlock}>
@@ -105,7 +119,7 @@ function DateTimeInput({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder || 'YYYY-MM-DDTHH:MM'}
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.placeholder}
         autoCapitalize="none"
       />
       <Text style={styles.inputHint}>Format : 2026-06-15T19:00</Text>
@@ -120,10 +134,14 @@ function CustomFieldEditor({
   field,
   onSave,
   onCancel,
+  styles,
+  theme,
 }: {
   field: CustomField;
   onSave: (f: CustomField) => void;
   onCancel: () => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }) {
   const [current, setCurrent] = useState<CustomField>({ ...field });
   const [newOption, setNewOption] = useState('');
@@ -159,7 +177,7 @@ function CustomFieldEditor({
           {field.label ? 'Modifier le champ' : 'Nouveau champ'}
         </Text>
         <Pressable onPress={onCancel} style={styles.closeButton}>
-          <MaterialIcons name="close" size={22} color="#303030" />
+          <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
         </Pressable>
       </View>
 
@@ -171,7 +189,7 @@ function CustomFieldEditor({
           value={current.label}
           onChangeText={t => setCurrent(prev => ({ ...prev, label: t }))}
           placeholder="Ex: Quel est votre profil LinkedIn ?"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.colors.placeholder}
         />
       </View>
 
@@ -199,6 +217,8 @@ function CustomFieldEditor({
         subtitle="Obligatoire lors de l'inscription"
         value={!!current.required}
         onValueChange={v => setCurrent(prev => ({ ...prev, required: v }))}
+        styles={styles}
+        theme={theme}
       />
 
       {/* Options (for select/radio/multiselect) */}
@@ -209,7 +229,7 @@ function CustomFieldEditor({
             <View key={idx} style={styles.optionRow}>
               <Text style={styles.optionText}>{opt}</Text>
               <Pressable onPress={() => removeOption(idx)}>
-                <MaterialIcons name="close" size={18} color="#dc2626" />
+                <MaterialIcons name="close" size={18} color={theme.colors.destructive} />
               </Pressable>
             </View>
           ))}
@@ -219,12 +239,12 @@ function CustomFieldEditor({
               value={newOption}
               onChangeText={setNewOption}
               placeholder="Ajouter une option..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
               onSubmitEditing={addOption}
               returnKeyType="done"
             />
             <Pressable style={styles.addOptionButton} onPress={addOption}>
-              <MaterialIcons name="add" size={22} color="#fff" />
+              <MaterialIcons name="add" size={22} color={theme.colors.primaryForeground} />
             </Pressable>
           </View>
         </View>
@@ -249,6 +269,8 @@ function CustomFieldEditor({
 export default function EditEventScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -256,7 +278,7 @@ export default function EditEventScreen() {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [theme, setTheme] = useState('Professionnel');
+  const [eventTheme, setEventTheme] = useState('Professionnel');
   const [hasPhysicalEvent, setHasPhysicalEvent] = useState(false);
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
@@ -270,6 +292,10 @@ export default function EditEventScreen() {
   const [hasPasswordAccess, setHasPasswordAccess] = useState(false);
   const [accessPassword, setAccessPassword] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+
+  // Banner
+  const [bannerPath, setBannerPath] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   // Custom field editor
   const [editingField, setEditingField] = useState<{ index: number | null; field: CustomField } | null>(null);
@@ -295,7 +321,7 @@ export default function EditEventScreen() {
   const populateForm = (data: EventResponse) => {
     setName(data.name || '');
     setDescription(data.description || '');
-    setTheme(data.theme || 'Professionnel');
+    setEventTheme(data.theme || 'Professionnel');
     setHasPhysicalEvent(!!(data.start_at || data.location));
     setStartAt(data.start_at ? formatDateTimeLocal(data.start_at) : '');
     setEndAt(data.end_at ? formatDateTimeLocal(data.end_at) : '');
@@ -308,6 +334,7 @@ export default function EditEventScreen() {
     setHasLinkAccess(data.has_link_access ?? true);
     setHasPasswordAccess(data.has_password_access ?? false);
     setCustomFields(data.custom_fields || []);
+    setBannerPath(data.banner_path || null);
   };
 
   const validate = (): string | null => {
@@ -340,7 +367,7 @@ export default function EditEventScreen() {
       const updates: Parameters<typeof eventService.updateEvent>[1] = {
         name: name.trim(),
         description: description.trim(),
-        theme,
+        theme: eventTheme,
         app_start_at: parseDateTimeLocal(appStartAt),
         app_end_at: parseDateTimeLocal(appEndAt),
         max_participants: parseInt(maxParticipants),
@@ -374,6 +401,55 @@ export default function EditEventScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePickBanner = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission refusée', "Autorisez l'accès à la galerie.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const fileName = asset.uri.split('/').pop() || 'banner.jpg';
+    const fileType = asset.mimeType || 'image/jpeg';
+    setUploadingBanner(true);
+    try {
+      const path = await eventService.uploadEventBanner(id, asset.uri, fileName, fileType);
+      setBannerPath(path);
+      Alert.alert('Succès', 'Bannière mise à jour !');
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message || "Impossible d'uploader la bannière");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
+  const handleDeleteBanner = () => {
+    Alert.alert('Supprimer la bannière', 'Confirmer la suppression ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer', style: 'destructive',
+        onPress: async () => {
+          setUploadingBanner(true);
+          try {
+            await eventService.deleteEventBanner(id);
+            setBannerPath(null);
+            Alert.alert('Succès', 'Bannière supprimée');
+          } catch (err: any) {
+            Alert.alert('Erreur', err.message || 'Impossible de supprimer la bannière');
+          } finally {
+            setUploadingBanner(false);
+          }
+        },
+      },
+    ]);
   };
 
   const openNewField = () => {
@@ -417,33 +493,23 @@ export default function EditEventScreen() {
     ]);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1271FF" />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   // Show field editor inline (full screen overlay feel)
   if (editingField) {
     return (
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#fff' }}
+        style={{ flex: 1, backgroundColor: theme.colors.card }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.editorHeader}>
-          <Pressable onPress={() => setEditingField(null)} style={styles.headerButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#303030" />
-          </Pressable>
-          <Text style={styles.editorHeaderTitle}>Champ personnalisé</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <ScreenHeader title="Champ personnalisé" onBack={() => setEditingField(null)} />
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <CustomFieldEditor
             field={editingField.field}
             onSave={saveField}
             onCancel={() => setEditingField(null)}
+            styles={styles}
+            theme={theme}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -452,17 +518,10 @@ export default function EditEventScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#F5F5F5' }}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#303030" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Modifier l'événement</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader title="Modifier l'événement" />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -470,9 +529,9 @@ export default function EditEventScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Informations générales ── */}
+        {/* -- Informations generales -- */}
         <View style={styles.card}>
-          <SectionHeader title="Informations générales" />
+          <SectionHeader title="Informations générales" styles={styles} />
 
           <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>Nom <Text style={styles.required}>*</Text></Text>
@@ -481,7 +540,7 @@ export default function EditEventScreen() {
               value={name}
               onChangeText={t => setName(t.slice(0, 100))}
               placeholder="Ex: Soirée Networking"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
             />
             <Text style={[styles.inputHint, name.length >= 90 && styles.inputHintWarn]}>
               {name.length}/100
@@ -494,10 +553,10 @@ export default function EditEventScreen() {
               {THEME_OPTIONS.map(t => (
                 <Pressable
                   key={t}
-                  style={[styles.chip, theme === t && styles.chipActive]}
-                  onPress={() => setTheme(t)}
+                  style={[styles.chip, eventTheme === t && styles.chipActive]}
+                  onPress={() => setEventTheme(t)}
                 >
-                  <Text style={[styles.chipText, theme === t && styles.chipTextActive]}>{t}</Text>
+                  <Text style={[styles.chipText, eventTheme === t && styles.chipTextActive]}>{t}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -510,7 +569,7 @@ export default function EditEventScreen() {
               value={description}
               onChangeText={t => setDescription(t.slice(0, 1000))}
               placeholder="Décrivez votre événement..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -521,9 +580,39 @@ export default function EditEventScreen() {
           </View>
         </View>
 
-        {/* ── Disponibilité app ── */}
+        {/* -- Banniere -- */}
         <View style={styles.card}>
-          <SectionHeader title="Disponibilité de l'app *" />
+          <SectionHeader title="Image de bannière" styles={styles} />
+          {bannerPath ? (
+            <View style={{ gap: 10 }}>
+              <Image
+                source={{ uri: `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${bannerPath}` }}
+                style={styles.bannerPreview}
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable style={[styles.bannerButton, { flex: 1 }]} onPress={handlePickBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="photo-camera" size={18} color={theme.colors.primary} />
+                  <Text style={styles.bannerButtonText}>{uploadingBanner ? '...' : 'Changer'}</Text>
+                </Pressable>
+                <Pressable style={[styles.bannerButton, { flex: 1, borderColor: shared.error }]} onPress={handleDeleteBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="delete" size={18} color={shared.error} />
+                  <Text style={[styles.bannerButtonText, { color: shared.error }]}>Supprimer</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable style={styles.bannerPlaceholder} onPress={handlePickBanner} disabled={uploadingBanner}>
+              <MaterialIcons name="add-photo-alternate" size={32} color={theme.colors.placeholder} />
+              <Text style={styles.bannerPlaceholderText}>
+                {uploadingBanner ? 'Upload en cours...' : 'Ajouter une bannière'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* -- Disponibilite app -- */}
+        <View style={styles.card}>
+          <SectionHeader title="Disponibilité de l'app *" styles={styles} />
           <Text style={styles.cardSubtitle}>
             Période pendant laquelle les utilisateurs peuvent swiper, matcher et discuter.
           </Text>
@@ -534,6 +623,8 @@ export default function EditEventScreen() {
             onChange={setAppStartAt}
             required
             placeholder="2026-06-15T19:00"
+            styles={styles}
+            theme={theme}
           />
           <DateTimeInput
             label="Fin"
@@ -541,17 +632,21 @@ export default function EditEventScreen() {
             onChange={setAppEndAt}
             required
             placeholder="2026-06-16T02:00"
+            styles={styles}
+            theme={theme}
           />
         </View>
 
-        {/* ── Événement physique ── */}
+        {/* -- Evenement physique -- */}
         <View style={styles.card}>
-          <SectionHeader title="Événement physique" />
+          <SectionHeader title="Événement physique" styles={styles} />
           <ToggleRow
             label="Activer"
             subtitle={hasPhysicalEvent ? 'L\'événement a un lieu et une date' : 'Pas de lieu ni de date physique'}
             value={hasPhysicalEvent}
             onValueChange={setHasPhysicalEvent}
+            styles={styles}
+            theme={theme}
           />
 
           {hasPhysicalEvent && (
@@ -561,12 +656,16 @@ export default function EditEventScreen() {
                 value={startAt}
                 onChange={setStartAt}
                 required
+                styles={styles}
+                theme={theme}
               />
               <DateTimeInput
                 label="Fin de l'événement"
                 value={endAt}
                 onChange={setEndAt}
                 required
+                styles={styles}
+                theme={theme}
               />
               <View style={styles.fieldBlock}>
                 <Text style={styles.fieldLabel}>Lieu <Text style={styles.required}>*</Text></Text>
@@ -575,16 +674,16 @@ export default function EditEventScreen() {
                   value={location}
                   onChangeText={setLocation}
                   placeholder="Ex: 12 rue de la Paix, 75001 Paris"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.colors.placeholder}
                 />
               </View>
             </View>
           )}
         </View>
 
-        {/* ── Participants ── */}
+        {/* -- Participants -- */}
         <View style={styles.card}>
-          <SectionHeader title="Participants" />
+          <SectionHeader title="Participants" styles={styles} />
           <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>Maximum <Text style={styles.required}>*</Text></Text>
             <TextInput
@@ -592,38 +691,46 @@ export default function EditEventScreen() {
               value={maxParticipants}
               onChangeText={setMaxParticipants}
               placeholder="Ex: 50"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.placeholder}
               keyboardType="number-pad"
             />
           </View>
         </View>
 
-        {/* ── Paramètres d'accès ── */}
+        {/* -- Parametres d'acces -- */}
         <View style={styles.card}>
-          <SectionHeader title="Paramètres d'accès" />
+          <SectionHeader title="Paramètres d'accès" styles={styles} />
           <ToggleRow
             label="Événement public"
             subtitle="Visible par tous les utilisateurs"
             value={isPublic}
             onValueChange={setIsPublic}
+            styles={styles}
+            theme={theme}
           />
           <ToggleRow
             label="Liste blanche"
             subtitle="Restreindre l'accès à certaines personnes"
             value={hasWhitelist}
             onValueChange={setHasWhitelist}
+            styles={styles}
+            theme={theme}
           />
           <ToggleRow
             label="Accès par lien"
             subtitle="Autoriser l'inscription via un lien"
             value={hasLinkAccess}
             onValueChange={setHasLinkAccess}
+            styles={styles}
+            theme={theme}
           />
           <ToggleRow
             label="Accès par mot de passe"
             subtitle="Protéger l'événement par mot de passe"
             value={hasPasswordAccess}
             onValueChange={setHasPasswordAccess}
+            styles={styles}
+            theme={theme}
           />
           {hasPasswordAccess && (
             <View style={styles.fieldBlock}>
@@ -633,19 +740,19 @@ export default function EditEventScreen() {
                 value={accessPassword}
                 onChangeText={setAccessPassword}
                 placeholder="Laisser vide pour conserver l'ancien"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.colors.placeholder}
                 secureTextEntry
               />
             </View>
           )}
         </View>
 
-        {/* ── Champs personnalisés ── */}
+        {/* -- Champs personnalises -- */}
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeaderText}>Champs personnalisés</Text>
             <Pressable style={styles.addFieldButton} onPress={openNewField}>
-              <MaterialIcons name="add" size={20} color="#1271FF" />
+              <MaterialIcons name="add" size={20} color={theme.colors.primary} />
               <Text style={styles.addFieldButtonText}>Ajouter</Text>
             </Pressable>
           </View>
@@ -664,10 +771,10 @@ export default function EditEventScreen() {
                 </View>
                 <View style={styles.customFieldActions}>
                   <Pressable onPress={() => openEditField(idx)} style={styles.iconButton}>
-                    <MaterialIcons name="edit" size={18} color="#1271FF" />
+                    <MaterialIcons name="edit" size={18} color={theme.colors.primary} />
                   </Pressable>
                   <Pressable onPress={() => deleteField(idx)} style={styles.iconButton}>
-                    <MaterialIcons name="delete" size={18} color="#dc2626" />
+                    <MaterialIcons name="delete" size={18} color={theme.colors.destructive} />
                   </Pressable>
                 </View>
               </View>
@@ -684,10 +791,10 @@ export default function EditEventScreen() {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
           ) : (
             <>
-              <MaterialIcons name="check" size={20} color="#fff" />
+              <MaterialIcons name="check" size={20} color={theme.colors.primaryForeground} />
               <Text style={styles.saveEventButtonText}>Enregistrer les modifications</Text>
             </>
           )}
@@ -697,41 +804,10 @@ export default function EditEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
-
-  // Editor header (custom field editor)
-  editorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  editorHeaderTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 16, color: '#303030' },
-
+const createStyles = (theme: Theme) => StyleSheet.create({
   // Card
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     borderRadius: 16,
     marginBottom: 12,
     padding: 16,
@@ -749,27 +825,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins',
     fontWeight: '600',
     fontSize: 15,
-    color: '#303030',
+    color: theme.colors.foreground,
   },
-  cardSubtitle: { fontSize: 13, color: '#6b7280', marginBottom: 12, marginTop: -8 },
+  cardSubtitle: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 12, marginTop: -8 },
 
   // Field
   fieldBlock: { marginBottom: 16 },
-  fieldLabel: { fontFamily: 'Poppins', fontWeight: '500', fontSize: 13, color: '#303030', marginBottom: 6 },
-  required: { color: '#dc2626' },
+  fieldLabel: { fontFamily: 'Poppins', fontWeight: '500', fontSize: 13, color: theme.colors.foreground, marginBottom: 6 },
+  required: { color: theme.colors.destructive },
   input: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#303030',
-    backgroundColor: '#fff',
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
   },
   textarea: { minHeight: 90, textAlignVertical: 'top' },
-  inputHint: { fontSize: 11, color: '#9ca3af', marginTop: 4, textAlign: 'right' },
-  inputHintWarn: { color: '#f97316' },
+  inputHint: { fontSize: 11, color: theme.colors.placeholder, marginTop: 4, textAlign: 'right' },
+  inputHintWarn: { color: shared.warning },
 
   // Toggle
   toggleRow: {
@@ -778,11 +854,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.secondary,
   },
   toggleTextContainer: { flex: 1, paddingRight: 12 },
-  toggleLabel: { fontFamily: 'Poppins', fontWeight: '500', fontSize: 14, color: '#303030' },
-  toggleSubtitle: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  toggleLabel: { fontFamily: 'Poppins', fontWeight: '500', fontSize: 14, color: theme.colors.foreground },
+  toggleSubtitle: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
 
   // Chips (theme / field type)
   chipScroll: { flexDirection: 'row' },
@@ -790,53 +866,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     marginRight: 8,
   },
-  chipActive: { backgroundColor: '#303030' },
-  chipText: { fontSize: 13, color: '#303030', fontWeight: '500' },
-  chipTextActive: { color: '#fff' },
+  chipActive: { backgroundColor: theme.colors.accentSolid },
+  chipText: { fontSize: 13, color: theme.colors.foreground, fontWeight: '500' },
+  chipTextActive: { color: theme.colors.accentSolidText },
 
   // Custom fields list
   addFieldButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addFieldButtonText: { fontSize: 14, color: '#1271FF', fontWeight: '600' },
-  emptyText: { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 12 },
+  addFieldButtonText: { fontSize: 14, color: theme.colors.primary, fontWeight: '600' },
+  emptyText: { fontSize: 13, color: theme.colors.placeholder, textAlign: 'center', paddingVertical: 12 },
   customFieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.secondary,
   },
   customFieldInfo: { flex: 1 },
-  customFieldLabel: { fontSize: 14, fontWeight: '600', color: '#303030' },
-  customFieldMeta: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  customFieldLabel: { fontSize: 14, fontWeight: '600', color: theme.colors.foreground },
+  customFieldMeta: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
   customFieldActions: { flexDirection: 'row', gap: 4 },
   iconButton: { padding: 6, borderRadius: 6 },
 
   // Custom field editor (modal-like view)
-  fieldEditorContainer: { backgroundColor: '#fff', borderRadius: 16 },
+  fieldEditorContainer: { backgroundColor: theme.colors.card, borderRadius: 16 },
   fieldEditorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  fieldEditorTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: '#303030' },
+  fieldEditorTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: theme.colors.foreground },
   closeButton: { padding: 4 },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 10,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     marginBottom: 6,
   },
-  optionText: { fontSize: 14, color: '#303030', flex: 1 },
+  optionText: { fontSize: 14, color: theme.colors.foreground, flex: 1 },
   addOptionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   addOptionButton: {
-    backgroundColor: '#1271FF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 10,
     width: 44,
     alignItems: 'center',
@@ -847,18 +923,32 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
   },
-  cancelButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#303030' },
+  cancelButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.foreground },
   saveButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#303030',
+    backgroundColor: theme.colors.accentSolid,
     alignItems: 'center',
   },
-  saveButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#fff' },
+  saveButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.accentSolidText },
+
+  // Banner
+  bannerPreview: { width: '100%', height: 160, borderRadius: 12 },
+  bannerButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.primary,
+  },
+  bannerButtonText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
+  bannerPlaceholder: {
+    height: 120, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.border,
+    borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: theme.colors.background,
+  },
+  bannerPlaceholderText: { fontSize: 13, color: theme.colors.placeholder },
 
   // Footer save
   footer: {
@@ -867,19 +957,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: theme.colors.border,
   },
   saveEventButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#303030',
+    backgroundColor: theme.colors.accentSolid,
     borderRadius: 14,
     paddingVertical: 16,
   },
   saveEventButtonDisabled: { opacity: 0.6 },
-  saveEventButtonText: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: '#fff' },
+  saveEventButtonText: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: theme.colors.accentSolidText },
 });

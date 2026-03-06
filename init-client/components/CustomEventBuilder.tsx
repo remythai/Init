@@ -1,7 +1,9 @@
 // components/CustomEventBuilder.tsx
+import { type Theme } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { getFieldId } from "@/services/event.service";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -39,6 +41,9 @@ interface CustomFieldsBuilderProps {
 }
 
 export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [expandedFieldIndex, setExpandedFieldIndex] = useState<number | null>(null);
 
   const addField = () => {
@@ -93,7 +98,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
 
   const addOption = (fieldIndex: number, optionValue: string) => {
     if (!optionValue.trim()) return;
-    
+
     const newFields = [...fields];
     if (!newFields[fieldIndex].options) {
       newFields[fieldIndex].options = [];
@@ -153,7 +158,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
         </View>
 
         <Pressable style={styles.addButton} onPress={addField}>
-          <MaterialIcons name="add" size={20} color="#1271FF" />
+          <MaterialIcons name="add" size={20} color={theme.colors.primary} />
           <Text style={styles.addButtonText}>Ajouter</Text>
         </Pressable>
       </View>
@@ -161,7 +166,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
       {/* Empty State */}
       {fields.length === 0 && (
         <View style={styles.emptyState}>
-          <MaterialIcons name="inventory-2" size={48} color="#D1D5DB" />
+          <MaterialIcons name="inventory-2" size={48} color={theme.colors.border} />
           <Text style={styles.emptyText}>Aucun champ personnalisé</Text>
           <Text style={styles.emptySubtext}>
             Cliquez sur "Ajouter" pour commencer
@@ -181,7 +186,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
               )}
             >
               <View style={styles.fieldHeaderLeft}>
-                <MaterialIcons name="drag-indicator" size={20} color="#9CA3AF" />
+                <MaterialIcons name="drag-indicator" size={20} color={theme.colors.placeholder} />
                 <View style={styles.fieldHeaderInfo}>
                   <Text style={styles.fieldHeaderTitle}>
                     {field.label || `Champ #${fieldIndex + 1}`}
@@ -204,7 +209,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                 <MaterialIcons
                   name={expandedFieldIndex === fieldIndex ? "expand-less" : "expand-more"}
                   size={24}
-                  color="#6B7280"
+                  color={theme.colors.mutedForeground}
                 />
               </View>
             </Pressable>
@@ -220,7 +225,7 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                     value={field.label}
                     onChangeText={(text) => updateField(fieldIndex, { label: text })}
                     placeholder="Ex: Quel est votre profil LinkedIn ?"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={theme.colors.placeholder}
                   />
                   <Text style={styles.helperText}>
                     Cette question sera affichée aux participants lors de l'inscription
@@ -259,8 +264,8 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
                   <Switch
                     value={field.required}
                     onValueChange={(checked) => updateField(fieldIndex, { required: checked })}
-                    trackColor={{ false: "#D1D5DB", true: "#1271FF" }}
-                    thumbColor="#FFFFFF"
+                    trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                    thumbColor={theme.colors.card}
                   />
                 </View>
 
@@ -282,15 +287,18 @@ export function CustomFieldsBuilder({ fields, onChange }: CustomFieldsBuilderPro
 }
 
 // Sous-composant pour gérer les options
-function OptionsEditor({ 
-  options, 
-  onAddOption, 
-  onRemoveOption 
-}: { 
-  options: string[]; 
-  onAddOption: (value: string) => void; 
-  onRemoveOption: (index: number) => void; 
+function OptionsEditor({
+  options,
+  onAddOption,
+  onRemoveOption
+}: {
+  options: string[];
+  onAddOption: (value: string) => void;
+  onRemoveOption: (index: number) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [newOption, setNewOption] = useState("");
 
   const handleAdd = () => {
@@ -337,7 +345,7 @@ function OptionsEditor({
           value={newOption}
           onChangeText={setNewOption}
           placeholder="Ajouter un choix..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={theme.colors.placeholder}
           onSubmitEditing={handleAdd}
           returnKeyType="done"
         />
@@ -345,14 +353,14 @@ function OptionsEditor({
           style={styles.addOptionIconButton}
           onPress={handleAdd}
         >
-          <MaterialIcons name="add" size={20} color="#1271FF" />
+          <MaterialIcons name="add" size={20} color={theme.colors.primary} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     marginTop: 16,
   },
@@ -361,22 +369,22 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
-  
+
   headerText: {
     flex: 1,
     flexShrink: 1,
     marginRight: 12,
   },
-  
+
   title: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
     lineHeight: 16,
   },
   addButton: {
@@ -387,13 +395,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#1271FF',
+    borderColor: theme.colors.primary,
     backgroundColor: '#F0F7FF',
   },
   addButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1271FF',
+    color: theme.colors.primary,
   },
   emptyState: {
     alignItems: 'center',
@@ -401,19 +409,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.colors.secondary,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
     fontWeight: '500',
     marginTop: 12,
   },
   emptySubtext: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: theme.colors.placeholder,
     marginTop: 4,
   },
   fieldsList: {
@@ -422,8 +430,8 @@ const styles = StyleSheet.create({
   fieldCard: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
     overflow: 'hidden',
   },
   fieldHeader: {
@@ -431,7 +439,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.secondary,
   },
   fieldHeaderLeft: {
     flexDirection: 'row',
@@ -445,12 +453,12 @@ const styles = StyleSheet.create({
   fieldHeaderTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 2,
   },
   fieldHeaderMeta: {
     fontSize: 11,
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
   },
   fieldHeaderRight: {
     flexDirection: 'row',
@@ -470,28 +478,28 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
   },
   helperText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: theme.colors.placeholder,
     marginTop: 4,
   },
   generatedIdText: {
     fontSize: 10,
-    color: '#1271FF',
+    color: theme.colors.primary,
     fontFamily: 'monospace',
     marginTop: 2,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#303030',
-    backgroundColor: '#FFFFFF',
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
   },
   typeGrid: {
     flexDirection: 'row',
@@ -503,20 +511,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
   },
   typeButtonActive: {
-    backgroundColor: '#1271FF',
-    borderColor: '#1271FF',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   typeButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#303030',
+    color: theme.colors.foreground,
   },
   typeButtonTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.primaryForeground,
   },
   switchContainer: {
     flexDirection: 'row',
@@ -524,19 +532,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
   },
   switchLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.colors.mutedForeground,
   },
   optionsSection: {
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: theme.colors.secondary,
   },
   optionsHeader: {
     flexDirection: 'row',
@@ -548,13 +556,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     alignItems: 'center',
   },
   emptyOptionsText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: theme.colors.placeholder,
   },
   optionsList: {
     gap: 8,
@@ -565,15 +573,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.secondary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
   },
   optionText: {
     flex: 1,
     fontSize: 13,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginRight: 8,
   },
   removeOptionButton: {
@@ -587,13 +595,13 @@ const styles = StyleSheet.create({
   addOptionInput: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13,
-    color: '#303030',
-    backgroundColor: '#FFFFFF',
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
   },
   addOptionIconButton: {
     width: 40,
@@ -601,7 +609,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#F0F7FF',
     borderWidth: 1.5,
-    borderColor: '#1271FF',
+    borderColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

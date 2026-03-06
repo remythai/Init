@@ -1,11 +1,15 @@
 // app/(main)/events/[id]/(event-tabs)/messagery/index.tsx
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { Avatar } from '@/components/ui/Avatar';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,19 +18,14 @@ import {
   View,
 } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-
-function getPhotoUri(filePath?: string): string | null {
-  if (!filePath) return null;
-  return filePath.startsWith('http') ? filePath : `${API_URL}${filePath}`;
-}
-
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function EventMessageryScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { id: eventIdParam } = useLocalSearchParams<{ id: string }>();
   const { currentEventId, setCurrentEventId } = useEvent();
   const eventId = eventIdParam ? parseInt(eventIdParam) : currentEventId || 0;
@@ -83,24 +82,16 @@ export default function EventMessageryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#1271FF" />
-          <Text style={styles.loadingText}>Chargement...</Text>
-        </View>
+        <ScreenLoader />
       ) : conversations.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
-            <MaterialIcons name="chat-bubble-outline" size={48} color="#9ca3af" />
-          </View>
-          <Text style={styles.emptyTitle}>Pas encore de matchs</Text>
-          <Text style={styles.emptySub}>Commencez à swiper pour matcher avec d'autres participants !</Text>
-        </View>
+        <EmptyState
+          icon="chat-bubble-outline"
+          title="Pas encore de matchs"
+          subtitle="Commencez à swiper pour matcher avec d'autres participants !"
+        />
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {conversations.map((conv) => {
-            const photo = conv.user?.photos?.[0]?.file_path
-              ? getPhotoUri(conv.user.photos[0].file_path)
-              : null;
             const isDisabled = conv.is_blocked || conv.is_other_user_blocked;
             const unread = conv.unread_count || 0;
 
@@ -113,15 +104,13 @@ export default function EventMessageryScreen() {
               >
                 {/* Avatar */}
                 <View style={styles.avatarWrapper}>
-                  {photo ? (
-                    <Image source={{ uri: photo }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarFallbackText}>
-                        {conv.user?.firstname?.[0] || '?'}
-                      </Text>
-                    </View>
-                  )}
+                  <Avatar
+                    firstname={conv.user?.firstname}
+                    lastname={conv.user?.lastname}
+                    photo={conv.user?.photos?.[0]?.file_path}
+                    size={56}
+                    bgColor={theme.colors.border}
+                  />
                   {unread > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
@@ -152,7 +141,7 @@ export default function EventMessageryScreen() {
                 </View>
 
                 {/* Arrow */}
-                <MaterialIcons name="chevron-right" size={20} color="#9ca3af" />
+                <MaterialIcons name="chevron-right" size={20} color={theme.colors.placeholder} />
               </TouchableOpacity>
             );
           })}
@@ -162,19 +151,20 @@ export default function EventMessageryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  loadingText: { marginTop: 12, color: '#9ca3af', fontSize: 14 },
 
   header: {
-    backgroundColor: '#303030',
+    backgroundColor: theme.colors.card,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: '#fff' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: theme.colors.foreground },
+  headerSub: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 2 },
 
   list: { flex: 1 },
   listContent: { paddingBottom: 80 },
@@ -183,49 +173,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.secondary,
   },
   convItemDisabled: { opacity: 0.55 },
 
   avatarWrapper: { position: 'relative' },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarFallback: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarFallbackText: { fontSize: 20, fontWeight: '700', color: '#303030' },
   badge: {
     position: 'absolute', top: -2, right: -2,
     minWidth: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#1271FF',
-    borderWidth: 2, borderColor: '#fff',
+    backgroundColor: theme.colors.primary,
+    borderWidth: 2, borderColor: theme.colors.card,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  badgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  badgeText: { fontSize: 11, color: theme.colors.primaryForeground, fontWeight: '700' },
 
   convInfo: { flex: 1, minWidth: 0 },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
-  convName: { fontWeight: '600', color: '#303030', fontSize: 15, flex: 1 },
-  convTime: { fontSize: 12, color: '#9ca3af', marginLeft: 8 },
-  convLast: { fontSize: 13, color: '#9ca3af' },
-  convLastUnread: { color: '#303030', fontWeight: '500' },
+  convName: { fontWeight: '600', color: theme.colors.foreground, fontSize: 15, flex: 1 },
+  convTime: { fontSize: 12, color: theme.colors.placeholder, marginLeft: 8 },
+  convLast: { fontSize: 13, color: theme.colors.placeholder },
+  convLastUnread: { color: theme.colors.foreground, fontWeight: '500' },
 
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  emptyIcon: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-  },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: '#303030', marginBottom: 8 },
-  emptySub: { fontSize: 14, color: '#9ca3af', textAlign: 'center', lineHeight: 20 },
-
-  errorText: { color: '#dc2626', fontSize: 15, marginBottom: 16 },
-  errorButton: { backgroundColor: '#303030', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
-  errorButtonText: { color: '#fff', fontWeight: '600' },
+  errorText: { color: theme.colors.destructive, fontSize: 15, marginBottom: 16 },
+  errorButton: { backgroundColor: theme.colors.foreground, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
+  errorButtonText: { color: theme.colors.primaryForeground, fontWeight: '600' },
 });

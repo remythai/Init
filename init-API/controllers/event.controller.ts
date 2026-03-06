@@ -16,8 +16,14 @@ export const EventController = {
 
   async getEventByID(req: Request, res: Response): Promise<void> {
     const eventId = parseInt(req.params.id);
-    const eventWithCount = await EventService.getOrgaEvent(req.user!.id, eventId);
-    success(res, eventWithCount);
+
+    if (req.user!.role === 'orga') {
+      const event = await EventService.getOrgaEvent(req.user!.id, eventId);
+      success(res, event);
+    } else {
+      const event = await EventService.getUserEvent(req.user!.id, eventId);
+      success(res, event);
+    }
   },
 
   async getMyOrgaEvents(req: Request, res: Response): Promise<void> {

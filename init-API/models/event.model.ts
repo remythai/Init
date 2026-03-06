@@ -127,6 +127,34 @@ export const EventModel = {
     return result.rows[0];
   },
 
+  async findPublicEventById(eventId: number, userId: number): Promise<unknown | undefined> {
+    const result = await pool.query(`
+      SELECT
+        e.id,
+        e.name,
+        e.location,
+        e.max_participants,
+        e.event_date,
+        e.start_at,
+        e.end_at,
+        e.app_start_at,
+        e.app_end_at,
+        e.theme,
+        e.description,
+        e.custom_fields,
+        e.banner_path,
+        o.nom as orga_name,
+        o.logo_path as orga_logo,
+        (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count,
+        EXISTS(SELECT 1 FROM user_event_rel WHERE event_id = e.id AND user_id = $2) as is_registered,
+        EXISTS(SELECT 1 FROM event_blocked_users WHERE event_id = e.id AND user_id = $2) as is_blocked
+      FROM events e
+      JOIN orga o ON e.orga_id = o.id
+      WHERE e.id = $1
+    `, [eventId, userId]);
+    return result.rows[0];
+  },
+
   async findPublicEventsWithUserInfo(userId: number | null = null, filters: EventFilters = {}): Promise<unknown[]> {
     let query = `
       SELECT

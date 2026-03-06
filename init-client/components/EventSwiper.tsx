@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   ImageBackground,
   Modal,
   PanResponder,
@@ -16,6 +17,8 @@ import {
 } from "react-native";
 import { useRouter } from 'expo-router';
 import { matchService, Profile } from '@/services/match.service';
+import { useTheme, shared } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 
 const { width, height } = Dimensions.get("window");
 const SWIPE_THRESHOLD = width * 0.25;
@@ -50,6 +53,9 @@ function profileToEventProfile(profile: Profile): EventProfile {
 
 export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -181,7 +187,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrapper}>
-          <MaterialIcons name="favorite-border" size={40} color="#303030" />
+          <MaterialIcons name="favorite-border" size={40} color={theme.colors.foreground} />
         </View>
         <Text style={styles.emptyTitle}>Plus de profils disponibles</Text>
         <Text style={styles.emptyText}>Revenez plus tard !</Text>
@@ -205,14 +211,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   };
 
   const handlePreviousImage = () => {
-    setCurrentImageIndex(prev => 
-      prev > 0 ? prev - 1 : currentProfile.images.length - 1
+    setCurrentImageIndex(prev =>
+      prev > 0 ? prev - 1 : uiProfile.images.length - 1
     );
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex(prev => 
-      prev < currentProfile.images.length - 1 ? prev + 1 : 0
+    setCurrentImageIndex(prev =>
+      prev < uiProfile.images.length - 1 ? prev + 1 : 0
     );
   };
 
@@ -236,11 +242,11 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 <View style={styles.imageTouchContainer} pointerEvents="box-none">
                   {uiProfile.images.length > 1 && (
                     <>
-                      <Pressable 
+                      <Pressable
                         style={styles.imageTouchLeft}
                         onPress={handlePreviousImage}
                       />
-                      <Pressable 
+                      <Pressable
                         style={styles.imageTouchRight}
                         onPress={handleNextImage}
                       />
@@ -271,7 +277,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                     <Text style={styles.nameOnImage}>
                       {uiProfile.name}, {uiProfile.age}
                     </Text>
-                    <Pressable 
+                    <Pressable
                       style={styles.infoButton}
                       onPress={() => {
                         setSelectedProfile(uiProfile);
@@ -294,14 +300,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
           style={[styles.actionButton, styles.dislikeButton]}
           onPress={() => forceSwipe("left")}
         >
-          <MaterialIcons name="close" size={28} color="#EF4444" />
+          <MaterialIcons name="close" size={28} color={shared.error} />
         </Pressable>
 
         <Pressable
           style={[styles.actionButton, styles.likeButton]}
           onPress={() => forceSwipe("right")}
         >
-          <MaterialIcons name="favorite" size={28} color="#10B981" />
+          <MaterialIcons name="favorite" size={28} color={shared.success} />
         </Pressable>
       </View>
 
@@ -309,12 +315,13 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
         visible={showProfileModal}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <Pressable 
-            style={StyleSheet.absoluteFill} 
-            onPress={() => setShowProfileModal(false)} 
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowProfileModal(false)}
           />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -322,11 +329,11 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 {selectedProfile?.name}, {selectedProfile?.age}
               </Text>
               <Pressable onPress={() => setShowProfileModal(false)}>
-                <MaterialIcons name="close" size={28} color="#303030" />
+                <MaterialIcons name="close" size={28} color={theme.colors.foreground} />
               </Pressable>
             </View>
 
-            <ScrollView 
+            <ScrollView
               style={{ maxHeight: height * 0.8 - 160 }}
               contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16 }}
               showsVerticalScrollIndicator={false}
@@ -335,6 +342,22 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 <Text style={styles.modalSectionTitle}>À propos</Text>
                 <Text style={styles.modalSectionText}>{selectedProfile?.bio}</Text>
               </View>
+
+              {selectedProfile?.images && selectedProfile.images.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Photos</Text>
+                  <View style={styles.photoGrid}>
+                    {selectedProfile.images.map((img, i) => (
+                      <Image
+                        key={i}
+                        source={{ uri: img }}
+                        style={styles.photoGridItem}
+                        resizeMode="cover"
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
 
               {selectedProfile?.customFields &&
                 Object.keys(selectedProfile.customFields).length > 0 && (
@@ -368,7 +391,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
             </ScrollView>
 
             <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+              colors={[`${theme.colors.card}00`, theme.colors.card]}
               style={styles.modalGradient}
             />
 
@@ -377,14 +400,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 style={[styles.modalActionButton, styles.modalDislikeButton]}
                 onPress={() => handleModalSwipe("left")}
               >
-                <MaterialIcons name="close" size={32} color="#EF4444" />
+                <MaterialIcons name="close" size={32} color={shared.error} />
               </Pressable>
 
               <Pressable
                 style={[styles.modalActionButton, styles.modalLikeButton]}
                 onPress={() => handleModalSwipe("right")}
               >
-                <MaterialIcons name="favorite" size={32} color="#10B981" />
+                <MaterialIcons name="favorite" size={32} color={shared.success} />
               </Pressable>
             </View>
           </View>
@@ -394,10 +417,10 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
     paddingTop: 12,
   },
   cardContainer: {
@@ -410,10 +433,10 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -499,10 +522,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -518,11 +541,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.8,
@@ -534,12 +557,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: theme.colors.border,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   modalSection: {
     marginBottom: 24,
@@ -547,31 +570,42 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 8,
   },
   modalSectionText: {
     fontSize: 15,
-    color: "#4B5563",
+    color: theme.colors.mutedForeground,
     lineHeight: 22,
   },
   infoItem: {
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.colors.secondary,
     padding: 12,
     borderRadius: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: theme.colors.border,
   },
   infoLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
-    color: "#4B5563",
+    color: theme.colors.mutedForeground,
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  photoGridItem: {
+    width: (width * 0.8 - 40 - 8) / 2,
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: theme.colors.secondary,
   },
   chipsContainer: {
     flexDirection: "row",
@@ -579,16 +613,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: "#E0E7FF",
+    backgroundColor: theme.colors.accent,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#C7D2FE",
+    borderColor: theme.colors.border,
   },
   chipText: {
     fontSize: 14,
-    color: "#303030",
+    color: theme.colors.foreground,
     fontWeight: "500",
   },
   modalGradient: {
@@ -607,18 +641,18 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     paddingBottom: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: theme.colors.border,
   },
   modalActionButton: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -626,15 +660,15 @@ const styles = StyleSheet.create({
   },
   modalDislikeButton: {
     borderWidth: 2.5,
-    borderColor: "#EF4444",
+    borderColor: shared.error,
   },
   modalLikeButton: {
     borderWidth: 2.5,
-    borderColor: "#10B981",
+    borderColor: shared.success,
   },
   emptyContainer: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
@@ -643,7 +677,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.card,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -651,17 +685,16 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#303030",
+    color: theme.colors.foreground,
     marginBottom: 8,
     textAlign: "center",
   },
   emptyText: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.colors.mutedForeground,
     textAlign: "center",
   },
 });
 function refreshMatches(eventId: number) {
   throw new Error("Function not implemented.");
 }
-

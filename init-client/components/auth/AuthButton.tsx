@@ -1,6 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/context/ThemeContext';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
+import { type Theme } from '@/constants/theme';
 
 interface AuthButtonProps {
   onPress: () => void;
@@ -11,20 +13,7 @@ interface AuthButtonProps {
 
 export function AuthButton({ onPress, disabled, loading, label }: AuthButtonProps) {
   const { theme } = useTheme();
-
-  const styles = StyleSheet.create({
-    button: {
-      backgroundColor: 'rgb(48, 48, 48);',
-      borderRadius: theme.borderRadius.md,
-      paddingVertical: theme.spacing.md,
-      alignItems: 'center',
-      marginTop: theme.spacing.lg,
-    },
-    buttonText: {
-      color: 'rgb(245, 245, 245)',
-      fontWeight: '600',
-    },
-  });
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <Pressable
@@ -38,3 +27,17 @@ export function AuthButton({ onPress, disabled, loading, label }: AuthButtonProp
     </Pressable>
   );
 }
+
+const createStyles = (theme: Theme) => StyleSheet.create({
+  button: {
+    backgroundColor: theme.colors.foreground,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
+  },
+  buttonText: {
+    color: theme.colors.background,
+    fontWeight: '600',
+  },
+});
