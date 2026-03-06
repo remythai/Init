@@ -206,13 +206,13 @@ export function Profile({
                 style={styles.editButton}
                 disabled={loading}
               >
-                <Edit2 color={theme.colors.accentSolidText} size={16} />
+                <Edit2 color={theme.colors.foreground} size={16} />
                 <Text style={styles.editButtonText}>Modifier</Text>
               </TouchableOpacity>
             ) : isOwnProfile && isEditing ? (
               <View style={styles.actionButtons}>
                 <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
-                  <X color={theme.colors.accentSolidText} size={16} />
+                  <X color={theme.colors.foreground} size={16} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
                   <Save color={theme.colors.foreground} size={16} />
@@ -441,7 +441,7 @@ const createStyles = (theme: Theme) =>
     scrollView: { flex: 1 },
     scrollContent: { paddingBottom: 80 },
     header: {
-      backgroundColor: theme.colors.accentSolid,
+      backgroundColor: theme.colors.card,
       paddingHorizontal: 24,
       paddingTop: 32,
       paddingBottom: 80,
@@ -452,20 +452,20 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       marginBottom: 16,
     },
-    headerTitle: { fontWeight: "600", fontSize: 20, color: theme.colors.accentSolidText },
+    headerTitle: { fontWeight: "600", fontSize: 20, color: theme.colors.foreground },
     editButton: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: theme.colors.secondary,
       paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 8,
     },
-    editButtonText: { color: theme.colors.accentSolidText },
+    editButtonText: { color: theme.colors.foreground },
     actionButtons: { flexDirection: "row", gap: 8 },
     cancelButton: {
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: theme.colors.secondary,
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 8,
@@ -494,24 +494,24 @@ const createStyles = (theme: Theme) =>
       height: 96,
       borderRadius: 48,
       borderWidth: 3,
-      borderColor: "rgba(255,255,255,0.3)",
+      borderColor: theme.colors.border,
     },
     avatarText: { fontWeight: "700", fontSize: 36, color: theme.colors.foreground },
     logoActions: { flexDirection: "row", gap: 8 },
     logoButton: {
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: theme.colors.secondary,
       paddingHorizontal: 14,
       paddingVertical: 7,
       borderRadius: 8,
     },
-    logoButtonText: { color: theme.colors.accentSolidText, fontSize: 13 },
+    logoButtonText: { color: theme.colors.foreground, fontSize: 13 },
     logoDeleteButton: {
       backgroundColor: "rgba(220,38,38,0.3)",
       paddingHorizontal: 14,
       paddingVertical: 7,
       borderRadius: 8,
     },
-    logoDeleteText: { color: theme.colors.accentSolidText, fontSize: 13 },
+    logoDeleteText: { color: theme.colors.destructiveForeground, fontSize: 13 },
     content: { paddingHorizontal: 24, marginTop: -48 },
     card: {
       backgroundColor: theme.colors.card,

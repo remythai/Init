@@ -70,7 +70,7 @@ export default function EventTabsLayout() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.push(`/events/${id}`)}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.accentSolidText} />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
         </Pressable>
         <Text style={styles.eventName}>Décoeurtique moi</Text>
         <View style={{ width: 24 }} />
@@ -110,7 +110,7 @@ export default function EventTabsLayout() {
         <Tabs.Screen
           name="swiper"
           options={{
-            title: "Swiper",
+            title: "Découvrir",
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="swipe" size={24} color={color} />
             ),
@@ -139,13 +139,13 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: topInset,
     paddingBottom: 10,
-    backgroundColor: theme.colors.accentSolid,
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   eventName: {
     fontSize: 18,
     fontWeight: "600",
-    color: theme.colors.accentSolidText,
+    color: theme.colors.foreground,
   },
 });

@@ -24,7 +24,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Paramètres" variant="solid" />
+      <ScreenHeader title="Paramètres" />
 
       <ScrollView style={styles.scrollContent}>
         <View style={styles.content}>
@@ -179,6 +179,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      padding: 12,
+      borderRadius: 8,
     },
     settingItemButton: {
       flexDirection: 'row',

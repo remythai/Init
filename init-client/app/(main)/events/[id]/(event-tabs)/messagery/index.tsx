@@ -156,12 +156,14 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
 
   header: {
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: theme.colors.primaryForeground },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: theme.colors.foreground },
   headerSub: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 2 },
 
   list: { flex: 1 },

@@ -132,7 +132,7 @@ export const lightTheme = {
 
     // Chat
     receivedMsg: '#ffffff',
-    sentMsg: '#303030',
+    sentMsg: '#1271FF',
     sentMsgText: '#ffffff',
   },
   ...shared,

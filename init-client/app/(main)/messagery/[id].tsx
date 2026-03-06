@@ -254,7 +254,7 @@ export default function ConversationPage() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <ArrowLeft size={24} color={theme.colors.primaryForeground} />
+          <ArrowLeft size={24} color={theme.colors.foreground} />
         </Pressable>
 
         <View style={styles.headerCenter}>
@@ -275,7 +275,7 @@ export default function ConversationPage() {
           onPress={() => setShowDropdownMenu(true)}
           style={styles.headerButton}
         >
-          <MoreVertical size={24} color={theme.colors.primaryForeground} />
+          <MoreVertical size={24} color={theme.colors.foreground} />
         </Pressable>
       </View>
 
@@ -414,9 +414,9 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: topInset,
     paddingBottom: 16,
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.foreground,
+    borderBottomColor: theme.colors.border,
   },
   headerButton: {
     padding: 8,
@@ -442,7 +442,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   },
   headerName: {
     fontWeight: "600",
-    color: theme.colors.primaryForeground,
+    color: theme.colors.foreground,
   },
   headerSubtitle: {
     fontSize: 12,

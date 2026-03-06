@@ -47,7 +47,7 @@ export default function MainLayout() {
         <View style={styles.header}>
           <Image style={styles.logo} source={require('../../assets/images/initLogoGray.png')} />
           <Pressable onPress={() => router.push('/settings')}>
-            <MaterialIcons name="settings" size={24} color={theme.colors.accentSolidText} />
+            <MaterialIcons name="settings" size={24} color={theme.colors.foreground} />
           </Pressable>
         </View>
       )}
@@ -57,12 +57,13 @@ export default function MainLayout() {
           headerShown: false,
           tabBarShowLabel: true,
           tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
+          tabBarInactiveTintColor: theme.colors.mutedForeground,
           tabBarStyle: shouldHideNavigation
             ? { display: "none" }
             : {
-                backgroundColor: theme.colors.accentSolid,
-                borderTopWidth: 0,
+                backgroundColor: theme.colors.card,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
                 paddingTop: 6,
                 paddingBottom: Platform.OS === 'ios' ? 24 : 10,
                 height: Platform.OS === 'ios' ? 80 : 64,
@@ -70,7 +71,7 @@ export default function MainLayout() {
           tabBarLabelStyle: {
             fontSize: 11,
             fontFamily: "Poppins-Regular",
-            color: '#ffffff',
+            color: theme.colors.foreground,
             marginTop: 2,
           },
           tabBarIconStyle: {
@@ -119,7 +120,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: topInset,
     paddingBottom: 10,
-    backgroundColor: theme.colors.accentSolid,
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },

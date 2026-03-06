@@ -237,7 +237,7 @@ export default function ConversationPage() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.headerBtn}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primaryForeground} />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Avatar
@@ -253,7 +253,7 @@ export default function ConversationPage() {
           </View>
         </View>
         <Pressable onPress={() => setShowMenu(true)} style={styles.headerBtn}>
-          <MaterialIcons name="more-vert" size={24} color={theme.colors.primaryForeground} />
+          <MaterialIcons name="more-vert" size={24} color={theme.colors.foreground} />
         </Pressable>
       </View>
 
@@ -424,11 +424,13 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 8, paddingTop: topInset, paddingBottom: 12,
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: theme.colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   headerBtn: { padding: 8, borderRadius: 8 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
-  headerName: { fontWeight: '600', color: theme.colors.primaryForeground, fontSize: 15 },
+  headerName: { fontWeight: '600', color: theme.colors.foreground, fontSize: 15 },
   headerSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
   messagesContainer: { flex: 1, backgroundColor: theme.colors.background },
   messagesContent: { padding: 16, paddingBottom: 12 },
