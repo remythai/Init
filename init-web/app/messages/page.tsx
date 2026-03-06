@@ -348,10 +348,10 @@ function GeneralMessagesContent() {
 
   // ─── Main content ───
   return (
-    <div className="min-h-screen bg-page">
+    <div className="h-screen bg-page flex flex-col overflow-hidden">
       {renderHeader(true)}
 
-      <main className="md:pt-20 md:pb-0" style={{ height: "100vh" }}>
+      <main className="md:pt-20 md:pb-0 flex-1 overflow-hidden">
         <div className="h-full flex mx-auto px-0 md:px-6 lg:px-10">
 
           {/* ── Left Panel: Conversations List ── */}

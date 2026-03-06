@@ -608,7 +608,7 @@ export default function EventDetailPage() {
             <img
               src={event.image}
               alt={event.name}
-              className="w-full h-full object-cover rounded-3xl"
+              className="w-full h-full object-cover lg:rounded-3xl"
             />
             <div className="absolute bottom-4 left-4">
               <span

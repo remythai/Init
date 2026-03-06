@@ -597,7 +597,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-page">
+    <div className="h-screen bg-page flex flex-col overflow-hidden">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50">
         <div className="absolute inset-0 bg-page pointer-events-none" />
@@ -627,7 +627,7 @@ export default function EventsPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-14 md:pt-16 pb-32">
+      <main className="pt-14 md:pt-16 pb-32 flex-1 overflow-y-auto">
         <div className="mx-auto px-4 md:px-10 lg:px-16">
           <div className="py-6 md:py-8" />
 

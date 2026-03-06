@@ -374,7 +374,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       {/* Left Panel - Conversations List (Desktop) */}
       <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-r border-border ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {/* Title */}
@@ -461,7 +461,7 @@ export default function MessagesPage() {
       </div>
 
       {/* Right Panel - Conversation */}
-      <div className={`flex-1 flex flex-col ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {selectedMatchId && conversationData ? (
           <div className="h-full flex flex-col bg-page">
             {/* Conversation Header */}
