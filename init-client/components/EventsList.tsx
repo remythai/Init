@@ -1,6 +1,8 @@
 // components/EventsList.tsx
+import { type Theme } from "@/constants/theme";
+import { shared, useTheme } from "@/context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -14,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CreateEventDialog } from "./CreateEventDialog";
 
 export interface Event {
@@ -56,6 +59,10 @@ export function EventsList({
   userType,
   onCreateEvent,
 }: EventsListProps) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
+
   const [activeFilter, setActiveFilter] = useState<"all" | "registered">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -64,8 +71,8 @@ export function EventsList({
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [locationQuery, setLocationQuery] = useState("");
 
-  // Track scrolling to prevent accidental press during scroll
   const isScrolling = useRef(false);
 
   useEffect(() => {
@@ -102,12 +109,14 @@ export function EventsList({
       event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.theme.toLowerCase().includes(searchQuery.toLowerCase()) ||
       locationStr.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLocation = !locationQuery ||
+      locationStr.toLowerCase().includes(locationQuery.toLowerCase());
     const matchesTheme =
       selectedTheme === "all" ||
       event.theme.toLowerCase() === selectedTheme.toLowerCase();
     const matchesAvailability =
       !onlyAvailable || event.participants < event.maxParticipants;
-    return matchesFilter && matchesSearch && matchesTheme && matchesAvailability;
+    return matchesFilter && matchesSearch && matchesLocation && matchesTheme && matchesAvailability;
   });
 
   const resetAdvancedFilters = () => {
@@ -115,27 +124,22 @@ export function EventsList({
     setSelectedTheme("all");
     setOnlyAvailable(false);
     setDateFilter("all");
+    setLocationQuery("");
+    setActiveFilter("all");
   };
 
   const hasActiveAdvancedFilters =
-    maxDistance !== 50 || selectedTheme !== "all" || onlyAvailable || dateFilter !== "all";
+    maxDistance !== 50 || selectedTheme !== "all" || onlyAvailable ||
+    dateFilter !== "all" || !!locationQuery || activeFilter !== "all";
 
-  const getThemeColor = (theme: string) => {
-    const colors: Record<string, string> = {
-      musique: "#a855f7",
-      professionnel: "#3b82f6",
-      étudiant: "#22c55e",
-      sport: "#f97316",
-      café: "#f59e0b",
-      fête: "#ec4899",
-    };
-    return colors[theme.toLowerCase()] || "#6b7280";
+  const getThemeColor = (eventTheme: string) => {
+    return shared.eventTheme[eventTheme.toLowerCase()] || shared.eventTheme.général;
   };
 
   const themes = [
-    { value: "all", label: "Tous les types" },
+    { value: "all", label: "Tous" },
     { value: "musique", label: "Musique" },
-    { value: "professionnel", label: "Professionnel" },
+    { value: "professionnel", label: "Pro" },
     { value: "étudiant", label: "Étudiant" },
     { value: "sport", label: "Sport" },
     { value: "café", label: "Café" },
@@ -149,24 +153,41 @@ export function EventsList({
     { value: "month", label: "Ce mois-ci" },
   ];
 
+  const fillPct = (event: Event) =>
+    Math.min((event.participants / event.maxParticipants) * 100, 100);
+
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
+      {/* Search Bars */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchWrapper}>
-          <MaterialIcons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+        <View style={styles.searchRow}>
+          <View style={styles.searchWrapper}>
+            <MaterialIcons name="search" size={20} color={theme.colors.placeholder} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher un événement..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={theme.colors.placeholder}
+            />
+          </View>
+          <Pressable style={styles.filterButton} onPress={() => setIsAdvancedOpen(true)}>
+            <MaterialIcons name="tune" size={20} color={theme.colors.foreground} />
+            {hasActiveAdvancedFilters && <View style={styles.filterDot} />}
+          </Pressable>
+        </View>
+
+        {/* Location search */}
+        <View style={styles.locationWrapper}>
+          <MaterialIcons name="place" size={18} color={theme.colors.placeholder} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un événement..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9ca3af"
+            placeholder="Lieu..."
+            value={locationQuery}
+            onChangeText={setLocationQuery}
+            placeholderTextColor={theme.colors.placeholder}
           />
         </View>
-        <Pressable style={styles.filterButton} onPress={() => setIsAdvancedOpen(true)}>
-          <MaterialIcons name="more-vert" size={20} color="#303030" />
-          {hasActiveAdvancedFilters && <View style={styles.filterDot} />}
-        </Pressable>
       </View>
 
       {/* Events List */}
@@ -181,8 +202,10 @@ export function EventsList({
       >
         {filteredEvents.length === 0 ? (
           <View style={styles.emptyState}>
+            <MaterialIcons name="event-busy" size={48} color={theme.colors.placeholder} />
+            <Text style={styles.emptyTitle}>Aucun événement</Text>
             <Text style={styles.emptyText}>
-              {searchQuery
+              {searchQuery || locationQuery
                 ? "Aucun événement ne correspond à votre recherche"
                 : activeFilter === "registered"
                   ? "Vous n'êtes inscrit à aucun événement"
@@ -197,60 +220,76 @@ export function EventsList({
               onPress={() => { if (!isScrolling.current) onEventClick(event); }}
               unstable_pressDelay={100}
             >
+              {/* Image */}
               <View style={styles.imageContainer}>
                 <Image source={{ uri: event.image }} style={styles.eventImage} />
+
+                {/* Top badges */}
                 <View style={styles.badgeContainer}>
                   <View style={[styles.themeBadge, { backgroundColor: getThemeColor(event.theme) }]}>
                     <Text style={styles.badgeText}>{event.theme}</Text>
                   </View>
                   {event.isRegistered && (
                     <View style={styles.registeredBadge}>
-                      <Text style={styles.badgeText}>Inscrit</Text>
+                      <Text style={styles.badgeText}>✓ Inscrit</Text>
                     </View>
                   )}
                 </View>
+
+                {/* Orga logo */}
+                {event.orgaLogo && (
+                  <View style={styles.orgaLogoWrapper}>
+                    <Image source={{ uri: event.orgaLogo }} style={styles.orgaLogo} />
+                  </View>
+                )}
               </View>
 
+              {/* Content */}
               <View style={styles.cardContent}>
-                <Text style={styles.eventName}>{event.name}</Text>
+                <Text style={styles.eventName} numberOfLines={2}>{event.name}</Text>
 
                 {event.orgaName && (
                   <Text style={styles.orgaName}>{event.orgaName}</Text>
                 )}
 
                 <View style={styles.infoContainer}>
+                  {event.hasPhysicalEvent && (
+                    <>
+                      <View style={styles.infoRow}>
+                        <MaterialIcons name="event" size={15} color={theme.colors.placeholder} />
+                        <Text style={styles.infoText}>{event.physicalDate}</Text>
+                      </View>
+                      {event.location ? (
+                        <View style={styles.infoRow}>
+                          <MaterialIcons name="place" size={15} color={theme.colors.placeholder} />
+                          <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+                        </View>
+                      ) : null}
+                    </>
+                  )}
+
                   <View style={styles.infoRow}>
-                    <MaterialIcons name="event" size={16} color="#303030" />
-                    <Text style={styles.infoText}>
-                      {event.hasPhysicalEvent ? event.physicalDate : event.appDate}
-                    </Text>
+                    <View style={styles.appBadge}>
+                      <Text style={styles.appBadgeText}>App</Text>
+                    </View>
+                    <Text style={styles.infoText}>{event.appDate}</Text>
                   </View>
 
-                  {event.location ? (
-                    <View style={styles.infoRow}>
-                      <MaterialIcons name="place" size={16} color="#303030" />
-                      <Text style={styles.infoText}>{event.location}</Text>
-                    </View>
-                  ) : null}
-
                   <View style={styles.infoRow}>
-                    <MaterialIcons name="group" size={16} color="#303030" />
+                    <MaterialIcons name="group" size={15} color={theme.colors.placeholder} />
                     <Text style={styles.infoText}>
                       {event.participants}/{event.maxParticipants} participants
                     </Text>
                   </View>
                 </View>
 
+                {/* Progress Bar */}
                 <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${Math.min((event.participants / event.maxParticipants) * 100, 100)}%` },
-                    ]}
-                  />
+                  <View style={[styles.progressFill, { width: `${fillPct(event)}%` as any }]} />
                 </View>
               </View>
 
+              {/* Enter button */}
               {event.isRegistered && onEnterEvent && (
                 <View style={styles.actionContainer}>
                   <Pressable
@@ -269,77 +308,61 @@ export function EventsList({
         )}
       </ScrollView>
 
-      {/* Filter Tabs */}
-      {userType === "user" && (
-        <Animated.View style={[styles.filterTabs, { bottom: Animated.add(24, keyboardOffset) }]}>
-          <View style={styles.tabsContainer}>
-            <Pressable
-              style={[styles.tab, activeFilter === "all" && styles.tabActive]}
-              onPress={() => setActiveFilter("all")}
-            >
-              <Text style={[styles.tabText, activeFilter === "all" && styles.tabTextActive]}>
-                Tous les événements
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, activeFilter === "registered" && styles.tabActive]}
-              onPress={() => setActiveFilter("registered")}
-            >
-              <Text style={[styles.tabText, activeFilter === "registered" && styles.tabTextActive]}>
-                Mes événements
-              </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      )}
-
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setIsAdvancedOpen(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Recherche avancée</Text>
+              <Text style={styles.modalTitle}>Filtres</Text>
               <Pressable onPress={() => setIsAdvancedOpen(false)}>
-                <MaterialIcons name="close" size={24} color="#303030" />
+                <MaterialIcons name="close" size={24} color={theme.colors.foreground} />
               </Pressable>
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {/* Distance Filter */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Distance maximale : {maxDistance} km</Text>
-                <View style={styles.distanceButtons}>
-                  {[10, 25, 50, 100].map((distance) => (
+              {/* Affichage — uniquement pour les users */}
+              {userType === "user" && (
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterLabel}>Affichage</Text>
+                  <View style={styles.chipsContainer}>
                     <Pressable
-                      key={distance}
-                      style={[styles.distanceButton, maxDistance === distance && styles.distanceButtonActive]}
-                      onPress={() => setMaxDistance(distance)}
+                      style={[styles.chip, activeFilter === "all" && styles.chipActive]}
+                      onPress={() => setActiveFilter("all")}
                     >
-                      <Text style={[styles.distanceButtonText, maxDistance === distance && styles.distanceButtonTextActive]}>
-                        {distance} km
+                      <Text style={[styles.chipText, activeFilter === "all" && styles.chipTextActive]}>
+                        Tous les événements
                       </Text>
                     </Pressable>
-                  ))}
+                    <Pressable
+                      style={[styles.chip, activeFilter === "registered" && styles.chipActive]}
+                      onPress={() => setActiveFilter("registered")}
+                    >
+                      <Text style={[styles.chipText, activeFilter === "registered" && styles.chipTextActive]}>
+                        Mes événements
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
+              )}
 
               {/* Theme Filter */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Type d'événement</Text>
-                <View style={styles.optionsContainer}>
-                  {themes.map((theme) => (
+                <View style={styles.chipsContainer}>
+                  {themes.map((themeOption) => (
                     <Pressable
-                      key={theme.value}
-                      style={[styles.optionButton, selectedTheme === theme.value && styles.optionButtonActive]}
-                      onPress={() => setSelectedTheme(theme.value)}
+                      key={themeOption.value}
+                      style={[styles.chip, selectedTheme === themeOption.value && styles.chipActive]}
+                      onPress={() => setSelectedTheme(themeOption.value)}
                     >
-                      <Text style={[styles.optionButtonText, selectedTheme === theme.value && styles.optionButtonTextActive]}>
-                        {theme.label}
+                      <Text style={[styles.chipText, selectedTheme === themeOption.value && styles.chipTextActive]}>
+                        {themeOption.label}
                       </Text>
                     </Pressable>
                   ))}
@@ -362,14 +385,14 @@ export function EventsList({
               {/* Date Filter */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Date</Text>
-                <View style={styles.optionsContainer}>
+                <View style={styles.chipsContainer}>
                   {dateFilters.map((filter) => (
                     <Pressable
                       key={filter.value}
-                      style={[styles.optionButton, dateFilter === filter.value && styles.optionButtonActive]}
+                      style={[styles.chip, dateFilter === filter.value && styles.chipActive]}
                       onPress={() => setDateFilter(filter.value)}
                     >
-                      <Text style={[styles.optionButtonText, dateFilter === filter.value && styles.optionButtonTextActive]}>
+                      <Text style={[styles.chipText, dateFilter === filter.value && styles.chipTextActive]}>
                         {filter.label}
                       </Text>
                     </Pressable>
@@ -397,105 +420,144 @@ export function EventsList({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5", position: "relative" },
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background, position: "relative" },
+
+  // Search
   searchContainer: {
-    position: "absolute", top: 16, left: 16, right: 16,
-    flexDirection: "row", gap: 8, zIndex: 10,
+    position: "absolute", top: topInset + 8, left: 16, right: 16, zIndex: 10, gap: 8,
   },
+  searchRow: { flexDirection: "row", gap: 8 },
   searchWrapper: {
     flex: 1, flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 24,
-    paddingHorizontal: 12, shadowColor: "#000", shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3,
+    backgroundColor: theme.colors.card, borderRadius: 24,
+    paddingHorizontal: 12, shadowColor: theme.colors.shadow,
+    shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3,
+  },
+  locationWrapper: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: theme.colors.card, borderRadius: 24,
+    paddingHorizontal: 12, shadowColor: theme.colors.shadow,
+    shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, height: 48, fontSize: 16, color: "#303030" },
+  searchInput: { flex: 1, height: 44, fontSize: 15, color: theme.colors.foreground },
   filterButton: {
-    width: 48, height: 48, backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 24, justifyContent: "center", alignItems: "center",
-    shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6, elevation: 3, position: "relative",
+    width: 44, height: 44, backgroundColor: theme.colors.card,
+    borderRadius: 22, justifyContent: "center", alignItems: "center",
+    shadowColor: theme.colors.shadow, shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3, position: "relative",
   },
   filterDot: {
     position: "absolute", top: 8, right: 8, width: 8, height: 8,
-    backgroundColor: "#1271FF", borderRadius: 4,
+    backgroundColor: theme.colors.primary, borderRadius: 4,
   },
+
+  // List
   scrollView: { flex: 1 },
-  scrollContent: { paddingTop: 80, padding: 16, paddingBottom: 100, gap: 16 },
-  emptyState: { paddingVertical: 48, alignItems: "center" },
-  emptyText: { fontSize: 16, color: "#6b7280", textAlign: "center" },
+  scrollContent: { paddingTop: topInset + 116, paddingHorizontal: 16, paddingBottom: 110, gap: 16 },
+
+  // Empty
+  emptyState: { paddingVertical: 64, alignItems: "center", gap: 8 },
+  emptyTitle: { fontSize: 18, fontWeight: "600", color: theme.colors.foreground, fontFamily: "Poppins" },
+  emptyText: { fontSize: 14, color: theme.colors.mutedForeground, textAlign: "center", paddingHorizontal: 24 },
+
+  // Card
   eventCard: {
-    backgroundColor: "#fff", borderRadius: 12, overflow: "hidden",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 3, marginBottom: 16,
+    backgroundColor: theme.colors.card, borderRadius: 16, overflow: "hidden",
+    shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
   },
-  imageContainer: { position: "relative", height: 192 },
+  imageContainer: { position: "relative", height: 180 },
   eventImage: { width: "100%", height: "100%" },
   badgeContainer: {
     position: "absolute", top: 12, left: 12, right: 12,
-    flexDirection: "row", justifyContent: "space-between",
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
   },
-  themeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  registeredBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: "#22c55e" },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  cardContent: { padding: 16 },
-  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 18, color: "#303030", marginBottom: 4 },
-  orgaName: { fontSize: 13, color: "#6b7280", marginBottom: 10 },
-  infoContainer: { gap: 8 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoText: { fontSize: 14, color: "#4b5563", flex: 1 },
+  themeBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  registeredBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: "#22c55e" },
+  badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  orgaLogoWrapper: {
+    position: "absolute", bottom: 10, right: 12,
+    width: 36, height: 36, borderRadius: 18,
+    borderWidth: 2, borderColor: "#fff", overflow: "hidden",
+    shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 0, height: 1 }, shadowRadius: 3, elevation: 3,
+  },
+  orgaLogo: { width: "100%", height: "100%" },
+
+  cardContent: { padding: 14 },
+  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 16, color: theme.colors.foreground, marginBottom: 2 },
+  orgaName: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: 10 },
+
+  infoContainer: { gap: 6, marginBottom: 10 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  infoText: { fontSize: 13, color: theme.colors.textSecondary, flex: 1 },
+  appBadge: {
+    backgroundColor: theme.colors.accent ?? "#dbeafe",
+    borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  appBadgeText: { fontSize: 10, fontWeight: "700", color: theme.colors.primary },
+
   progressBar: {
-    width: "100%", height: 8, backgroundColor: "#E0E7FF",
-    borderRadius: 4, marginTop: 12, overflow: "hidden",
+    width: "100%", height: 6, backgroundColor: theme.colors.accent ?? "#dbeafe",
+    borderRadius: 3, overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: "#1271FF", borderRadius: 4 },
-  actionContainer: { padding: 16, paddingTop: 0 },
-  enterButton: { backgroundColor: "#303030", paddingVertical: 12, borderRadius: 8, alignItems: "center" },
-  enterButtonText: { fontFamily: "Poppins", color: "#fff", fontSize: 16, fontWeight: "600" },
-  filterTabs: { position: "absolute", left: 16, right: 16, zIndex: 10 },
-  tabsContainer: {
-    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 50, padding: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
+  progressFill: { height: "100%", backgroundColor: theme.colors.primary, borderRadius: 3 },
+
+  actionContainer: { paddingHorizontal: 14, paddingBottom: 14, paddingTop: 0 },
+  enterButton: {
+    backgroundColor: theme.colors.accentSolid, paddingVertical: 12,
+    borderRadius: 10, alignItems: "center",
   },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 50, alignItems: "center" },
-  tabActive: { backgroundColor: "rgba(48,48,48,0.9)" },
-  tabText: { fontFamily: "Poppins", fontSize: 14, color: "#303030" },
-  tabTextActive: { color: "#fff" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%" },
+  enterButtonText: { fontFamily: "Poppins", color: theme.colors.accentSolidText, fontSize: 15, fontWeight: "600" },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
+  modalContent: {
+    backgroundColor: theme.colors.card, borderTopLeftRadius: 24,
+    borderTopRightRadius: 24, maxHeight: "85%",
+  },
   modalHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 20, borderBottomWidth: 1, borderBottomColor: "#f3f4f6",
+    padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
-  modalTitle: { fontFamily: "Poppins", fontSize: 20, fontWeight: "600", color: "#303030" },
+  modalTitle: { fontFamily: "Poppins", fontSize: 20, fontWeight: "600", color: theme.colors.foreground },
   modalBody: { padding: 20 },
   filterSection: { marginBottom: 24 },
-  filterLabel: { fontSize: 16, fontWeight: "600", color: "#303030", marginBottom: 12 },
-  filterSubLabel: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  distanceButtons: { flexDirection: "row", gap: 8 },
-  distanceButton: { flex: 1, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: "#e5e7eb", alignItems: "center" },
-  distanceButtonActive: { backgroundColor: "#1271FF", borderColor: "#1271FF" },
-  distanceButtonText: { fontSize: 14, color: "#303030" },
-  distanceButtonTextActive: { color: "#fff" },
-  optionsContainer: { gap: 8 },
-  optionButton: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff" },
-  optionButtonActive: { backgroundColor: "#303030", borderColor: "#303030" },
-  optionButtonText: { fontSize: 16, color: "#303030" },
-  optionButtonTextActive: { color: "#fff" },
+  filterLabel: { fontSize: 14, fontWeight: "600", color: theme.colors.foreground, marginBottom: 10 },
+  filterSubLabel: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
+
+  chipsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+    borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background,
+  },
+  chipActive: { backgroundColor: theme.colors.accentSolid, borderColor: theme.colors.accentSolid },
+  chipText: { fontSize: 13, color: theme.colors.foreground },
+  chipTextActive: { color: theme.colors.accentSolidText, fontWeight: "600" },
+
   switchContainer: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 16, backgroundColor: "#F5F5F5", borderRadius: 8,
+    padding: 16, backgroundColor: theme.colors.background, borderRadius: 12,
   },
   switchLabel: { flex: 1 },
-  switch: { width: 51, height: 31, borderRadius: 16, backgroundColor: "#e5e7eb", padding: 2, justifyContent: "center" },
-  switchActive: { backgroundColor: "#1271FF" },
-  switchThumb: { width: 27, height: 27, borderRadius: 14, backgroundColor: "#fff" },
+  switch: { width: 51, height: 31, borderRadius: 16, backgroundColor: theme.colors.border, padding: 2 },
+  switchActive: { backgroundColor: theme.colors.primary },
+  switchThumb: { width: 27, height: 27, borderRadius: 14, backgroundColor: theme.colors.card },
   switchThumbActive: { alignSelf: "flex-end" },
-  modalActions: { flexDirection: "row", gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: "#f3f4f6" },
-  resetButton: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", alignItems: "center" },
-  resetButtonText: { fontSize: 16, fontWeight: "600", color: "#303030" },
-  applyButton: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: "#303030", alignItems: "center" },
-  applyButtonText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+
+  modalActions: {
+    flexDirection: "row", gap: 12, padding: 20,
+    borderTopWidth: 1, borderTopColor: theme.colors.secondary,
+  },
+  resetButton: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: theme.colors.border, alignItems: "center",
+  },
+  resetButtonText: { fontSize: 15, fontWeight: "600", color: theme.colors.foreground },
+  applyButton: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    backgroundColor: theme.colors.accentSolid, alignItems: "center",
+  },
+  applyButtonText: { fontSize: 15, fontWeight: "600", color: theme.colors.accentSolidText },
 });

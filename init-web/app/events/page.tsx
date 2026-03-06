@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -575,6 +575,16 @@ export default function EventsPage() {
       maxParticipants: e.maxParticipants,
     }));
 
+  const eventsByTheme = useMemo(() => {
+    const grouped: Record<string, Event[]> = {};
+    for (const event of filteredEvents) {
+      const theme = event.theme || "général";
+      if (!grouped[theme]) grouped[theme] = [];
+      grouped[theme].push(event);
+    }
+    return Object.entries(grouped);
+  }, [filteredEvents]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-page flex items-center justify-center">
@@ -742,99 +752,189 @@ export default function EventsPage() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer relative h-full flex flex-col hover:scale-[1.01]"
-                      onClick={() => router.push(`/events/${event.id}`)}
-                    >
-                      {/* Event Image */}
-                      <div className="relative h-48">
-                        <img
-                          src={event.image}
-                          alt={event.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-3 left-3 right-3 flex justify-between">
-                          <span
-                            className={`${getThemeColor(event.theme)} text-white text-xs font-semibold px-3 py-1.5 rounded-md`}
-                          >
-                            {event.theme}
-                          </span>
-                          {event.isRegistered && (
-                            <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md">
-                              Inscrit
-                            </span>
-                          )}
+                <>
+                  {/* Mobile: Horizontal lists by category */}
+                  <div className="md:hidden space-y-6">
+                    {eventsByTheme.map(([theme, themeEvents]) => (
+                      <div key={theme}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`${getThemeColor(theme)} w-3 h-3 rounded-full`} />
+                          <h2 className="font-poppins font-semibold text-lg text-primary capitalize">
+                            {theme}
+                          </h2>
+                          <span className="text-sm text-muted">({themeEvents.length})</span>
                         </div>
-                        {event.orgaLogo && (
-                          <div className="absolute bottom-3 right-3">
-                            <img
-                              src={event.orgaLogo}
-                              alt={event.orgaName || 'Organisateur'}
-                              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Event Content */}
-                      <div className="p-4 flex-1 pb-20">
-                        <h3 className="font-poppins font-semibold text-lg text-primary mb-3">
-                          {event.name}
-                        </h3>
-
-                        <div className="space-y-2">
-                          {event.hasPhysicalEvent && (
-                            <>
-                              <div className="flex items-center gap-2 text-secondary">
-                                <Calendar className="w-4 h-4" />
-                                <span className="text-sm">{event.physicalDate}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-secondary">
-                                <MapPin className="w-4 h-4" />
-                                <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
-                              </div>
-                            </>
-                          )}
-                          <div className="flex items-center gap-2 text-secondary">
-                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
-                            <span className="text-sm">{event.appDate}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-secondary">
-                            <Users className="w-4 h-4" />
-                            <span className="text-sm">
-                              {event.participants}/{event.maxParticipants} participants
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="mt-4">
-                          <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                        <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                          {themeEvents.map((event) => (
                             <div
-                              className="h-full bg-[#1271FF] rounded-full transition-all"
-                              style={{
-                                width: `${(event.participants / event.maxParticipants) * 100}%`,
-                              }}
-                            />
-                          </div>
+                              key={event.id}
+                              className="bg-card rounded-xl overflow-hidden shadow-sm cursor-pointer relative flex-shrink-0 w-[280px] snap-start flex flex-col active:scale-[0.98] transition-transform"
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            >
+                              <div className="relative h-36">
+                                <img
+                                  src={event.image}
+                                  alt={event.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute top-2 left-2 right-2 flex justify-between">
+                                  {event.isRegistered && (
+                                    <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-md ml-auto">
+                                      Inscrit
+                                    </span>
+                                  )}
+                                </div>
+                                {event.orgaLogo && (
+                                  <div className="absolute bottom-2 right-2">
+                                    <img
+                                      src={event.orgaLogo}
+                                      alt={event.orgaName || 'Organisateur'}
+                                      className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-md"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-3 flex-1 pb-14">
+                                <h3 className="font-poppins font-semibold text-sm text-primary mb-2 line-clamp-1">
+                                  {event.name}
+                                </h3>
+                                <div className="space-y-1">
+                                  {event.hasPhysicalEvent && (
+                                    <div className="flex items-center gap-1.5 text-secondary">
+                                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                                      <span className="text-xs line-clamp-1">{event.location || 'Lieu a confirmer'}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-1.5 text-secondary">
+                                    <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span className="text-xs">
+                                      {event.participants}/{event.maxParticipants}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-2">
+                                  <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-[#1271FF] rounded-full transition-all"
+                                      style={{
+                                        width: `${(event.participants / event.maxParticipants) * 100}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                {event.isRegistered && (
+                                  <Link
+                                    href={`/events/${event.id}/environment/swiper`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute bottom-3 left-3 right-3 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-2 rounded-lg font-medium transition-colors text-center text-sm"
+                                  >
+                                    Acceder
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-
-                        {event.isRegistered && (
-                          <Link
-                            href={`/events/${event.id}/environment/swiper`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
-                          >
-                            Acceder a l'environnement
-                          </Link>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop: Grid layout grouped by category */}
+                  <div className="hidden md:block space-y-8">
+                    {eventsByTheme.map(([theme, themeEvents]) => (
+                      <div key={theme}>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className={`${getThemeColor(theme)} w-3 h-3 rounded-full`} />
+                          <h2 className="font-poppins font-semibold text-xl text-primary capitalize">
+                            {theme}
+                          </h2>
+                          <span className="text-sm text-muted">({themeEvents.length})</span>
+                        </div>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {themeEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer relative h-full flex flex-col hover:scale-[1.01]"
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            >
+                              <div className="relative h-48">
+                                <img
+                                  src={event.image}
+                                  alt={event.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute top-3 left-3 right-3 flex justify-between">
+                                  {event.isRegistered && (
+                                    <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md ml-auto">
+                                      Inscrit
+                                    </span>
+                                  )}
+                                </div>
+                                {event.orgaLogo && (
+                                  <div className="absolute bottom-3 right-3">
+                                    <img
+                                      src={event.orgaLogo}
+                                      alt={event.orgaName || 'Organisateur'}
+                                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 flex-1 pb-20">
+                                <h3 className="font-poppins font-semibold text-lg text-primary mb-3">
+                                  {event.name}
+                                </h3>
+                                <div className="space-y-2">
+                                  {event.hasPhysicalEvent && (
+                                    <>
+                                      <div className="flex items-center gap-2 text-secondary">
+                                        <Calendar className="w-4 h-4" />
+                                        <span className="text-sm">{event.physicalDate}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-secondary">
+                                        <MapPin className="w-4 h-4" />
+                                        <span className="text-sm">{event.location || 'Lieu a confirmer'}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                  <div className="flex items-center gap-2 text-secondary">
+                                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">App</span>
+                                    <span className="text-sm">{event.appDate}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-secondary">
+                                    <Users className="w-4 h-4" />
+                                    <span className="text-sm">
+                                      {event.participants}/{event.maxParticipants} participants
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-4">
+                                  <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-[#1271FF] rounded-full transition-all"
+                                      style={{
+                                        width: `${(event.participants / event.maxParticipants) * 100}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                {event.isRegistered && (
+                                  <Link
+                                    href={`/events/${event.id}/environment/swiper`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
+                                  >
+                                    Acceder a l'environnement
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
           </div>
         </div>

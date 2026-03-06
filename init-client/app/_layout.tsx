@@ -1,33 +1,25 @@
 // app/_layout.tsx
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { authService } from '@/services/auth.service';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayoutInner() {
   const router = useRouter();
   const segments = useSegments();
+  const { theme, isDark } = useTheme();
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const hasNavigated = useRef(false);
-  
-  const [fontsLoaded] = useFonts({
-    'Roboto': require('../assets/fonts/Roboto-Regular.ttf'),
-    'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
-    'Roboto-Medium': require('../assets/fonts/Roboto-Medium.ttf'),
-    'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
-    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
-    'Poppins-Medium': require('../assets/fonts/Poppins-Medium.ttf'),
-  });
 
   useEffect(() => {
-    if (!fontsLoaded) return;
-
     const checkAuth = async () => {
       try {
         const authenticated = await authService.isAuthenticated();
@@ -41,7 +33,7 @@ export default function RootLayout() {
     };
 
     checkAuth();
-  }, [fontsLoaded]);
+  }, []);
 
   useEffect(() => {
     if (!isReady || isAuthenticated === null || hasNavigated.current) return;
@@ -58,37 +50,61 @@ export default function RootLayout() {
   }, [isReady, isAuthenticated]);
 
   useEffect(() => {
-    if (isReady && fontsLoaded && isAuthenticated !== null) {
+    if (isReady && isAuthenticated !== null) {
       SplashScreen.hideAsync();
     }
-  }, [isReady, fontsLoaded, isAuthenticated]);
+  }, [isReady, isAuthenticated]);
 
-  if (!fontsLoaded || !isReady || isAuthenticated === null) {
+  if (!isReady || isAuthenticated === null) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.card }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
+  const statusBarStyle = isDark ? 'light' : 'dark';
+
   return (
-    <ThemeProvider>
-      <EventProvider >
+    <EventProvider>
+      <StatusBar style={statusBarStyle} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
         <Stack.Screen name="(main)" options={{ animation: 'none' }} />
-        <Stack.Screen 
-          name="settings" 
-          options={{ 
+        <Stack.Screen
+          name="settings"
+          options={{
             presentation: 'modal',
             headerShown: false,
             title: 'Paramètres',
             headerBackVisible: false,
-          }} 
+          }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
-      </EventProvider>
+    </EventProvider>
+  );
+}
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Roboto': require('../assets/fonts/Roboto-Regular.ttf'),
+    'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
+    'Roboto-Medium': require('../assets/fonts/Roboto-Medium.ttf'),
+    'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+    'Poppins-Medium': require('../assets/fonts/Poppins-Medium.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <RootLayoutInner />
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }

@@ -1,7 +1,9 @@
 // components/PhotoManager.tsx
+import { type Theme } from "@/constants/theme";
+import { useTheme, shared } from "@/context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +34,9 @@ export default function PhotoManager({
   maxPhotos = 6,
   onPhotosChange,
 }: PhotoManagerProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -152,7 +157,7 @@ export default function PhotoManager({
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#303030" />
+        <ActivityIndicator size="large" color={theme.colors.foreground} />
       </View>
     );
   }
@@ -162,10 +167,10 @@ export default function PhotoManager({
       {/* Erreur */}
       {!!error && (
         <View style={styles.errorBanner}>
-          <MaterialIcons name="error-outline" size={16} color="#dc2626" />
+          <MaterialIcons name="error-outline" size={16} color={theme.colors.destructive} />
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={() => setError("")}>
-            <MaterialIcons name="close" size={16} color="#dc2626" />
+            <MaterialIcons name="close" size={16} color={theme.colors.destructive} />
           </Pressable>
         </View>
       )}
@@ -200,7 +205,7 @@ export default function PhotoManager({
             {/* Badge principale */}
             {index === 0 && (
               <View style={styles.primaryBadge}>
-                <MaterialIcons name="star" size={10} color="#fff" />
+                <MaterialIcons name="star" size={10} color={theme.colors.card} />
                 <Text style={styles.primaryText}>Principale</Text>
               </View>
             )}
@@ -213,7 +218,7 @@ export default function PhotoManager({
                   onPress={() => setPrimary(photo)}
                   hitSlop={8}
                 >
-                  <MaterialIcons name="star" size={14} color="#fff" />
+                  <MaterialIcons name="star" size={14} color={theme.colors.card} />
                 </Pressable>
               )}
               <Pressable
@@ -221,7 +226,7 @@ export default function PhotoManager({
                 onPress={() => setDeleteTarget(photo)}
                 hitSlop={8}
               >
-                <MaterialIcons name="delete" size={14} color="#fff" />
+                <MaterialIcons name="delete" size={14} color={theme.colors.card} />
               </Pressable>
             </View>
           </Pressable>
@@ -235,10 +240,10 @@ export default function PhotoManager({
             disabled={uploading}
           >
             {uploading ? (
-              <ActivityIndicator size="small" color="#9ca3af" />
+              <ActivityIndicator size="small" color={theme.colors.placeholder} />
             ) : (
               <>
-                <MaterialIcons name="add" size={32} color="#9ca3af" />
+                <MaterialIcons name="add" size={32} color={theme.colors.placeholder} />
                 <Text style={styles.addText}>Ajouter</Text>
               </>
             )}
@@ -255,6 +260,7 @@ export default function PhotoManager({
       <Modal
         visible={!!deleteTarget}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setDeleteTarget(null)}
       >
@@ -293,7 +299,7 @@ export default function PhotoManager({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: { gap: 12 },
   center: { paddingVertical: 32, alignItems: "center" },
   errorBanner: {
@@ -301,13 +307,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     padding: 10,
-    backgroundColor: "#fef2f2",
+    backgroundColor: shared.errorLight,
     borderWidth: 1,
     borderColor: "#fecaca",
     borderRadius: 8,
   },
-  errorText: { flex: 1, fontSize: 13, color: "#dc2626" },
-  hint: { fontSize: 12, color: "#9ca3af", textAlign: "center" },
+  errorText: { flex: 1, fontSize: 13, color: theme.colors.destructive },
+  hint: { fontSize: 12, color: theme.colors.placeholder, textAlign: "center" },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -319,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: theme.colors.secondary,
   },
   photoCellDragging: {
     opacity: 0.5,
@@ -336,11 +342,11 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.colors.overlay,
     alignItems: "center",
     justifyContent: "center",
   },
-  positionText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  positionText: { color: theme.colors.card, fontSize: 10, fontWeight: "700" },
   primaryBadge: {
     position: "absolute",
     top: 6,
@@ -353,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#eab308",
     borderRadius: 99,
   },
-  primaryText: { color: "#fff", fontSize: 9, fontWeight: "700" },
+  primaryText: { color: theme.colors.card, fontSize: 9, fontWeight: "700" },
   actionsOverlay: {
     position: "absolute",
     bottom: 6,
@@ -376,37 +382,37 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: "#d1d5db",
+    borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    backgroundColor: "#f9fafb",
+    backgroundColor: theme.colors.secondary,
   },
-  addText: { fontSize: 12, color: "#9ca3af" },
-  counter: { fontSize: 13, color: "#9ca3af", textAlign: "center" },
+  addText: { fontSize: 12, color: theme.colors.placeholder },
+  counter: { fontSize: 13, color: theme.colors.placeholder, textAlign: "center" },
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.colors.overlay,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
     borderRadius: 20,
     padding: 24,
     width: "100%",
     maxWidth: 360,
     gap: 16,
   },
-  modalTitle: { fontSize: 18, fontWeight: "600", color: "#111827", textAlign: "center" },
+  modalTitle: { fontSize: 18, fontWeight: "600", color: theme.colors.foreground, textAlign: "center" },
   modalPreview: {
     width: "100%",
     aspectRatio: 1,
     borderRadius: 12,
   },
-  modalSubtitle: { fontSize: 13, color: "#6b7280", textAlign: "center" },
+  modalSubtitle: { fontSize: 13, color: theme.colors.mutedForeground, textAlign: "center" },
   modalActions: { flexDirection: "row", gap: 12 },
   modalBtn: {
     flex: 1,
@@ -414,8 +420,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-  modalCancelBtn: { backgroundColor: "#f3f4f6" },
+  modalCancelBtn: { backgroundColor: theme.colors.secondary },
   modalDeleteBtn: { backgroundColor: "#ef4444" },
-  modalCancelText: { fontWeight: "600", color: "#111827" },
-  modalDeleteText: { fontWeight: "600", color: "#fff" },
+  modalCancelText: { fontWeight: "600", color: theme.colors.foreground },
+  modalDeleteText: { fontWeight: "600", color: theme.colors.card },
 });

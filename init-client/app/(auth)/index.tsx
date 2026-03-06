@@ -28,7 +28,7 @@ export default function Auth() {
         });
 
         await authService.login(credentials, userType === "organizer");
-        
+
         console.log('Connexion réussie, redirection...');
         router.replace('/(main)/events');
       } else {
@@ -55,7 +55,7 @@ export default function Auth() {
         });
 
         await authService.register(registerData, userType === "organizer");
-        
+
         console.log('Inscription réussie, redirection...');
         router.replace('/(main)/events');
       }

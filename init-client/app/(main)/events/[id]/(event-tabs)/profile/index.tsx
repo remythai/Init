@@ -2,6 +2,7 @@
 // app/(main)/events/[id]/(event-tabs)/profile/index.tsx
 
 import PhotoManager from '@/components/PhotoManager';
+import { useTheme } from '@/context/ThemeContext';
 import { User, authService } from '@/services/auth.service';
 import {
   CustomField,
@@ -13,7 +14,7 @@ import { matchService } from '@/services/match.service';
 import { Photo, photoService } from '@/services/photo.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +31,7 @@ import {
 export default function EventMyProfileScreen() {
   const { id: eventId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { theme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -115,11 +117,8 @@ export default function EventMyProfileScreen() {
 
   const loadMatchStats = async () => {
     try {
-      const data = await matchService.getAllMatches();
-      const eventMatches = data.by_event?.find(
-        (e: any) => String(e.event.id) === eventId
-      );
-      setMatchCount(eventMatches?.matches?.length || 0);
+      const matches = await matchService.getEventMatches(parseInt(eventId));
+      setMatchCount(matches?.length || 0);
     } catch {
       setMatchCount(0);
     }
@@ -177,6 +176,8 @@ export default function EventMyProfileScreen() {
     return String(value || '');
   };
 
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const initials = profile
     ? `${profile.firstname[0]}${profile.lastname?.[0] || ''}`.toUpperCase()
     : '?';
@@ -184,7 +185,7 @@ export default function EventMyProfileScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#1271FF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Chargement du profil...</Text>
       </View>
     );
@@ -208,7 +209,6 @@ export default function EventMyProfileScreen() {
         {/* ── Profile header ── */}
         <View style={styles.headerSection}>
           <View style={styles.avatarWrapper}>
-            {/* Avatar initials (primary photo overlay handled by PhotoManager) */}
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
@@ -259,7 +259,7 @@ export default function EventMyProfileScreen() {
               {!editing ? (
                 !isBlocked && (
                   <Pressable onPress={() => setEditing(true)} hitSlop={8}>
-                    <MaterialIcons name="edit" size={20} color="#1271FF" />
+                    <MaterialIcons name="edit" size={20} color={theme.colors.primary} />
                   </Pressable>
                 )
               ) : (
@@ -315,7 +315,7 @@ export default function EventMyProfileScreen() {
                           <TextInput
                             style={styles.input}
                             placeholder={getFieldPlaceholder(field)}
-                            placeholderTextColor="rgba(255,255,255,0.35)"
+                            placeholderTextColor={theme.colors.mutedForeground}
                             keyboardType={
                               field.type === 'email' ? 'email-address'
                               : field.type === 'phone' ? 'phone-pad'
@@ -354,7 +354,7 @@ export default function EventMyProfileScreen() {
                           <TextInput
                             style={[styles.input, styles.textarea]}
                             placeholder={getFieldPlaceholder(field)}
-                            placeholderTextColor="rgba(255,255,255,0.35)"
+                            placeholderTextColor={theme.colors.mutedForeground}
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
@@ -389,7 +389,7 @@ export default function EventMyProfileScreen() {
                         >
                           <View style={[
                             styles.checkbox,
-                            editedProfilInfo[fieldId] && styles.checkboxChecked,
+                            Boolean(editedProfilInfo[fieldId]) && styles.checkboxChecked,
                           ]}>
                             {Boolean(editedProfilInfo[fieldId]) && (
                               <MaterialIcons name="check" size={14} color="#fff" />
@@ -449,7 +449,7 @@ export default function EventMyProfileScreen() {
                                 }}
                               >
                                 <View style={[styles.multiCheckbox, selected && styles.multiCheckboxSelected]}>
-                                  {selected && <MaterialIcons name="check" size={11} color="#1271FF" />}
+                                  {selected && <MaterialIcons name="check" size={11} color={theme.colors.primary} />}
                                 </View>
                                 <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                                   {option}
@@ -469,7 +469,7 @@ export default function EventMyProfileScreen() {
 
         {/* ── Tips ── */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>💡 Conseils</Text>
+          <Text style={styles.tipsTitle}>Conseils</Text>
           <Text style={styles.tipItem}>• Ajoutez une photo de profil claire et souriante</Text>
           <Text style={styles.tipItem}>• Décrivez vos centres d'intérêt dans votre bio</Text>
           <Text style={styles.tipItem}>• Soyez authentique et ouvert aux nouvelles rencontres</Text>
@@ -481,112 +481,112 @@ export default function EventMyProfileScreen() {
 }
 
 /* ─── Styles ─────────────────────────────────────────────── */
-const BLUE = '#1271FF';
-const CARD_BG = 'rgba(255,255,255,0.10)';
-const BORDER = 'rgba(255,255,255,0.18)';
+const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTheme>) => {
+  const colors = theme.colors;
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d1b3e' },
-  content: { padding: 16, paddingBottom: 40, gap: 16 },
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { padding: 16, paddingBottom: 40, gap: 16 },
 
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0d1b3e' },
-  loadingText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
-  errorText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.background },
+    loadingText: { color: colors.mutedForeground, fontSize: 14 },
+    errorText: { color: colors.mutedForeground, fontSize: 14 },
 
-  /* Header */
-  headerSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
-  avatarWrapper: { marginBottom: 12 },
-  avatar: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: BLUE,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: 'rgba(255,255,255,0.2)',
-  },
-  avatarText: { color: '#fff', fontSize: 32, fontWeight: '700' },
-  name: { color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center' },
+    /* Header */
+    headerSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
+    avatarWrapper: { marginBottom: 12 },
+    avatar: {
+      width: 96, height: 96, borderRadius: 48,
+      backgroundColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 3, borderColor: colors.border,
+    },
+    avatarText: { color: colors.card, fontSize: 32, fontWeight: '700' },
+    name: { color: colors.foreground, fontSize: 22, fontWeight: '700', textAlign: 'center' },
 
-  /* Blocked */
-  blockedBanner: {
-    flexDirection: 'row', gap: 12, alignItems: 'flex-start',
-    backgroundColor: 'rgba(239,68,68,0.18)',
-    borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
-    borderRadius: 16, padding: 14,
-  },
-  blockedTitle: { color: '#fca5a5', fontWeight: '700', marginBottom: 2 },
-  blockedBody: { color: 'rgba(252,165,165,0.8)', fontSize: 13, lineHeight: 18 },
+    /* Blocked */
+    blockedBanner: {
+      flexDirection: 'row', gap: 12, alignItems: 'flex-start',
+      backgroundColor: 'rgba(239,68,68,0.18)',
+      borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
+      borderRadius: 16, padding: 14,
+    },
+    blockedTitle: { color: '#fca5a5', fontWeight: '700', marginBottom: 2 },
+    blockedBody: { color: 'rgba(252,165,165,0.8)', fontSize: 13, lineHeight: 18 },
 
-  /* Cards */
-  card: {
-    backgroundColor: CARD_BG,
-    borderWidth: 1, borderColor: BORDER,
-    borderRadius: 20, padding: 18,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  cardTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  editActions: { flexDirection: 'row', gap: 14 },
+    /* Cards */
+    card: {
+      backgroundColor: colors.card,
+      borderWidth: 1, borderColor: colors.border,
+      borderRadius: 20, padding: 18,
+    },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+    cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '600' },
+    editActions: { flexDirection: 'row', gap: 14 },
 
-  disabledText: { color: 'rgba(255,255,255,0.4)', fontStyle: 'italic', fontSize: 14 },
+    disabledText: { color: colors.mutedForeground, fontStyle: 'italic', fontSize: 14 },
 
-  /* Stat card */
-  statCard: {
-    backgroundColor: CARD_BG,
-    borderWidth: 1, borderColor: BORDER,
-    borderRadius: 20, padding: 18,
-    alignItems: 'center',
-  },
-  statCount: { color: '#fff', fontSize: 40, fontWeight: '800' },
-  statLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 2 },
+    /* Stat card */
+    statCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1, borderColor: colors.border,
+      borderRadius: 20, padding: 18,
+      alignItems: 'center',
+    },
+    statCount: { color: colors.cardForeground, fontSize: 40, fontWeight: '800' },
+    statLabel: { color: colors.mutedForeground, fontSize: 13, marginTop: 2 },
 
-  /* Fields – view */
-  fieldsView: { gap: 12 },
-  fieldRow: { gap: 2 },
-  fieldLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 13 },
-  fieldValue: { color: '#fff', fontSize: 15, lineHeight: 22 },
+    /* Fields – view */
+    fieldsView: { gap: 12 },
+    fieldRow: { gap: 2 },
+    fieldLabel: { color: colors.mutedForeground, fontSize: 13 },
+    fieldValue: { color: colors.cardForeground, fontSize: 15, lineHeight: 22 },
 
-  /* Fields – edit */
-  fieldsEdit: { gap: 18 },
-  inputGroup: { gap: 6 },
-  inputLabel: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1, borderColor: BORDER,
-    borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 11,
-    color: '#fff', fontSize: 15,
-  },
-  textarea: { minHeight: 96, textAlignVertical: 'top' },
-  charCount: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'right' },
+    /* Fields – edit */
+    fieldsEdit: { gap: 18 },
+    inputGroup: { gap: 6 },
+    inputLabel: { color: colors.cardForeground, fontSize: 15, fontWeight: '600' },
+    input: {
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1, borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14, paddingVertical: 11,
+      color: colors.cardForeground, fontSize: 15,
+    },
+    textarea: { minHeight: 96, textAlignVertical: 'top' },
+    charCount: { color: colors.mutedForeground, fontSize: 12, textAlign: 'right' },
 
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  checkbox: {
-    width: 24, height: 24, borderRadius: 6,
-    borderWidth: 2, borderColor: BORDER,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkboxChecked: { backgroundColor: BLUE, borderColor: BLUE },
-  checkboxLabel: { color: '#fff', fontSize: 15 },
+    checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    checkbox: {
+      width: 24, height: 24, borderRadius: 6,
+      borderWidth: 2, borderColor: colors.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+    checkboxLabel: { color: colors.cardForeground, fontSize: 15 },
 
-  optionsList: { gap: 8 },
-  optionBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderWidth: 1, borderColor: BORDER,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-  },
-  optionBtnSelected: { backgroundColor: BLUE, borderColor: BLUE },
-  optionText: { color: 'rgba(255,255,255,0.75)', fontSize: 15, flex: 1 },
-  optionTextSelected: { color: '#fff' },
-  multiCheckbox: {
-    width: 20, height: 20, borderRadius: 4,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  multiCheckboxSelected: { backgroundColor: '#fff', borderColor: '#fff' },
+    optionsList: { gap: 8 },
+    optionBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      borderWidth: 1, borderColor: colors.border,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    },
+    optionBtnSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    optionText: { color: colors.mutedForeground, fontSize: 15, flex: 1 },
+    optionTextSelected: { color: colors.primaryForeground },
+    multiCheckbox: {
+      width: 20, height: 20, borderRadius: 4,
+      borderWidth: 1.5, borderColor: colors.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    multiCheckboxSelected: { backgroundColor: colors.card, borderColor: colors.card },
 
-  /* Tips */
-  tipsCard: {
-    backgroundColor: 'rgba(18,113,255,0.18)',
-    borderRadius: 20, padding: 18, gap: 6,
-  },
-  tipsTitle: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  tipItem: { color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 20 },
-});
+    /* Tips */
+    tipsCard: {
+      backgroundColor: colors.accent,
+      borderRadius: 20, padding: 18, gap: 6,
+    },
+    tipsTitle: { color: colors.accentForeground, fontSize: 16, fontWeight: '600', marginBottom: 4 },
+    tipItem: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
+  });
+};

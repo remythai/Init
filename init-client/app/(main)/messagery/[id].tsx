@@ -1,3 +1,5 @@
+import { useTheme } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -5,7 +7,8 @@ import {
   MoreVertical,
   Send,
 } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -29,6 +32,9 @@ interface Message {
 
 export default function ConversationPage() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const { id } = useLocalSearchParams();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -248,7 +254,7 @@ export default function ConversationPage() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <ArrowLeft size={24} color="white" />
+          <ArrowLeft size={24} color={theme.colors.foreground} />
         </Pressable>
 
         <View style={styles.headerCenter}>
@@ -269,7 +275,7 @@ export default function ConversationPage() {
           onPress={() => setShowDropdownMenu(true)}
           style={styles.headerButton}
         >
-          <MoreVertical size={24} color="white" />
+          <MoreVertical size={24} color={theme.colors.foreground} />
         </Pressable>
       </View>
 
@@ -322,13 +328,13 @@ export default function ConversationPage() {
           onChangeText={setMessageText}
           onSubmitEditing={handleSendMessage}
           placeholder="Votre message..."
-          placeholderTextColor="#9E9E9E"
+          placeholderTextColor={theme.colors.placeholder}
           style={styles.input}
           multiline
           maxLength={500}
         />
         <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-          <Send size={20} color="white" />
+          <Send size={20} color={theme.colors.primaryForeground} />
         </TouchableOpacity>
       </View>
 
@@ -336,6 +342,7 @@ export default function ConversationPage() {
       <Modal
         visible={showDropdownMenu}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowDropdownMenu(false)}
       >
@@ -351,7 +358,7 @@ export default function ConversationPage() {
               }}
               style={styles.dropdownItem}
             >
-              <Flag size={16} color="#DC2626" />
+              <Flag size={16} color={theme.colors.destructive} />
               <Text style={styles.dropdownItemText}>Signaler l'utilisateur</Text>
             </TouchableOpacity>
           </View>
@@ -362,6 +369,7 @@ export default function ConversationPage() {
       <Modal
         visible={showReportDialog}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setShowReportDialog(false)}
       >
@@ -395,10 +403,10 @@ export default function ConversationPage() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.card,
   },
 
   header: {
@@ -406,11 +414,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: topInset,
     paddingBottom: 16,
-    backgroundColor: "#303030",
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#303030",
+    borderBottomColor: theme.colors.border,
   },
   headerButton: {
     padding: 8,
@@ -426,26 +434,26 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "white",
+    backgroundColor: theme.colors.card,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: "#303030",
+    color: theme.colors.foreground,
     fontWeight: "600",
   },
   headerName: {
     fontWeight: "600",
-    color: "white",
+    color: theme.colors.foreground,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.7)",
+    color: theme.colors.textSecondary,
   },
 
   messagesContainer: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
   },
   messagesContent: {
     padding: 16,
@@ -468,29 +476,29 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   messageBubbleMe: {
-    backgroundColor: "#303030",
+    backgroundColor: theme.colors.sentMsg,
   },
   messageBubbleOther: {
-    backgroundColor: "white",
+    backgroundColor: theme.colors.receivedMsg,
   },
   messageText: {
     fontSize: 14,
   },
   messageTextMe: {
-    color: "white",
+    color: theme.colors.sentMsgText,
   },
   messageTextOther: {
-    color: "#303030",
+    color: theme.colors.foreground,
   },
   messageTime: {
     fontSize: 12,
     marginTop: 4,
   },
   messageTimeMe: {
-    color: "#E3F2FD",
+    color: theme.colors.textMuted,
   },
   messageTimeOther: {
-    color: "#9E9E9E",
+    color: theme.colors.placeholder,
   },
 
   inputContainer: {
@@ -498,23 +506,23 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-    backgroundColor: "white",
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
     gap: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: "#BDBDBD",
+    borderColor: theme.colors.border,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    color: "#303030",
+    color: theme.colors.foreground,
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: "#303030",
+    backgroundColor: theme.colors.sentMsg,
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -524,17 +532,17 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: theme.colors.overlay,
   },
   dropdownMenu: {
     position: "absolute",
     top: 80,
     right: 16,
-    backgroundColor: "white",
+    backgroundColor: theme.colors.card,
     borderRadius: 8,
     padding: 8,
     minWidth: 200,
-    shadowColor: "#000",
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -547,18 +555,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dropdownItemText: {
-    color: "#DC2626",
+    color: theme.colors.destructive,
   },
 
   dialogOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
   },
   dialogBox: {
-    backgroundColor: "white",
+    backgroundColor: theme.colors.card,
     borderRadius: 12,
     padding: 24,
     width: "100%",
@@ -568,9 +576,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 8,
+    color: theme.colors.foreground,
   },
   dialogDescription: {
-    color: "#757575",
+    color: theme.colors.mutedForeground,
     marginBottom: 24,
   },
   dialogActions: {
@@ -583,18 +592,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#BDBDBD",
+    borderColor: theme.colors.border,
   },
   dialogButtonCancelText: {
-    color: "#000",
+    color: theme.colors.foreground,
   },
   dialogButtonConfirm: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: "#DC2626",
+    backgroundColor: theme.colors.destructive,
   },
   dialogButtonConfirmText: {
-    color: "white",
+    color: theme.colors.primaryForeground,
   },
 });

@@ -1,5 +1,5 @@
 // components/EventProfile.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,6 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { type Theme } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface EventProfileData {
   bio: string;
@@ -31,11 +33,13 @@ export function EventProfile({
   profileData,
   onSave,
 }: EventProfileProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [bio, setBio] = useState(profileData.bio);
   const [interests, setInterests] = useState(profileData.interests.join(', '));
   const [customFields, setCustomFields] = useState(profileData.customFields);
 
-  const getCustomFieldsForTheme = (theme: string): string[] => {
+  const getCustomFieldsForTheme = (t: string): string[] => {
     const themeFields: Record<string, string[]> = {
       musique: ['Genre musical préféré', 'Instrument que vous jouez', 'Concert mémorable'],
       professionnel: ['Poste actuel', "Secteur d'activité", 'Objectif professionnel'],
@@ -44,7 +48,7 @@ export function EventProfile({
       café: ['Café préféré', 'Sujet de discussion favori', 'Disponibilité'],
       fête: ['Style de musique préféré', 'Type de soirée favori', 'Mood du moment'],
     };
-    return themeFields[theme.toLowerCase()] || ['Information 1', 'Information 2', 'Information 3'];
+    return themeFields[t.toLowerCase()] || ['Information 1', 'Information 2', 'Information 3'];
   };
 
   const customFieldLabels = getCustomFieldsForTheme(eventTheme);
@@ -94,7 +98,7 @@ export function EventProfile({
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Parlez de vous pour cet événement..."
-                placeholderTextColor="#9E9E9E"
+                placeholderTextColor={theme.colors.placeholder}
                 multiline
                 numberOfLines={4}
                 style={styles.textarea}
@@ -109,7 +113,7 @@ export function EventProfile({
                 value={interests}
                 onChangeText={setInterests}
                 placeholder="Séparez par des virgules"
-                placeholderTextColor="#9E9E9E"
+                placeholderTextColor={theme.colors.placeholder}
                 style={styles.input}
               />
               <Text style={styles.hint}>
@@ -133,7 +137,7 @@ export function EventProfile({
                       })
                     }
                     placeholder={`Votre ${label.toLowerCase()}`}
-                    placeholderTextColor="#9E9E9E"
+                    placeholderTextColor={theme.colors.placeholder}
                     style={styles.input}
                   />
                 </View>
@@ -182,10 +186,10 @@ export function EventProfile({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -195,11 +199,11 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   mainCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -221,17 +225,17 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontFamily: 'Poppins-SemiBold',
-    color: '#303030',
+    color: theme.colors.foreground,
   },
   title: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 20,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#757575',
+    color: theme.colors.mutedForeground,
     textAlign: 'center',
   },
   formSection: {
@@ -243,46 +247,46 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: 'Poppins-Medium',
     fontSize: 15,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 8,
   },
   labelSmall: {
     fontFamily: 'Poppins-Regular',
     fontSize: 14,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#303030',
+    color: theme.colors.foreground,
     minHeight: 44,
   },
   textarea: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#303030',
+    color: theme.colors.foreground,
     minHeight: 96,
     maxHeight: 150,
   },
   hint: {
     fontSize: 12,
-    color: '#9E9E9E',
+    color: theme.colors.placeholder,
     marginTop: 4,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     marginVertical: 16,
   },
   customFieldsSection: {
@@ -291,11 +295,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Poppins-Medium',
     fontSize: 16,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 8,
   },
   saveButton: {
-    backgroundColor: '#303030',
+    backgroundColor: theme.colors.accentSolid,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -303,18 +307,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   saveButtonPressed: {
-    backgroundColor: '#404040',
+    opacity: 0.85,
   },
   saveButtonText: {
-    color: '#fff',
+    color: theme.colors.accentSolidText,
     fontSize: 16,
     fontFamily: 'Poppins-Medium',
   },
   previewCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -323,7 +327,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 18,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 16,
   },
   previewContent: {
@@ -335,12 +339,12 @@ const styles = StyleSheet.create({
   previewLabel: {
     fontFamily: 'Poppins-Medium',
     fontSize: 14,
-    color: '#303030',
+    color: theme.colors.foreground,
     marginBottom: 6,
   },
   previewText: {
     fontSize: 14,
-    color: '#757575',
+    color: theme.colors.mutedForeground,
     lineHeight: 20,
   },
   interestTags: {
@@ -350,13 +354,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tag: {
-    backgroundColor: '#E0E7FF',
+    backgroundColor: theme.colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   tagText: {
     fontSize: 12,
-    color: '#303030',
+    color: theme.colors.foreground,
   },
 });

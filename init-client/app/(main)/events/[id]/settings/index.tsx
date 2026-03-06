@@ -1,9 +1,13 @@
 // app/(main)/events/[id]/settings/index.tsx
 import { eventService, EventResponse } from '@/services/event.service';
+import { useTheme, shared } from '@/context/ThemeContext';
+import { type Theme } from '@/constants/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +21,7 @@ import {
 
 const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://init-app.fr';
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value, styles }: { label: string; value: string; styles: ReturnType<typeof createStyles> }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -29,6 +33,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export default function SettingsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [event, setEvent] = useState<EventResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -96,24 +102,11 @@ export default function SettingsScreen() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1271FF" />
-      </View>
-    );
-  }
+  if (loading) return <ScreenLoader />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#303030" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Paramètres</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScreenHeader title="Paramètres" />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {event?.name && (
@@ -123,13 +116,13 @@ export default function SettingsScreen() {
         {/* Share section */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <MaterialIcons name="share" size={20} color="#1271FF" />
+            <MaterialIcons name="share" size={20} color={theme.colors.primary} />
             <Text style={styles.cardTitle}>Partager l'événement</Text>
           </View>
 
           {/* Link */}
           <View style={styles.linkRow}>
-            <MaterialIcons name="link" size={16} color="#9ca3af" />
+            <MaterialIcons name="link" size={16} color={theme.colors.placeholder} />
             <Text style={styles.linkText} numberOfLines={1}>{eventUrl}</Text>
           </View>
 
@@ -138,14 +131,14 @@ export default function SettingsScreen() {
               style={[styles.shareButton, copied && styles.shareButtonSuccess]}
               onPress={handleCopy}
             >
-              <MaterialIcons name={copied ? 'check' : 'content-copy'} size={18} color={copied ? '#fff' : '#303030'} />
-              <Text style={[styles.shareButtonText, copied && { color: '#fff' }]}>
+              <MaterialIcons name={copied ? 'check' : 'content-copy'} size={18} color={copied ? theme.colors.primaryForeground : theme.colors.foreground} />
+              <Text style={[styles.shareButtonText, copied && { color: theme.colors.primaryForeground }]}>
                 {copied ? 'Copié !' : 'Copier'}
               </Text>
             </Pressable>
             <Pressable style={[styles.shareButton, styles.shareButtonPrimary]} onPress={handleShare}>
-              <MaterialIcons name="ios-share" size={18} color="#fff" />
-              <Text style={[styles.shareButtonText, { color: '#fff' }]}>Partager</Text>
+              <MaterialIcons name="ios-share" size={18} color={theme.colors.accentSolidText} />
+              <Text style={[styles.shareButtonText, { color: theme.colors.accentSolidText }]}>Partager</Text>
             </Pressable>
           </View>
         </View>
@@ -154,17 +147,17 @@ export default function SettingsScreen() {
         {event && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Informations</Text>
-            <InfoRow label="Événement public" value={event.is_public ? 'Oui' : 'Non'} />
-            <InfoRow label="Liste blanche" value={event.has_whitelist ? 'Activée' : 'Désactivée'} />
-            <InfoRow label="Accès par lien" value={event.has_link_access ? 'Activé' : 'Désactivé'} />
-            <InfoRow label="Accès par mot de passe" value={event.has_password_access ? 'Activé' : 'Désactivé'} />
-            <InfoRow label="Participants max" value={event.max_participants ? String(event.max_participants) : '—'} />
+            <InfoRow label="Événement public" value={event.is_public ? 'Oui' : 'Non'} styles={styles} />
+            <InfoRow label="Liste blanche" value={event.has_whitelist ? 'Activée' : 'Désactivée'} styles={styles} />
+            <InfoRow label="Accès par lien" value={event.has_link_access ? 'Activé' : 'Désactivé'} styles={styles} />
+            <InfoRow label="Accès par mot de passe" value={event.has_password_access ? 'Activé' : 'Désactivé'} styles={styles} />
+            <InfoRow label="Participants max" value={event.max_participants ? String(event.max_participants) : '—'} styles={styles} />
 
             <Pressable
               style={styles.editButton}
               onPress={() => router.push(`/(main)/events/${id}/edit`)}
             >
-              <MaterialIcons name="edit" size={18} color="#fff" />
+              <MaterialIcons name="edit" size={18} color={theme.colors.primaryForeground} />
               <Text style={styles.editButtonText}>Modifier les paramètres</Text>
             </Pressable>
           </View>
@@ -173,8 +166,8 @@ export default function SettingsScreen() {
         {/* Danger zone */}
         <View style={[styles.card, styles.dangerCard]}>
           <View style={styles.cardTitleRow}>
-            <MaterialIcons name="delete" size={20} color="#dc2626" />
-            <Text style={[styles.cardTitle, { color: '#dc2626' }]}>Zone de danger</Text>
+            <MaterialIcons name="delete" size={20} color={theme.colors.destructive} />
+            <Text style={[styles.cardTitle, { color: theme.colors.destructive }]}>Zone de danger</Text>
           </View>
           <Text style={styles.dangerText}>
             La suppression de l'événement est irréversible. Tous les participants seront désincrits et toutes les données supprimées.
@@ -185,10 +178,10 @@ export default function SettingsScreen() {
             disabled={deleting}
           >
             {deleting ? (
-              <ActivityIndicator color="#dc2626" size="small" />
+              <ActivityIndicator color={theme.colors.destructive} size="small" />
             ) : (
               <>
-                <MaterialIcons name="delete-forever" size={18} color="#dc2626" />
+                <MaterialIcons name="delete-forever" size={18} color={theme.colors.destructive} />
                 <Text style={styles.deleteButtonText}>Supprimer l'événement</Text>
               </>
             )}
@@ -199,48 +192,40 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
-  },
-  headerButton: { padding: 8, borderRadius: 8 },
-  headerTitle: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 17, color: '#303030' },
-  eventName: { fontSize: 14, color: '#6b7280', marginBottom: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
+const createStyles = (theme: Theme) => StyleSheet.create({
+  eventName: { fontSize: 14, color: theme.colors.mutedForeground, marginBottom: 12 },
+  card: { backgroundColor: theme.colors.card, borderRadius: 16, padding: 16, marginBottom: 12 },
   dangerCard: { borderWidth: 2, borderColor: '#fee2e2' },
-  cardTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 15, color: '#303030', marginBottom: 12 },
+  cardTitle: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 15, color: theme.colors.foreground, marginBottom: 12 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   linkRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#F5F5F5', borderRadius: 10, padding: 12, marginBottom: 12,
+    backgroundColor: theme.colors.background, borderRadius: 10, padding: 12, marginBottom: 12,
   },
-  linkText: { flex: 1, fontSize: 13, color: '#303030' },
+  linkText: { flex: 1, fontSize: 13, color: theme.colors.foreground },
   shareButtons: { flexDirection: 'row', gap: 10 },
   shareButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F5F5F5',
+    gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.background,
   },
-  shareButtonPrimary: { backgroundColor: '#303030' },
-  shareButtonSuccess: { backgroundColor: '#22c55e' },
-  shareButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#303030' },
+  shareButtonPrimary: { backgroundColor: theme.colors.accentSolid },
+  shareButtonSuccess: { backgroundColor: shared.success },
+  shareButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.foreground },
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
-  infoLabel: { fontSize: 14, color: '#6b7280' },
-  infoValue: { fontSize: 14, fontWeight: '600', color: '#303030' },
+  infoLabel: { fontSize: 14, color: theme.colors.mutedForeground },
+  infoValue: { fontSize: 14, fontWeight: '600', color: theme.colors.foreground },
   editButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: '#1271FF', borderRadius: 12, paddingVertical: 14, marginTop: 16,
+    gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, paddingVertical: 14, marginTop: 16,
   },
-  editButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#fff' },
-  dangerText: { fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 20 },
+  editButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.primaryForeground },
+  dangerText: { fontSize: 13, color: theme.colors.mutedForeground, marginBottom: 16, lineHeight: 20 },
   deleteButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, borderWidth: 2, borderColor: '#dc2626', borderRadius: 12, paddingVertical: 14,
+    gap: 8, borderWidth: 2, borderColor: theme.colors.destructive, borderRadius: 12, paddingVertical: 14,
   },
-  deleteButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: '#dc2626' },
+  deleteButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.destructive },
 });

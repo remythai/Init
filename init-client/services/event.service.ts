@@ -277,29 +277,15 @@ class EventService {
   }
 
   async getEventById(id: string): Promise<EventResponse> {
-    const userType = await authService.getUserType(); // ✅ await manquant dans le mobile
-    const endpoint = userType === 'orga'
-      ? `/api/events/${id}`
-      : `/api/events/users/list`;
-  
-    const response = await authService.authenticatedFetch(endpoint);
-  
+    const response = await authService.authenticatedFetch(`/api/events/${id}`);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || errorData.message || 'Événement non trouvé');
     }
-  
+
     const data = await response.json();
-    if (userType === 'orga') {
-      return data.data;
-    }
-  
-    const event = data.data.events.find((e: EventResponse) => e.id === parseInt(id));
-    if (!event) {
-      throw new Error('Événement non trouvé');
-    }
-  
-    return event;
+    return data.data;
   }
 
   async updateEvent(eventId: string, updates: Partial<{
@@ -319,6 +305,7 @@ class EventService {
     has_password_access: boolean;
     access_password: string;
     cooldown: string;
+    theme: string;
     custom_fields: CustomField[];
   }>): Promise<EventResponse> {
     const response = await authService.authenticatedFetch(
