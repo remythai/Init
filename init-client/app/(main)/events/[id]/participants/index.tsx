@@ -150,7 +150,7 @@ export default function ParticipantsScreen() {
 
       <FlatList
         data={filtered}
-        keyExtractor={item => String(item.user_id)}
+        keyExtractor={(item, index) => item.user_id != null ? String(item.user_id) : `participant-${index}`}
         renderItem={renderItem}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}

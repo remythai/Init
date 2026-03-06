@@ -2,6 +2,7 @@
 // Messagerie globale — toutes conversations de tous les événements
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
@@ -43,7 +44,8 @@ function formatTime(dateStr?: string): string {
 export default function GlobalMessageryScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const { setCurrentEventId } = useEvent();
 
   const [eventGroups, setEventGroups] = useState<EventConversations[]>([]);
@@ -261,9 +263,9 @@ export default function GlobalMessageryScreen() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   header: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
+    paddingHorizontal: 20, paddingTop: topInset + 10, paddingBottom: 14,
     backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },

@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   BackHandler,
   Image,
   Keyboard,
@@ -69,6 +70,40 @@ function formatDateLabel(dateStr: string): string {
 
 function toDateKey(dateStr: string): string {
   return new Date(dateStr).toISOString().slice(0, 10);
+}
+
+function TypingDots({ color }: { color: string }) {
+  const dots = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 200),
+          Animated.timing(dot, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.delay((2 - i) * 200),
+        ])
+      )
+    );
+    animations.forEach(a => a.start());
+    return () => animations.forEach(a => a.stop());
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
+      {dots.map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 6, height: 6, borderRadius: 3, backgroundColor: color,
+            opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
+            transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+          }}
+        />
+      ))}
+    </View>
+  );
 }
 
 export default function ConversationPage() {
@@ -333,11 +368,7 @@ export default function ConversationPage() {
       {/* Typing indicator */}
       {typingUsers.length > 0 && (
         <View style={styles.typingContainer}>
-          <View style={styles.typingDots}>
-            <View style={[styles.typingDot, styles.typingDot1]} />
-            <View style={[styles.typingDot, styles.typingDot2]} />
-            <View style={[styles.typingDot, styles.typingDot3]} />
-          </View>
+          <TypingDots color={theme.colors.placeholder} />
           <Text style={styles.typingText}>{otherUserName.split(' ')[0]} écrit...</Text>
         </View>
       )}
@@ -494,11 +525,6 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   bubbleTimeMe: { color: theme.colors.textMuted, textAlign: 'right' },
   bubbleTimeOther: { color: theme.colors.placeholder },
   typingContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: theme.colors.background },
-  typingDots: { flexDirection: 'row', gap: 3, alignItems: 'center' },
-  typingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.placeholder },
-  typingDot1: { opacity: 0.4 },
-  typingDot2: { opacity: 0.6 },
-  typingDot3: { opacity: 0.8 },
   typingText: { fontSize: 12, color: theme.colors.placeholder, fontStyle: 'italic' },
   inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingVertical: 10 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },

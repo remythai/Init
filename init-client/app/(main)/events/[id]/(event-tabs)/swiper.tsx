@@ -41,12 +41,7 @@ export default function SwiperScreen() {
         onMatch={() => {
           console.log("🎉 NOUVEAU MATCH ! event:", eventId);
           setMatchCount(c => c + 1);
-          
-          // ✅ S'assurer que le context est à jour avant de naviguer
           setCurrentEventId(eventId);
-          
-          // ✅ Navigation avec l'ID explicite dans l'URL
-          router.push(`/(main)/events/${eventId}/(event-tabs)/messagery`);
         }}
       />
     </View>
