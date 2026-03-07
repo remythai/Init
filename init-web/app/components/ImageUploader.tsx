@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Upload, Loader2, Trash2 } from "lucide-react";
+import ImageCropper from "./ImageCropper";
 
 interface ImageUploaderProps {
   currentImage?: string | null;
@@ -28,6 +29,7 @@ export default function ImageUploader({
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
@@ -37,35 +39,43 @@ export default function ImageUploader({
     banner: "aspect-[16/9]",
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     setError("");
 
-    // Validate file type
     if (!acceptedTypes.includes(file.type)) {
       setError(`Type de fichier non autorise. Types acceptes: ${acceptedTypes.join(", ")}`);
       return;
     }
 
-    // Validate file size
     if (file.size > maxSizeBytes) {
       setError(`Le fichier est trop volumineux. Taille max: ${maxSizeMB}Mo`);
       return;
     }
 
-    // Show preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCropImageSrc(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropImageSrc(null);
+    setUploading(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       setPreview(event.target?.result as string);
     };
-    reader.readAsDataURL(file);
-
-    // Upload
-    setUploading(true);
+    reader.readAsDataURL(croppedFile);
     try {
-      await onUpload(file);
+      await onUpload(croppedFile);
       setPreview(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur lors de l'upload";
@@ -73,9 +83,6 @@ export default function ImageUploader({
       setPreview(null);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
@@ -174,6 +181,16 @@ export default function ImageUploader({
           </button>
         )}
       </div>
+
+      {/* Image Cropper Modal */}
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          aspectRatio={aspectRatio === "square" ? 1 : 16 / 9}
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropImageSrc(null)}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (

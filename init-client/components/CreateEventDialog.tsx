@@ -418,13 +418,13 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
       {/* Modal Principal */}
       <Modal
         visible={open}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         statusBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Créer un nouvel événement</Text>
@@ -961,8 +961,8 @@ export function CreateEventDialog({ onEventCreated }: CreateEventDialogProps) {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Date/Time Pickers */}

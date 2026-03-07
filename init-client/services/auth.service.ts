@@ -53,6 +53,8 @@ export interface Orga {
 }
 
 class AuthService {
+  private refreshPromise: Promise<string | null> | null = null;
+
   async setToken(token: string) {
     if (!token) {
       console.warn('Tentative de sauvegarde d\'un token undefined/null');
@@ -219,6 +221,18 @@ class AuthService {
   }
 
   async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this._doRefresh().finally(() => {
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
+  private async _doRefresh(): Promise<string | null> {
     const refreshToken = await this.getRefreshToken();
     const userType = await this.getUserType();
 
@@ -229,30 +243,39 @@ class AuthService {
 
     try {
       const endpoint = userType === 'orga' ? '/api/orga/refresh' : '/api/users/refresh';
-      
+
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Refresh token failed');
+      if (response.status === 401 || response.status === 403) {
+        await this.clearAuth();
+        return null;
       }
 
+      if (!response.ok) {
+        console.warn('Refresh failed with status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
       const newToken = data.data?.accessToken || data.accessToken || data.data?.token || data.token;
+      const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
       if (!newToken) {
-        throw new Error('No token in refresh response');
+        console.warn('No token in refresh response');
+        return null;
       }
 
       await this.setToken(newToken);
+      if (newRefreshToken) {
+        await this.setRefreshToken(newRefreshToken);
+      }
       return newToken;
     } catch (error) {
       console.error('Refresh token error:', error);
-      await this.clearAuth();
       return null;
     }
   }
@@ -276,7 +299,7 @@ class AuthService {
     if (response.status === 401) {
       console.log('Token expired, attempting refresh...');
       token = await this.refreshAccessToken();
-      
+
       if (token) {
         return fetch(`${API_URL}${url}`, {
           ...options,
@@ -286,9 +309,8 @@ class AuthService {
             Authorization: `Bearer ${token}`,
           },
         });
-      } else {
-        throw new Error('Failed to refresh token');
       }
+      return response;
     }
 
     return response;
@@ -334,18 +356,21 @@ class AuthService {
         }
       }
 
-      if (!response.ok) {
-        console.log('Token invalid for userType:', userType);
+      if (response.status === 403) {
         await this.clearAuth();
         return null;
+      }
+
+      if (!response.ok) {
+        console.warn('Validation request failed with status:', response.status);
+        return userType;
       }
 
       console.log('Token valid for userType:', userType);
       return userType;
     } catch (error) {
       console.error('Error validating token:', error);
-      await this.clearAuth();
-      return null;
+      return userType;
     }
   }
 
@@ -386,18 +411,21 @@ class AuthService {
         }
       }
 
-      if (!response.ok) {
-        console.log('Token invalid, clearing auth');
+      if (response.status === 403) {
         await this.clearAuth();
         return false;
+      }
+
+      if (!response.ok) {
+        console.warn('Validation request failed with status:', response.status);
+        return true;
       }
 
       console.log('Token valid');
       return true;
     } catch (error) {
       console.error('Error checking token:', error);
-      await this.clearAuth();
-      return false;
+      return true;
     }
   }
 

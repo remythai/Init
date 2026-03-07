@@ -417,14 +417,14 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
 
 export const MOCK_PUBLIC_EVENTS: EventListResponse = {
   events: MOCK_EVENT_RESPONSES,
-  total: MOCK_EVENT_RESPONSES.length,
+  total: 5,
   limit: 50,
   offset: 0,
 };
 
 export const MOCK_REGISTERED_EVENTS: EventListResponse = {
   events: MOCK_EVENT_RESPONSES.filter(e => e.is_registered),
-  total: MOCK_EVENT_RESPONSES.filter(e => e.is_registered).length,
+  total: 3,
   limit: 50,
   offset: 0,
 };

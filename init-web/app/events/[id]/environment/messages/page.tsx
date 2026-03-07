@@ -374,33 +374,27 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden px-0 md:px-6 lg:px-10">
       {/* Left Panel - Conversations List (Desktop) */}
-      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-r border-border ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
-        {/* Title */}
-        <div className="flex-shrink-0 p-4">
-          <h1 className="font-poppins text-2xl font-bold text-primary">Messages</h1>
-          <p className="text-muted text-sm mt-1">Vos conversations avec vos matchs</p>
-        </div>
-
+      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-card md:rounded-t-2xl md:mt-4 md:mr-4 md:shadow-sm overflow-hidden ${selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {error ? (
-            <div className="p-4 text-center">
-              <p className="text-red-500 mb-4">{error}</p>
+            <div className="p-6 text-center">
+              <p className="text-red-500 mb-3 text-sm">{error}</p>
               <button
                 onClick={loadConversations}
-                className="text-[#1271FF] hover:underline"
+                className="text-[#1271FF] hover:underline text-sm font-medium"
               >
                 Réessayer
               </button>
             </div>
           ) : conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="w-20 h-20 bg-badge rounded-full flex items-center justify-center mb-4">
-                <MessageCircle className="w-10 h-10 text-muted" />
+              <div className="w-16 h-16 bg-badge rounded-full flex items-center justify-center mb-4">
+                <MessageCircle className="w-8 h-8 text-muted" />
               </div>
-              <h2 className="text-primary font-semibold mb-2">Pas encore de matchs</h2>
+              <h3 className="text-primary font-semibold mb-1">Pas encore de matchs</h3>
               <p className="text-muted text-sm">
                 Commencez à swiper pour matcher avec d'autres participants !
               </p>
@@ -418,25 +412,25 @@ export default function MessagesPage() {
                     // Update URL to reflect selected conversation (for layout to hide nav on mobile)
                     router.replace(`/events/${eventId}/environment/messages?match=${conv.match_id}`, { scroll: false });
                   }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
-                    selectedMatchId === conv.match_id ? "bg-badge" : ""
-                  } ${conv.is_blocked || conv.is_other_user_blocked ? "opacity-60" : ""}`}
+                  className={`w-full px-5 py-7 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
+                    selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF] !border-b-0" : ""
+                  } ${conv.is_blocked || conv.is_other_user_blocked ? "opacity-50" : ""}`}
                 >
-                  <div className="relative">
+                  <div className="relative flex-shrink-0">
                     <img
                       src={getProfileImage(conv.user.photos, conv.user.firstname, conv.user.lastname)}
                       alt={conv.user.firstname}
-                      className="w-14 h-14 rounded-full object-cover"
+                      className="w-15 h-15 rounded-full object-cover"
                     />
                     {conv.unread_count > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-card flex items-center justify-center text-xs text-white font-medium">
+                      <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[#1271FF] rounded-full border-2 border-card flex items-center justify-center text-[10px] text-white font-bold">
                         {conv.unread_count}
                       </span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-primary">
+                      <h3 className={`font-semibold text-primary text-md ${conv.unread_count > 0 ? "text-primary" : ""}`}>
                         {conv.user.firstname} {conv.user.lastname?.charAt(0)}.
                       </h3>
                       {conv.last_message && (
@@ -445,12 +439,12 @@ export default function MessagesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted truncate">
+                    <p className={`text-md truncate mt-0.5 ${conv.unread_count > 0 ? "text-primary font-medium" : "text-muted"}`}>
                       {conv.last_message
                         ? conv.last_message.is_mine
                           ? `Vous: ${conv.last_message.content}`
                           : conv.last_message.content
-                        : "Nouveau match ! Dites bonjour 👋"}
+                        : "Nouveau match ! Dites bonjour"}
                     </p>
                   </div>
                 </button>
@@ -461,19 +455,18 @@ export default function MessagesPage() {
       </div>
 
       {/* Right Panel - Conversation */}
-      <div className={`flex-1 flex flex-col ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
+      <div className={`flex-1 flex flex-col bg-card md:rounded-t-2xl md:mt-4 md:shadow-sm overflow-hidden ${!selectedMatchId ? "hidden md:flex" : "flex"}`}>
         {selectedMatchId && conversationData ? (
-          <div className="h-full flex flex-col bg-page">
+          <div className="h-full flex flex-col">
             {/* Conversation Header */}
-            <div className="flex-shrink-0 bg-page border-b border-border px-4 py-3 flex items-center justify-between">
+            <div className="flex-shrink-0 bg-card border-b border-border px-5 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => {
                     setSelectedMatchId(null);
-                    // Clear URL param when going back to list
                     router.replace(`/events/${eventId}/environment/messages`, { scroll: false });
                   }}
-                  className="md:hidden text-muted hover:text-primary p-1"
+                  className="md:hidden text-muted hover:text-primary p-1 -ml-1"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -489,13 +482,13 @@ export default function MessagesPage() {
                       conversationData.match.user.lastname
                     )}
                     alt={conversationData.match.user.firstname}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-14 h-14 rounded-full object-cover"
                   />
                   <div className="text-left">
-                    <h2 className="font-semibold text-primary">
+                    <h2 className="font-semibold text-primary text-md">
                       {conversationData.match.user.firstname} {conversationData.match.user.lastname?.charAt(0)}.
                     </h2>
-                    <p className="text-xs text-muted">
+                    <p className="text-sm text-muted">
                       {conversationData.match.event_name}
                     </p>
                   </div>
@@ -503,7 +496,7 @@ export default function MessagesPage() {
               </div>
               <button
                 onClick={openReportModal}
-                className="p-2 text-muted hover:text-primary rounded-lg hover:bg-hover"
+                className="p-2 text-muted hover:text-secondary rounded-lg hover:bg-hover transition-colors"
                 title="Signaler"
               >
                 <MoreVertical className="w-5 h-5" />
@@ -511,17 +504,17 @@ export default function MessagesPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-page">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="w-8 h-8 border-[3px] border-[#1271FF]/20 border-t-[#1271FF] rounded-full animate-spin"></div>
                 </div>
               ) : conversationData.messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-badge rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-8 h-8 text-muted" />
+                  <div className="w-14 h-14 bg-card rounded-full shadow-sm flex items-center justify-center mb-3">
+                    <MessageCircle className="w-7 h-7 text-muted" />
                   </div>
-                  <p className="text-primary">
+                  <p className="text-primary font-medium">
                     Commencez la conversation !
                   </p>
                   <p className="text-muted text-sm mt-1">
@@ -541,7 +534,7 @@ export default function MessagesPage() {
                       <div key={message.id}>
                         {showDate && (
                           <div className="flex justify-center my-4">
-                            <span className="px-3 py-1 bg-badge rounded-full text-xs text-muted">
+                            <span className="px-3 py-1 bg-card rounded-full text-xs text-muted shadow-sm">
                               {formatDate(message.sent_at)}
                             </span>
                           </div>
@@ -550,16 +543,16 @@ export default function MessagesPage() {
                           className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[75%] px-4 py-2 rounded-2xl ${
+                            className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
                               isMine
                                 ? "bg-[#1271FF] text-white rounded-br-md"
                                 : "bg-received-msg text-primary shadow-sm rounded-bl-md"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap break-words hyphens-auto">{message.content}</p>
+                            <p className="whitespace-pre-wrap break-words hyphens-auto text-md">{message.content}</p>
                             <p
-                              className={`text-xs mt-1 ${
-                                isMine ? "text-white/70" : "text-muted"
+                              className={`text-[15px] mt-1 ${
+                                isMine ? "text-white/60" : "text-muted"
                               }`}
                             >
                               {formatTime(message.sent_at)}
@@ -576,8 +569,8 @@ export default function MessagesPage() {
 
             {/* Typing indicator */}
             {typingUsers.length > 0 && (
-              <div className="px-4 py-2">
-                <div className="inline-flex items-center gap-1.5 bg-page rounded-2xl px-4 py-3">
+              <div className="px-4 py-2 bg-page">
+                <div className="inline-flex items-center gap-1.5 bg-received-msg rounded-2xl px-4 py-3 shadow-sm">
                   <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
                   <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
                   <span className="typing-dot w-2 h-2 bg-muted rounded-full"></span>
@@ -586,9 +579,9 @@ export default function MessagesPage() {
             )}
 
             {/* Input */}
-            <div className="flex-shrink-0 bg-page border-t border-border p-4">
+            <div className="flex-shrink-0 bg-card border-t border-border p-4">
               {isArchived ? (
-                <div className="bg-red-50 dark:bg-red-500/20 rounded-xl px-4 py-3 text-center">
+                <div className="bg-red-50 rounded-xl px-4 py-3 text-center">
                   <p className="text-red-500 text-sm">
                     Vous avez été retiré de cet événement par l'organisateur
                   </p>
@@ -600,7 +593,7 @@ export default function MessagesPage() {
                   </p>
                 </div>
               ) : isEventExpired ? (
-                <div className="bg-orange-50 dark:bg-orange-500/20 rounded-xl px-4 py-3 text-center">
+                <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
                   <p className="text-orange-500 text-sm">
                     La période de disponibilité de cet événement est terminée
                   </p>
@@ -612,12 +605,10 @@ export default function MessagesPage() {
                     onChange={(e) => {
                       setNewMessage(e.target.value);
                       sendTyping(e.target.value.length > 0);
-                      // Auto-resize
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
                     }}
                     onKeyDown={(e) => {
-                      // On desktop (non-touch), Enter sends and Shift+Enter creates new line
                       const isMobile = window.matchMedia('(pointer: coarse)').matches;
                       if (e.key === "Enter" && !e.shiftKey && !isMobile) {
                         e.preventDefault();
@@ -625,31 +616,31 @@ export default function MessagesPage() {
                       }
                     }}
                     onBlur={() => sendTyping(false)}
-                    placeholder="Écrivez un message..."
+                    placeholder="Ecrivez un message..."
                     maxLength={500}
                     rows={1}
-                    className="flex-1 px-4 py-3 bg-badge rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted resize-none overflow-hidden"
+                    className="flex-1 px-4 py-3 bg-page rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1271FF] text-primary placeholder-muted resize-none overflow-hidden text-md"
                     style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sending}
-                    className="w-12 h-12 bg-[#1271FF] rounded-full flex items-center justify-center text-white hover:bg-[#1271FF]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    className="w-11 h-11 bg-[#303030] rounded-full flex items-center justify-center text-white hover:bg-[#404040] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-4.5 h-4.5" />
                   </button>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          // Empty state (Desktop)
-          <div className="h-full flex items-center justify-center bg-page">
+          /* Empty state (Desktop) */
+          <div className="h-full flex items-center justify-center">
             <div className="text-center">
-              <div className="w-24 h-24 bg-badge rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-12 h-12 text-muted" />
+              <div className="w-20 h-20 bg-badge rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-10 h-10 text-muted" />
               </div>
-              <h2 className="text-muted font-medium mb-1">Sélectionnez une conversation</h2>
+              <h2 className="text-primary font-medium mb-1">Sélectionnez une conversation</h2>
               <p className="text-muted text-sm">
                 Choisissez un match pour commencer à discuter
               </p>
@@ -855,7 +846,7 @@ export default function MessagesPage() {
 
                         // Handle regular values
                         return (
-                          <div key={key} className="bg-badge p-3 rounded-xl border border-border overflow-hidden">
+                          <div key={key} className="bg-badge p-3 rounded-xl overflow-hidden">
                             <p className="text-sm font-semibold text-primary mb-1">{formatLabel(key)}</p>
                             <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                           </div>

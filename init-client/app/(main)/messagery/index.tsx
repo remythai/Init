@@ -2,14 +2,17 @@
 // Messagerie globale — toutes conversations de tous les événements
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
-import { useEvent } from '@/context/EventContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
+import { useSocket } from '@/context/SocketContext';
+import { ConversationListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -41,17 +44,16 @@ function formatTime(dateStr?: string): string {
 export default function GlobalMessageryScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const { setCurrentEventId } = useEvent();
-
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const [eventGroups, setEventGroups] = useState<EventConversations[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
 
-  useEffect(() => { load(); }, []);
+  const { isConnected } = useSocket();
 
-  const load = async (isRefresh = false) => {
+  const load = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -63,7 +65,36 @@ export default function GlobalMessageryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Real-time: update conversations when new message arrives
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubConv = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      setEventGroups(prev => prev.map(group => {
+        const idx = group.conversations.findIndex(c => c.match_id === data.match_id);
+        if (idx === -1) return group;
+        const updated = [...group.conversations];
+        updated[idx] = {
+          ...updated[idx],
+          last_message: data.last_message,
+          unread_count: (updated[idx].unread_count || 0) + (data.last_message.is_mine ? 0 : 1),
+        };
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+        return { ...group, conversations: updated };
+      }));
+    });
+
+    const unsubMatch = socketService.onNewMatch(() => {
+      load(); // Reload all conversations to include the new match
+    });
+
+    return () => { unsubConv(); unsubMatch(); };
+  }, [isConnected, load]);
 
   const toggleCollapse = (eventId: number) => {
     setCollapsed(prev => {
@@ -74,9 +105,8 @@ export default function GlobalMessageryScreen() {
     });
   };
 
-  const handleConvPress = (conv: Conversation, eventId: number) => {
-    setCurrentEventId(eventId);
-    router.push(`/(main)/events/${eventId}/(event-tabs)/messagery/${conv.match_id}?from=global`);
+  const handleConvPress = (conv: Conversation, _eventId: number) => {
+    router.push(`/(main)/messagery/${conv.match_id}`);
   };
 
   const totalUnread = eventGroups.reduce((sum, g) =>
@@ -85,7 +115,16 @@ export default function GlobalMessageryScreen() {
 
   const totalConvs = eventGroups.reduce((sum, g) => sum + g.conversations.length, 0);
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Messages</Text>
+        </View>
+      </View>
+      <ConversationListSkeleton />
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -129,7 +168,6 @@ export default function GlobalMessageryScreen() {
 
             return (
               <View key={group.event.id} style={styles.group}>
-                {/* Event header */}
                 <Pressable
                   style={styles.groupHeader}
                   onPress={() => toggleCollapse(group.event.id)}
@@ -153,7 +191,6 @@ export default function GlobalMessageryScreen() {
                   />
                 </Pressable>
 
-                {/* Conversations */}
                 {!isCollapsed && (
                   <View style={styles.convList}>
                     {group.conversations.map((conv, idx) => {
@@ -169,7 +206,6 @@ export default function GlobalMessageryScreen() {
                           onPress={() => handleConvPress(conv, group.event.id)}
                           android_ripple={{ color: theme.colors.secondary }}
                         >
-                          {/* Avatar + badge */}
                           <View style={styles.avatarWrapper}>
                             <Avatar
                               firstname={conv.user?.firstname || '?'}
@@ -187,7 +223,6 @@ export default function GlobalMessageryScreen() {
                             )}
                           </View>
 
-                          {/* Info */}
                           <View style={styles.convInfo}>
                             <View style={styles.convRow1}>
                               <Text
@@ -230,9 +265,9 @@ export default function GlobalMessageryScreen() {
   );
 }
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   header: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
+    paddingHorizontal: 20, paddingTop: topInset + 10, paddingBottom: 14,
     backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },

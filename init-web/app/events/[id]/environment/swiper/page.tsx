@@ -836,6 +836,12 @@ export default function SwiperPage() {
                         )}
 
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-5 py-5 pb-4 md:hidden">
+                          <h2 className="text-2xl font-bold text-white mb-3">
+                            {currentProfile.firstname}
+                            {getAge(currentProfile) && (
+                              <span className="font-normal text-white/80">, {getAge(currentProfile)}</span>
+                            )}
+                          </h2>
                           <div className="flex items-center justify-between">
 
                             <div className="flex items-center gap-2">
@@ -1132,7 +1138,7 @@ export default function SwiperPage() {
 
                       // Handle regular values
                       return (
-                        <div key={key} className="bg-badge p-3 rounded-xl border border-border overflow-hidden">
+                        <div key={key} className="bg-badge p-3 rounded-xl overflow-hidden">
                           <p className="text-sm font-semibold text-primary mb-1">{formatFieldLabel(key)}</p>
                           <p className="text-secondary whitespace-pre-wrap break-words hyphens-auto">{String(value)}</p>
                         </div>
@@ -1148,33 +1154,6 @@ export default function SwiperPage() {
                   <p className="text-muted">Aucune information de profil</p>
                 </div>
               )}
-
-              <div className="h-16" />
-            </div>
-
-            {/* Footer with action buttons */}
-            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border px-5 py-4">
-              <div className="flex items-center justify-center gap-6">
-                <button
-                  onClick={() => {
-                    setShowProfileModal(false);
-                    setTimeout(() => handleSwipe("left"), 300);
-                  }}
-                  className="w-[70px] h-[70px] bg-card rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-red-500 hover:scale-105 transition-transform"
-                >
-                  <X className="w-8 h-8 text-red-500" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowProfileModal(false);
-                    setTimeout(() => handleSwipe("right"), 300);
-                  }}
-                  className="w-[70px] h-[70px] bg-card rounded-full shadow-lg flex items-center justify-center border-[2.5px] border-emerald-500 hover:scale-105 transition-transform"
-                >
-                  <Heart className="w-8 h-8 text-emerald-500" />
-                </button>
-              </div>
             </div>
           </div>
         </div>

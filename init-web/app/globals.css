@@ -27,7 +27,7 @@
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --received-msg-bg: #ffffff;
   --modal-bg: #ffffff;
-  --badge-bg: #e8e8e8;
+  --badge-bg: #ededed;
   --accent-solid: #303030;
   --accent-solid-text: #ffffff;
   --scrollbar-thumb: rgba(0, 0, 0, 0.12);
@@ -289,4 +289,22 @@ body::-webkit-scrollbar {
 /* Hide scrollbar for horizontal scroll */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Custom map popup styling */
+.custom-map-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: none;
+}
+
+.custom-map-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.custom-map-popup .leaflet-popup-tip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }

@@ -348,10 +348,10 @@ function GeneralMessagesContent() {
 
   // ─── Main content ───
   return (
-    <div className="min-h-screen bg-page">
+    <div className="h-screen bg-page flex flex-col overflow-hidden">
       {renderHeader(true)}
 
-      <main className="md:pt-20 md:pb-0" style={{ height: "100vh" }}>
+      <main className="md:pt-20 md:pb-0 flex-1 overflow-hidden">
         <div className="h-full flex mx-auto px-0 md:px-6 lg:px-10">
 
           {/* ── Left Panel: Conversations List ── */}
@@ -415,7 +415,7 @@ function GeneralMessagesContent() {
                                 setIsEventExpired(conv.is_event_expired || false);
                               }}
                               className={`w-full px-5 py-7 flex items-center gap-3 hover:bg-hover transition-colors text-left ${
-                                selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF]" : ""
+                                selectedMatchId === conv.match_id ? "bg-[#1271FF]/5 border-l-2 border-[#1271FF] !border-b-0" : ""
                               } ${conv.is_archived ? "opacity-50" : ""}`}
                             >
                               <div className="relative flex-shrink-0">
