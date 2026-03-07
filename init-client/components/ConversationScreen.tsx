@@ -2,7 +2,7 @@
 // Shared conversation UI used by both global and event messagery
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
-import { matchService } from '@/services/match.service';
+import { matchService, type MatchUserProfile, type Photo } from '@/services/match.service';
 import { reportService, ReportType } from '@/services/report.service';
 import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 import { Avatar } from '@/components/ui/Avatar';
@@ -13,12 +13,15 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -194,6 +197,12 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
   const [reportDesc, setReportDesc] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  // Profile modal
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState<MatchUserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profilePhotoIndex, setProfilePhotoIndex] = useState(0);
+
   const scrollToBottom = () => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   };
@@ -293,6 +302,35 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
     }
   };
 
+  const handleOpenProfile = async () => {
+    if (!matchId || isArchived || isOtherUserBlocked) return;
+    setLoadingProfile(true);
+    setShowProfile(true);
+    setProfilePhotoIndex(0);
+    try {
+      const profile = await matchService.getMatchProfile(matchId);
+      setProfileData(profile);
+    } catch (err) {
+      console.error('Erreur chargement profil:', err);
+      setShowProfile(false);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const calculateAge = (birthday?: string): number | null => {
+    if (!birthday) return null;
+    const birth = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
+  const formatFieldLabel = (fieldId: string): string =>
+    fieldId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
   // Group messages by date
   const groupedMessages = useMemo(() => {
     const groups: DateGroup[] = [];
@@ -341,7 +379,10 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
         <Pressable onPress={onBack} style={styles.headerBtn}>
           <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
         </Pressable>
-        <View style={styles.headerCenter}>
+        <Pressable
+          style={styles.headerCenter}
+          onPress={handleOpenProfile}
+        >
           <Avatar
             firstname={otherUserName.split(' ')[0]}
             lastname={otherUserName.split(' ')[1]}
@@ -353,7 +394,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
             <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
             <Text style={styles.headerSub} numberOfLines={1}>Match via {eventName}</Text>
           </View>
-        </View>
+        </Pressable>
         <Pressable onPress={() => setShowMenu(true)} style={styles.headerBtn}>
           <MaterialIcons name="more-vert" size={24} color={theme.colors.foreground} />
         </Pressable>
@@ -445,6 +486,104 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
               <Text style={styles.menuItemText}>Signaler l'utilisateur</Text>
             </TouchableOpacity>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* Profile modal */}
+      <Modal visible={showProfile} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setShowProfile(false)}>
+        <Pressable style={styles.profileOverlay} onPress={() => setShowProfile(false)}>
+          <Pressable style={styles.profileModal} onPress={(e) => e.stopPropagation()}>
+            <Pressable onPress={() => setShowProfile(false)} style={styles.profileCloseBtn}>
+              <MaterialIcons name="close" size={20} color="#FFF" />
+            </Pressable>
+
+            {loadingProfile ? (
+              <View style={styles.profileLoading}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+              </View>
+            ) : profileData ? (
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                {/* Photo carousel */}
+                <View style={styles.profilePhotoContainer}>
+                  {profileData.photos && profileData.photos.length > 0 ? (
+                    <>
+                      <Image
+                        source={{ uri: getPhotoUri(profileData.photos[profilePhotoIndex]?.file_path) || undefined }}
+                        style={styles.profilePhoto}
+                        resizeMode="cover"
+                      />
+                      {profileData.photos.length > 1 && (
+                        <>
+                          <View style={styles.profilePhotoIndicators}>
+                            {profileData.photos.map((_, idx) => (
+                              <View key={idx} style={[styles.profilePhotoIndicator, idx === profilePhotoIndex && styles.profilePhotoIndicatorActive]} />
+                            ))}
+                          </View>
+                          {profilePhotoIndex > 0 && (
+                            <Pressable style={[styles.profilePhotoNav, styles.profilePhotoNavLeft]} onPress={() => setProfilePhotoIndex(i => i - 1)}>
+                              <MaterialIcons name="chevron-left" size={28} color="#FFF" />
+                            </Pressable>
+                          )}
+                          {profilePhotoIndex < profileData.photos.length - 1 && (
+                            <Pressable style={[styles.profilePhotoNav, styles.profilePhotoNavRight]} onPress={() => setProfilePhotoIndex(i => i + 1)}>
+                              <MaterialIcons name="chevron-right" size={28} color="#FFF" />
+                            </Pressable>
+                          )}
+                        </>
+                      )}
+                      {/* Name overlay */}
+                      <View style={styles.profileNameOverlay}>
+                        <Text style={styles.profileNameText}>
+                          {profileData.firstname} {profileData.lastname?.charAt(0)}.
+                          {calculateAge(profileData.birthday) ? `, ${calculateAge(profileData.birthday)}` : ''}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.profileNoPhoto}>
+                      <Avatar
+                        firstname={profileData.firstname}
+                        lastname={profileData.lastname}
+                        size={100}
+                        bgColor={theme.colors.border}
+                      />
+                      <Text style={[styles.profileNameText, { color: theme.colors.foreground, marginTop: 12 }]}>
+                        {profileData.firstname} {profileData.lastname?.charAt(0)}.
+                        {calculateAge(profileData.birthday) ? `, ${calculateAge(profileData.birthday)}` : ''}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Profile info */}
+                <View style={styles.profileInfoSection}>
+                  {profileData.profil_info && Object.keys(profileData.profil_info).length > 0 ? (
+                    Object.entries(profileData.profil_info).map(([key, value]) => {
+                      if (!value || (Array.isArray(value) && value.length === 0)) return null;
+                      return (
+                        <View key={key} style={styles.profileInfoRow}>
+                          <Text style={styles.profileInfoLabel}>{formatFieldLabel(key)}</Text>
+                          {Array.isArray(value) ? (
+                            <View style={styles.profileInfoTags}>
+                              {value.map((v, i) => (
+                                <View key={i} style={styles.profileInfoTag}>
+                                  <Text style={styles.profileInfoTagText}>{String(v)}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          ) : (
+                            <Text style={styles.profileInfoValue}>{String(value)}</Text>
+                          )}
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={styles.profileInfoEmpty}>Aucune information de profil disponible</Text>
+                  )}
+                </View>
+              </ScrollView>
+            ) : null}
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -570,4 +709,28 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   reportBackText: { fontWeight: '600', color: theme.colors.foreground },
   reportSubmitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.colors.destructive, alignItems: 'center', justifyContent: 'center' },
   reportSubmitText: { fontWeight: '600', color: theme.colors.primaryForeground },
+  // Profile modal
+  profileOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 20 },
+  profileModal: { backgroundColor: theme.colors.card, borderRadius: 20, maxHeight: '85%', overflow: 'hidden' },
+  profileCloseBtn: { position: 'absolute', top: 12, right: 12, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  profileLoading: { height: 300, alignItems: 'center', justifyContent: 'center' },
+  profilePhotoContainer: { height: Dimensions.get('window').height * 0.4, backgroundColor: theme.colors.border, overflow: 'hidden' },
+  profilePhoto: { width: '100%', height: '100%' },
+  profilePhotoIndicators: { position: 'absolute', top: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 4, paddingHorizontal: 16 },
+  profilePhotoIndicator: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
+  profilePhotoIndicatorActive: { backgroundColor: '#FFF' },
+  profilePhotoNav: { position: 'absolute', top: '50%', width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  profilePhotoNavLeft: { left: 8 },
+  profilePhotoNavRight: { right: 8 },
+  profileNameOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.4)' },
+  profileNameText: { color: '#FFF', fontSize: 22, fontWeight: '700' },
+  profileNoPhoto: { width: '100%', height: 200, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary },
+  profileInfoSection: { padding: 16, gap: 12 },
+  profileInfoRow: { gap: 4 },
+  profileInfoLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.mutedForeground, textTransform: 'capitalize' },
+  profileInfoValue: { fontSize: 14, color: theme.colors.foreground },
+  profileInfoTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  profileInfoTag: { backgroundColor: theme.colors.secondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  profileInfoTagText: { fontSize: 13, color: theme.colors.foreground },
+  profileInfoEmpty: { fontSize: 13, color: theme.colors.mutedForeground, textAlign: 'center', paddingVertical: 16 },
 });
