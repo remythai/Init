@@ -30,14 +30,16 @@ export function AuthButton({ onPress, disabled, loading, label }: AuthButtonProp
 
 const createStyles = (theme: Theme) => StyleSheet.create({
   button: {
-    backgroundColor: theme.colors.foreground,
+    backgroundColor: theme.colors.accentSolid,
     borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 14,
     alignItems: 'center',
     marginTop: theme.spacing.lg,
   },
   buttonText: {
-    color: theme.colors.background,
+    color: theme.colors.accentSolidText,
     fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Poppins',
   },
 });

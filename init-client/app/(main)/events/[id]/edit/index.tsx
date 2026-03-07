@@ -3,10 +3,11 @@ import { eventService, CustomField, getFieldId, EventResponse } from '@/services
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import ImageCropper from '@/components/ImageCropper';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
@@ -296,6 +297,7 @@ export default function EditEventScreen() {
   // Banner
   const [bannerPath, setBannerPath] = useState<string | null>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [cropBannerUri, setCropBannerUri] = useState<string | null>(null);
 
   // Custom field editor
   const [editingField, setEditingField] = useState<{ index: number | null; field: CustomField } | null>(null);
@@ -410,18 +412,20 @@ export default function EditEventScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
+      mediaTypes: 'images',
+      allowsEditing: false,
+      quality: 1,
     });
     if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    const fileName = asset.uri.split('/').pop() || 'banner.jpg';
-    const fileType = asset.mimeType || 'image/jpeg';
+    setCropBannerUri(result.assets[0].uri);
+  };
+
+  const handleCroppedBanner = async (croppedUri: string) => {
+    setCropBannerUri(null);
+    const fileName = croppedUri.split('/').pop() || 'banner.jpg';
     setUploadingBanner(true);
     try {
-      const path = await eventService.uploadEventBanner(id, asset.uri, fileName, fileType);
+      const path = await eventService.uploadEventBanner(id, croppedUri, fileName, 'image/jpeg');
       setBannerPath(path);
       Alert.alert('Succès', 'Bannière mise à jour !');
     } catch (err: any) {
@@ -493,7 +497,7 @@ export default function EditEventScreen() {
     ]);
   };
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   // Show field editor inline (full screen overlay feel)
   if (editingField) {
@@ -800,6 +804,14 @@ export default function EditEventScreen() {
           )}
         </Pressable>
       </View>
+      {cropBannerUri && (
+        <ImageCropper
+          uri={cropBannerUri}
+          visible={true}
+          onCrop={handleCroppedBanner}
+          onCancel={() => setCropBannerUri(null)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -937,7 +949,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   saveButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.accentSolidText },
 
   // Banner
-  bannerPreview: { width: '100%', height: 160, borderRadius: 12 },
+  bannerPreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: 12, resizeMode: 'cover' as const },
   bannerButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.primary,

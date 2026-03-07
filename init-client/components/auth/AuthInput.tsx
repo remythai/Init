@@ -17,7 +17,7 @@ export function AuthInput({ label, value, onChangeText, ...props }: AuthInputPro
     },
     label: {
       marginBottom: theme.spacing.xs,
-      color: 'black',
+      color: theme.colors.foreground,
     },
     input: {
       backgroundColor: theme.colors.inputBackground,
@@ -27,7 +27,7 @@ export function AuthInput({ label, value, onChangeText, ...props }: AuthInputPro
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSizes.base,
-      color: 'black',
+      color: theme.colors.foreground,
       fontFamily: theme.fonts.primary,
     },
   });

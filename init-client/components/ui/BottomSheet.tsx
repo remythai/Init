@@ -1,7 +1,7 @@
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useMemo, type ReactNode } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -14,10 +14,10 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.content}>{children}</View>
-      </View>
+    <Modal visible={visible} animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.content} onPress={(e) => e.stopPropagation()}>{children}</Pressable>
+      </Pressable>
     </Modal>
   );
 }

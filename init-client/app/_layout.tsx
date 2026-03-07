@@ -3,11 +3,13 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { authService } from '@/services/auth.service';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
+import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
+import { SocketProvider } from '@/context/SocketContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,6 +57,13 @@ function RootLayoutInner() {
     }
   }, [isReady, isAuthenticated]);
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync(theme.colors.background);
+      NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
+    }
+  }, [isDark, theme.colors.background]);
+
   if (!isReady || isAuthenticated === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.card }}>
@@ -67,21 +76,31 @@ function RootLayoutInner() {
 
   return (
     <EventProvider>
-      <StatusBar style={statusBarStyle} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
-        <Stack.Screen name="(main)" options={{ animation: 'none' }} />
-        <Stack.Screen
-          name="settings"
-          options={{
-            presentation: 'modal',
-            headerShown: false,
-            title: 'Paramètres',
-            headerBackVisible: false,
-          }}
-        />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+      <SocketProvider>
+        <StatusBar style={statusBarStyle} />
+        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+          <Stack.Screen name="(main)" options={{ animation: 'fade' }} />
+          <Stack.Screen
+            name="settings"
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              headerShown: false,
+              title: 'Paramètres',
+              headerBackVisible: false,
+            }}
+          />
+          <Stack.Screen
+            name="theme"
+            options={{
+              animation: 'slide_from_right',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        </Stack>
+      </SocketProvider>
     </EventProvider>
   );
 }

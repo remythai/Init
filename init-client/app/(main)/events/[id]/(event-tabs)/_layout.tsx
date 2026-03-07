@@ -2,14 +2,14 @@
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
+import { Tabs, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventTabsLayout() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id } = useGlobalSearchParams();
   const segments = useSegments();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
