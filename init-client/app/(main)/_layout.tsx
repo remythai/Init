@@ -1,6 +1,8 @@
 import { type Theme } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useSocket } from '@/context/SocketContext';
 import { authService } from '@/services/auth.service';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,6 +17,7 @@ export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const [isOrga, setIsOrga] = useState(false);
+  const { isConnected } = useSocket();
 
   useEffect(() => {
     authService.getUserType().then((type) => setIsOrga(type === 'orga'));
@@ -49,6 +52,7 @@ export default function MainLayout() {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner isConnected={isConnected} />
       {!shouldHideHeader && (
         <View style={styles.header}>
           <Image

@@ -1,12 +1,12 @@
 // app/(main)/events/[id]/(event-tabs)/swiper.tsx
 import { View, StyleSheet, Text } from "react-native";
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { EventSwiper } from "@/components/EventSwiper";
 import { useEffect, useState } from 'react';
 import { useEvent } from '@/context/EventContext';
 
 export default function SwiperScreen() {
-  const { id: eventIdParam } = useLocalSearchParams<{ id: string }>();
+  const { id: eventIdParam } = useGlobalSearchParams<{ id: string }>();
   const router = useRouter();
   const { currentEventId, setCurrentEventId } = useEvent();
   

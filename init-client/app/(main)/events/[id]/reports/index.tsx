@@ -3,7 +3,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterTabs } from '@/components/ui/FilterTabs';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { StatsBanner } from '@/components/ui/StatsBanner';
 import { type Theme } from '@/constants/theme';
@@ -201,7 +201,7 @@ export default function ReportsScreen() {
     );
   };
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

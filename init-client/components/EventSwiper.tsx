@@ -2,6 +2,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as Haptics from 'expo-haptics';
 import {
   Animated,
   Dimensions,
@@ -19,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { matchService, Profile } from '@/services/match.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { SwiperSkeleton } from '@/components/ui/Skeleton';
 
 const { width, height } = Dimensions.get("window");
 const SWIPE_THRESHOLD = width * 0.25;
@@ -104,6 +106,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   };
 
   const forceSwipe = async (direction: "left" | "right") => {
+    Haptics.impactAsync(direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     const x = direction === "right" ? width + 100 : -width - 100;
     Animated.timing(position, {
       toValue: { x, y: 0 },
@@ -121,6 +124,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
         const result = await matchService.likeProfile(eventId, currentProfile.user_id);
         if (result.matched) {
           isMatch = true;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setMatchedProfile(currentProfile);
           setMatchId(result.match?.match_id || null);
           setShowMatchModal(true);
@@ -183,11 +187,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>Chargement des profils...</Text>
-      </View>
-    );
+    return <SwiperSkeleton />;
   }
 
   if (!currentProfile) {

@@ -5,14 +5,14 @@ import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
 import { useSocket } from '@/context/SocketContext';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ConversationListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -115,7 +115,7 @@ export default function EventMessageryScreen() {
       </View>
 
       {loading ? (
-        <ScreenLoader />
+        <ConversationListSkeleton />
       ) : conversations.length === 0 ? (
         <EmptyState
           icon="chat-bubble-outline"
@@ -123,19 +123,21 @@ export default function EventMessageryScreen() {
           subtitle="Commencez à swiper pour matcher avec d'autres participants !"
         />
       ) : (
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-          {conversations.map((conv) => {
+        <FlatList
+          data={conversations}
+          keyExtractor={item => String(item.match_id)}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item: conv }) => {
             const isDisabled = conv.is_blocked || conv.is_other_user_blocked;
             const unread = conv.unread_count || 0;
 
             return (
               <TouchableOpacity
-                key={conv.match_id}
                 onPress={() => handleMatchPress(conv.match_id, conv)}
                 style={[styles.convItem, isDisabled && styles.convItemDisabled]}
                 activeOpacity={0.7}
               >
-                {/* Avatar */}
                 <View style={styles.avatarWrapper}>
                   <Avatar
                     firstname={conv.user?.firstname}
@@ -151,7 +153,6 @@ export default function EventMessageryScreen() {
                   )}
                 </View>
 
-                {/* Info */}
                 <View style={styles.convInfo}>
                   <View style={styles.convTop}>
                     <Text style={styles.convName} numberOfLines={1}>
@@ -173,12 +174,11 @@ export default function EventMessageryScreen() {
                   </Text>
                 </View>
 
-                {/* Arrow */}
                 <MaterialIcons name="chevron-right" size={20} color={theme.colors.placeholder} />
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+        />
       )}
     </View>
   );

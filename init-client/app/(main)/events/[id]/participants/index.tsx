@@ -3,7 +3,7 @@ import { eventService } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -141,7 +141,7 @@ export default function ParticipantsScreen() {
     </Pressable>
   );
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

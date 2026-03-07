@@ -3,7 +3,7 @@ import { eventService, CustomField, getFieldId, EventResponse } from '@/services
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -497,7 +497,7 @@ export default function EditEventScreen() {
     ]);
   };
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   // Show field editor inline (full screen overlay feel)
   if (editingField) {

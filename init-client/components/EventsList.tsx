@@ -5,6 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  FlatList,
   Image,
   Keyboard,
   Modal,
@@ -191,7 +192,9 @@ export function EventsList({
       </View>
 
       {/* Events List */}
-      <ScrollView
+      <FlatList
+        data={filteredEvents}
+        keyExtractor={item => item.id}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -199,8 +202,7 @@ export function EventsList({
         onScrollBeginDrag={() => { isScrolling.current = true; }}
         onScrollEndDrag={() => { isScrolling.current = false; }}
         onMomentumScrollEnd={() => { isScrolling.current = false; }}
-      >
-        {filteredEvents.length === 0 ? (
+        ListEmptyComponent={
           <View style={styles.emptyState}>
             <MaterialIcons name="event-busy" size={48} color={theme.colors.placeholder} />
             <Text style={styles.emptyTitle}>Aucun événement</Text>
@@ -212,101 +214,99 @@ export function EventsList({
                   : "Aucun événement disponible"}
             </Text>
           </View>
-        ) : (
-          filteredEvents.map((event) => (
-            <Pressable
-              key={event.id}
-              style={styles.eventCard}
-              onPress={() => { if (!isScrolling.current) onEventClick(event); }}
-              unstable_pressDelay={100}
-            >
-              {/* Image */}
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
+        }
+        renderItem={({ item: event }) => (
+          <Pressable
+            style={styles.eventCard}
+            onPress={() => { if (!isScrolling.current) onEventClick(event); }}
+            unstable_pressDelay={100}
+          >
+            {/* Image */}
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: event.image }} style={styles.eventImage} />
 
-                {/* Top badges */}
-                <View style={styles.badgeContainer}>
-                  <View style={[styles.themeBadge, { backgroundColor: getThemeColor(event.theme) }]}>
-                    <Text style={styles.badgeText}>{event.theme}</Text>
-                  </View>
-                  {event.isRegistered && (
-                    <View style={styles.registeredBadge}>
-                      <Text style={styles.badgeText}>✓ Inscrit</Text>
-                    </View>
-                  )}
+              {/* Top badges */}
+              <View style={styles.badgeContainer}>
+                <View style={[styles.themeBadge, { backgroundColor: getThemeColor(event.theme) }]}>
+                  <Text style={styles.badgeText}>{event.theme}</Text>
                 </View>
-
-                {/* Orga logo */}
-                {event.orgaLogo && (
-                  <View style={styles.orgaLogoWrapper}>
-                    <Image source={{ uri: event.orgaLogo }} style={styles.orgaLogo} />
+                {event.isRegistered && (
+                  <View style={styles.registeredBadge}>
+                    <Text style={styles.badgeText}>✓ Inscrit</Text>
                   </View>
                 )}
               </View>
 
-              {/* Content */}
-              <View style={styles.cardContent}>
-                <Text style={styles.eventName} numberOfLines={2}>{event.name}</Text>
-
-                {event.orgaName && (
-                  <Text style={styles.orgaName}>{event.orgaName}</Text>
-                )}
-
-                <View style={styles.infoContainer}>
-                  {event.hasPhysicalEvent && (
-                    <>
-                      <View style={styles.infoRow}>
-                        <MaterialIcons name="event" size={15} color={theme.colors.placeholder} />
-                        <Text style={styles.infoText}>{event.physicalDate}</Text>
-                      </View>
-                      {event.location ? (
-                        <View style={styles.infoRow}>
-                          <MaterialIcons name="place" size={15} color={theme.colors.placeholder} />
-                          <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
-                        </View>
-                      ) : null}
-                    </>
-                  )}
-
-                  <View style={styles.infoRow}>
-                    <View style={styles.appBadge}>
-                      <Text style={styles.appBadgeText}>App</Text>
-                    </View>
-                    <Text style={styles.infoText}>{event.appDate}</Text>
-                  </View>
-
-                  <View style={styles.infoRow}>
-                    <MaterialIcons name="group" size={15} color={theme.colors.placeholder} />
-                    <Text style={styles.infoText}>
-                      {event.participants}/{event.maxParticipants} participants
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Progress Bar */}
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${fillPct(event)}%` as any }]} />
-                </View>
-              </View>
-
-              {/* Enter button */}
-              {event.isRegistered && onEnterEvent && (
-                <View style={styles.actionContainer}>
-                  <Pressable
-                    style={styles.enterButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      onEnterEvent(event);
-                    }}
-                  >
-                    <Text style={styles.enterButtonText}>Accéder à l'environnement</Text>
-                  </Pressable>
+              {/* Orga logo */}
+              {event.orgaLogo && (
+                <View style={styles.orgaLogoWrapper}>
+                  <Image source={{ uri: event.orgaLogo }} style={styles.orgaLogo} />
                 </View>
               )}
-            </Pressable>
-          ))
+            </View>
+
+            {/* Content */}
+            <View style={styles.cardContent}>
+              <Text style={styles.eventName} numberOfLines={2}>{event.name}</Text>
+
+              {event.orgaName && (
+                <Text style={styles.orgaName}>{event.orgaName}</Text>
+              )}
+
+              <View style={styles.infoContainer}>
+                {event.hasPhysicalEvent && (
+                  <>
+                    <View style={styles.infoRow}>
+                      <MaterialIcons name="event" size={15} color={theme.colors.placeholder} />
+                      <Text style={styles.infoText}>{event.physicalDate}</Text>
+                    </View>
+                    {event.location ? (
+                      <View style={styles.infoRow}>
+                        <MaterialIcons name="place" size={15} color={theme.colors.placeholder} />
+                        <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+                      </View>
+                    ) : null}
+                  </>
+                )}
+
+                <View style={styles.infoRow}>
+                  <View style={styles.appBadge}>
+                    <Text style={styles.appBadgeText}>App</Text>
+                  </View>
+                  <Text style={styles.infoText}>{event.appDate}</Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="group" size={15} color={theme.colors.placeholder} />
+                  <Text style={styles.infoText}>
+                    {event.participants}/{event.maxParticipants} participants
+                  </Text>
+                </View>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${fillPct(event)}%` as any }]} />
+              </View>
+            </View>
+
+            {/* Enter button */}
+            {event.isRegistered && onEnterEvent && (
+              <View style={styles.actionContainer}>
+                <Pressable
+                  style={styles.enterButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onEnterEvent(event);
+                  }}
+                >
+                  <Text style={styles.enterButtonText}>Accéder à l'environnement</Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
         )}
-      </ScrollView>
+      />
 
       {/* Advanced Filters Modal */}
       <Modal

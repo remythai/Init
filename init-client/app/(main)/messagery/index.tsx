@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { matchService, Conversation } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
 import { useSocket } from '@/context/SocketContext';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ConversationListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -115,7 +115,16 @@ export default function GlobalMessageryScreen() {
 
   const totalConvs = eventGroups.reduce((sum, g) => sum + g.conversations.length, 0);
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Messages</Text>
+        </View>
+      </View>
+      <ConversationListSkeleton />
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -159,7 +168,6 @@ export default function GlobalMessageryScreen() {
 
             return (
               <View key={group.event.id} style={styles.group}>
-                {/* Event header */}
                 <Pressable
                   style={styles.groupHeader}
                   onPress={() => toggleCollapse(group.event.id)}
@@ -183,7 +191,6 @@ export default function GlobalMessageryScreen() {
                   />
                 </Pressable>
 
-                {/* Conversations */}
                 {!isCollapsed && (
                   <View style={styles.convList}>
                     {group.conversations.map((conv, idx) => {
@@ -199,7 +206,6 @@ export default function GlobalMessageryScreen() {
                           onPress={() => handleConvPress(conv, group.event.id)}
                           android_ripple={{ color: theme.colors.secondary }}
                         >
-                          {/* Avatar + badge */}
                           <View style={styles.avatarWrapper}>
                             <Avatar
                               firstname={conv.user?.firstname || '?'}
@@ -217,7 +223,6 @@ export default function GlobalMessageryScreen() {
                             )}
                           </View>
 
-                          {/* Info */}
                           <View style={styles.convInfo}>
                             <View style={styles.convRow1}>
                               <Text
