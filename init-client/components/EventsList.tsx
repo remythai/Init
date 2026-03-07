@@ -468,8 +468,8 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
   },
-  imageContainer: { position: "relative", height: 180 },
-  eventImage: { width: "100%", height: "100%" },
+  imageContainer: { position: "relative", aspectRatio: 16 / 9 },
+  eventImage: { width: "100%", height: "100%", resizeMode: "cover" },
   badgeContainer: {
     position: "absolute", top: 12, left: 12, right: 12,
     flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",

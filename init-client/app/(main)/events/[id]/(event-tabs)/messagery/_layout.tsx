@@ -6,9 +6,10 @@ export default function EventMessageryLayout() {
   console.log('🔍 MessageryLayout ALL params:', params);
   
   return (
-    <Stack 
-      screenOptions={{ 
+    <Stack
+      screenOptions={{
         headerShown: false,
+        animation: 'slide_from_right',
         contentStyle: { backgroundColor: 'white' },
       }}
     />

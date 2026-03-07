@@ -78,19 +78,27 @@ function RootLayoutInner() {
     <EventProvider>
       <SocketProvider>
         <StatusBar style={statusBarStyle} />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
-          <Stack.Screen name="(main)" options={{ animation: 'none' }} />
+        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+          <Stack.Screen name="(main)" options={{ animation: 'fade' }} />
           <Stack.Screen
             name="settings"
             options={{
               presentation: 'modal',
+              animation: 'slide_from_bottom',
               headerShown: false,
               title: 'Paramètres',
               headerBackVisible: false,
             }}
           />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="theme"
+            options={{
+              animation: 'slide_from_right',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         </Stack>
       </SocketProvider>
     </EventProvider>

@@ -2,8 +2,8 @@ import { Stack } from 'expo-router';
 
 export default function MessageryLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="index" options={{ animation: 'fade' }} />
       <Stack.Screen name="[id]" />
     </Stack>
   );

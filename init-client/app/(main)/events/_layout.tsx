@@ -3,9 +3,9 @@ import { Stack } from 'expo-router';
 
 export default function EventsLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="[id]" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="index" options={{ animation: 'fade' }} />
+      <Stack.Screen name="[id]" />
     </Stack>
   );
 }

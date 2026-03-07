@@ -9,7 +9,7 @@ import { ScreenLoader } from '@/components/ui/ScreenLoader';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
@@ -27,7 +27,7 @@ export default function EventMessageryScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { id: eventIdParam } = useLocalSearchParams<{ id: string }>();
+  const { id: eventIdParam } = useGlobalSearchParams<{ id: string }>();
   const { currentEventId, setCurrentEventId } = useEvent();
   const eventId = eventIdParam ? parseInt(eventIdParam) : currentEventId || 0;
 

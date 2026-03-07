@@ -10,7 +10,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme, isDark, themeMode } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleLogout = async () => {
@@ -32,34 +32,35 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <ThemedText style={styles.cardTitle}>Général</ThemedText>
             
-            <View style={styles.cardContent}>
-              <Pressable style={styles.settingItem}>
+            <View style={styles.cardContentDivided}>
+              <Pressable style={styles.dividedItem}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="language" size={20} color={theme.colors.foreground} />
                   <ThemedText style={styles.settingText}>Langue</ThemedText>
                 </View>
               </Pressable>
 
-              <Pressable style={styles.settingItemButton}>
+              <Pressable style={styles.dividedItem}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="notifications" size={20} color={theme.colors.foreground} />
                   <ThemedText style={styles.settingText}>Notifications</ThemedText>
                 </View>
               </Pressable>
 
-              <Pressable 
-                style={styles.settingItemButton}
-                onPress={toggleTheme}
+              <Pressable
+                style={[styles.dividedItem, styles.lastItem]}
+                onPress={() => router.push('/theme')}
               >
                 <View style={styles.settingLeft}>
-                  <MaterialIcons name="dark-mode" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Thème sombre</ThemedText>
+                  <MaterialIcons name="palette" size={20} color={theme.colors.foreground} />
+                  <ThemedText style={styles.settingText}>Thème</ThemedText>
                 </View>
-                <MaterialIcons 
-                  name={isDark ? "toggle-on" : "toggle-off"} 
-                  size={32} 
-                  color={isDark ? theme.colors.foreground : theme.colors.mutedForeground}
-                />
+                <View style={styles.settingRight}>
+                  <ThemedText style={styles.settingHint}>
+                    {themeMode === 'system' ? 'Système' : themeMode === 'dark' ? 'Sombre' : 'Clair'}
+                  </ThemedText>
+                  <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
+                </View>
               </Pressable>
             </View>
           </View>
@@ -208,6 +209,15 @@ const createStyles = (theme: Theme) =>
     settingText: {
       fontSize: 16,
       color: theme.colors.foreground,
+    },
+    settingRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    settingHint: {
+      fontSize: 14,
+      color: theme.colors.mutedForeground,
     },
     logoutCard: {
       backgroundColor: theme.colors.card,

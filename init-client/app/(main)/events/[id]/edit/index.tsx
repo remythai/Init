@@ -949,7 +949,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   saveButtonText: { fontFamily: 'Poppins', fontWeight: '600', fontSize: 14, color: theme.colors.accentSolidText },
 
   // Banner
-  bannerPreview: { width: '100%', height: 160, borderRadius: 12 },
+  bannerPreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: 12, resizeMode: 'cover' as const },
   bannerButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.primary,
