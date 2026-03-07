@@ -451,8 +451,10 @@ const createStyles = (theme: Theme, topInset: number, bottomInset: number) =>
     eyeButton: {
       position: "absolute",
       right: 12,
-      top: 38,
-      padding: 4,
+      bottom: 0,
+      height: 42,
+      justifyContent: "center" as const,
+      paddingHorizontal: 4,
     },
     // CGU
     cguRow: {
