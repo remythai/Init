@@ -574,13 +574,13 @@ export function EventDetail({
       {/* Registration modal */}
       <Modal
         visible={showProfileModal}
-        animationType="slide"
+        animationType="fade"
         transparent
         statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowProfileModal(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Informations requises pour l'inscription</Text>
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
               {event.customFields?.map((field) => renderCustomField(field))}
@@ -606,8 +606,8 @@ export function EventDetail({
                 </Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -618,8 +618,8 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContentOrga: { paddingBottom: 240 },
   scrollContentUser: { paddingBottom: 110 },
-  imageContainer: { position: "relative", height: 256 },
-  eventImage: { width: "100%", height: "100%" },
+  imageContainer: { position: "relative", aspectRatio: 16 / 9 },
+  eventImage: { width: "100%", height: "100%", resizeMode: "cover" },
   badgeContainer: { position: "absolute", bottom: 16, left: 16 },
   themeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   badgeText: { color: theme.colors.primaryForeground, fontSize: 12, fontWeight: "600" },

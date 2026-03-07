@@ -2,6 +2,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as Haptics from 'expo-haptics';
 import {
   Animated,
   Dimensions,
@@ -19,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { matchService, Profile } from '@/services/match.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { SwiperSkeleton } from '@/components/ui/Skeleton';
 
 const { width, height } = Dimensions.get("window");
 const SWIPE_THRESHOLD = width * 0.25;
@@ -62,6 +64,9 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<EventProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [matchId, setMatchId] = useState<number | null>(null);
 
   const position = useRef(new Animated.ValueXY()).current;
   const currentProfile = profiles[currentIndex];
@@ -101,6 +106,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   };
 
   const forceSwipe = async (direction: "left" | "right") => {
+    Haptics.impactAsync(direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     const x = direction === "right" ? width + 100 : -width - 100;
     Animated.timing(position, {
       toValue: { x, y: 0 },
@@ -112,13 +118,16 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   const onSwipeComplete = async (direction: "left" | "right") => {
     if (!currentProfile) return;
 
+    let isMatch = false;
     try {
       if (direction === "right") {
         const result = await matchService.likeProfile(eventId, currentProfile.user_id);
         if (result.matched) {
-          onMatch?.();
-          refreshMatches(eventId);
-          router.push(`/(main)/events/${eventId}/(event-tabs)/profile`);
+          isMatch = true;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setMatchedProfile(currentProfile);
+          setMatchId(result.match?.match_id || null);
+          setShowMatchModal(true);
         }
       } else {
         await matchService.passProfile(eventId, currentProfile.user_id);
@@ -127,7 +136,9 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
       console.error(`${direction} failed:`, error);
     }
 
-    nextProfile();
+    if (!isMatch) {
+      nextProfile();
+    }
   };
 
   const nextProfile = () => {
@@ -176,11 +187,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>Chargement des profils...</Text>
-      </View>
-    );
+    return <SwiperSkeleton />;
   }
 
   if (!currentProfile) {
@@ -300,20 +307,85 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
           style={[styles.actionButton, styles.dislikeButton]}
           onPress={() => forceSwipe("left")}
         >
-          <MaterialIcons name="close" size={28} color={shared.error} />
+          <MaterialIcons name="close" size={32} color="#ef4444" />
         </Pressable>
 
         <Pressable
           style={[styles.actionButton, styles.likeButton]}
           onPress={() => forceSwipe("right")}
         >
-          <MaterialIcons name="favorite" size={28} color={shared.success} />
+          <MaterialIcons name="favorite" size={32} color="#10b981" />
         </Pressable>
       </View>
 
+      {/* Match Modal */}
+      <Modal
+        visible={showMatchModal}
+        animationType="fade"
+        transparent={true}
+        statusBarTranslucent
+        onRequestClose={() => {
+          setShowMatchModal(false);
+          setMatchedProfile(null);
+          setMatchId(null);
+          nextProfile();
+        }}
+      >
+        <View style={styles.matchOverlay}>
+          <View style={styles.matchContent}>
+            {matchedProfile && (
+              <>
+                <View style={styles.matchAvatarContainer}>
+                  {matchedProfile.photos?.[0] ? (
+                    <Image
+                      source={{ uri: matchedProfile.photos[0].file_path }}
+                      style={styles.matchAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.matchAvatar, styles.matchAvatarPlaceholder]}>
+                      <MaterialIcons name="person" size={48} color="#fff" />
+                    </View>
+                  )}
+                </View>
+
+                <Text style={styles.matchTitle}>It's a Match !</Text>
+                <Text style={styles.matchSubtitle}>
+                  Vous et {matchedProfile.firstname} vous êtes likés mutuellement
+                </Text>
+
+                <Pressable
+                  style={styles.matchMessageBtn}
+                  onPress={() => {
+                    setShowMatchModal(false);
+                    setMatchedProfile(null);
+                    onMatch?.();
+                    router.push(`/(main)/events/${eventId}/(event-tabs)/messagery`);
+                  }}
+                >
+                  <MaterialIcons name="message" size={20} color="#fff" />
+                  <Text style={styles.matchMessageBtnText}>Envoyer un message</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.matchContinueBtn}
+                  onPress={() => {
+                    setShowMatchModal(false);
+                    setMatchedProfile(null);
+                    setMatchId(null);
+                    nextProfile();
+                  }}
+                >
+                  <Text style={styles.matchContinueBtnText}>Continuer à swiper</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showProfileModal}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
@@ -400,14 +472,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 style={[styles.modalActionButton, styles.modalDislikeButton]}
                 onPress={() => handleModalSwipe("left")}
               >
-                <MaterialIcons name="close" size={32} color={shared.error} />
+                <MaterialIcons name="close" size={32} color="#ef4444" />
               </Pressable>
 
               <Pressable
                 style={[styles.modalActionButton, styles.modalLikeButton]}
                 onPress={() => handleModalSwipe("right")}
               >
-                <MaterialIcons name="favorite" size={32} color={shared.success} />
+                <MaterialIcons name="favorite" size={32} color="#10b981" />
               </Pressable>
             </View>
           </View>
@@ -514,30 +586,22 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 20,
+    gap: 32,
     paddingVertical: 12,
     paddingBottom: 24,
   },
   actionButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.card,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
   },
   dislikeButton: {
-    borderWidth: 2,
-    borderColor: "#FCA5A5",
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
   likeButton: {
-    borderWidth: 2,
-    borderColor: "#6EE7B7",
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   modalOverlay: {
     flex: 1,
@@ -646,25 +710,17 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     borderTopColor: theme.colors.border,
   },
   modalActionButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: theme.colors.card,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
   },
   modalDislikeButton: {
-    borderWidth: 2.5,
-    borderColor: shared.error,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
   modalLikeButton: {
-    borderWidth: 2.5,
-    borderColor: shared.success,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   emptyContainer: {
     flex: 1,
@@ -694,7 +750,74 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     color: theme.colors.mutedForeground,
     textAlign: "center",
   },
+  // Match modal
+  matchOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  matchContent: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    maxWidth: 340,
+    width: '100%',
+  },
+  matchAvatarContainer: {
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  matchAvatar: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  matchAvatarPlaceholder: {
+    backgroundColor: theme.colors.mutedForeground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'Poppins-Bold',
+    marginBottom: 4,
+  },
+  matchSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  matchMessageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: shared.blue,
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  matchMessageBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Poppins',
+  },
+  matchContinueBtn: {
+    paddingVertical: 10,
+  },
+  matchContinueBtnText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+  },
 });
-function refreshMatches(eventId: number) {
-  throw new Error("Function not implemented.");
-}

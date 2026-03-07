@@ -16,7 +16,7 @@ export default function BottomNavigation({ userType, hidden }: BottomNavigationP
 
   if (userType === "orga") return null;
 
-  const eventDetailPattern = /^\/events\/[^/]+\/.+$/;
+  const eventDetailPattern = /^\/events\/[^/]+(\/.*)?$/;
   if (eventDetailPattern.test(pathname)) return null;
 
   const tabs = [

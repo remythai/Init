@@ -3,7 +3,7 @@ import { eventService, EventResponse } from '@/services/event.service';
 import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -102,7 +102,7 @@ export default function SettingsScreen() {
     );
   };
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

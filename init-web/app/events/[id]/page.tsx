@@ -608,7 +608,7 @@ export default function EventDetailPage() {
             <img
               src={event.image}
               alt={event.name}
-              className="w-full h-full object-cover rounded-3xl"
+              className="w-full h-full object-cover lg:rounded-3xl"
             />
             <div className="absolute bottom-4 left-4">
               <span
@@ -720,7 +720,7 @@ export default function EventDetailPage() {
       </main>
 
       {/* Fixed Action Buttons */}
-      <div ref={footerRef} className="fixed bottom-20 md:bottom-0 left-0 right-0 bg-card border-t border-border p-6">
+      <div ref={footerRef} className="fixed bottom-0 left-0 right-0 p-6 bg-page/40 backdrop-blur-xs">
         <div className="max-w-4xl mx-auto">
           {userType === "orga" ? (
             /* Organizer actions - Modify, Delete, View Participants */
@@ -803,10 +803,10 @@ export default function EventDetailPage() {
               <button
                 onClick={handleUnregister}
                 disabled={registering}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-red-500 text-red-500 font-semibold hover:bg-red-500 hover:text-white cursor-pointer transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-white hover:text-red-500 cursor-pointer transition-colors disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
-                {registering ? "Chargement..." : "Se desinscrire"}
+                {registering ? "Chargement..." : "Se désinscrire"}
               </button>
               <Link
                 href={`/events/${eventId}/environment/swiper`}

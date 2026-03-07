@@ -2,7 +2,7 @@ import { View, StyleSheet, Alert } from "react-native";
 import { Profile, UserProfile, OrgaProfile } from "@/components/Profile";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
-import { ScreenLoader } from "@/components/ui/ScreenLoader";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useMemo } from "react";
 import { authService } from "@/services/auth.service";
 import { useRouter } from "expo-router";
@@ -113,7 +113,7 @@ export default function MyProfileScreen() {
   };
 
   if (loading || !profile || !profileType) {
-    return <ScreenLoader color={theme.colors.foreground} />;
+    return <ProfileSkeleton />;
   }
 
   return (
