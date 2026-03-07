@@ -262,6 +262,7 @@ class AuthService {
 
       const data = await response.json();
       const newToken = data.data?.accessToken || data.accessToken || data.data?.token || data.token;
+      const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
       if (!newToken) {
         console.warn('No token in refresh response');
@@ -269,6 +270,9 @@ class AuthService {
       }
 
       await this.setToken(newToken);
+      if (newRefreshToken) {
+        await this.setRefreshToken(newRefreshToken);
+      }
       return newToken;
     } catch (error) {
       console.error('Refresh token error:', error);
