@@ -574,13 +574,13 @@ export function EventDetail({
       {/* Registration modal */}
       <Modal
         visible={showProfileModal}
-        animationType="slide"
+        animationType="fade"
         transparent
         statusBarTranslucent
         onRequestClose={() => setShowProfileModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowProfileModal(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Informations requises pour l'inscription</Text>
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
               {event.customFields?.map((field) => renderCustomField(field))}
@@ -606,8 +606,8 @@ export function EventDetail({
                 </Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );

@@ -4,7 +4,7 @@
     "slug": "init",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/initLogoGray.png",
+    "icon": "./assets/images/initLogoApp.png",
     "scheme": "init",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,9 +15,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/initLogoGray.png",
-        "backgroundImage": "./assets/images/initLogoGray.png",
-        "monochromeImage": "./assets/images/initLogoGray.png"
+        "foregroundImage": "./assets/images/initLogoApp.png",
+        "backgroundImage": "./assets/images/initLogoApp.png",
+        "monochromeImage": "./assets/images/initLogoApp.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -26,14 +26,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/initLogoGray.png"
+      "favicon": "./assets/images/initLogoApp.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/initLogoGray.png",
+          "image": "./assets/images/initLogoApp.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#303030",

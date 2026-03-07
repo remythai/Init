@@ -7,11 +7,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { theme, isDark, themeMode } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.bottom), [theme, insets.bottom]);
 
   const handleLogout = async () => {
     try {
@@ -136,7 +138,7 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, bottomInset: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -148,7 +150,7 @@ const createStyles = (theme: Theme) =>
     content: {
       padding: 16,
       gap: 16,
-      paddingBottom: 80,
+      paddingBottom: Math.max(bottomInset, 16) + 16,
     },
     card: {
       backgroundColor: theme.colors.card,

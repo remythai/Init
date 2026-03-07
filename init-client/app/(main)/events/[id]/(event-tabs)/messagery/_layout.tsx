@@ -1,16 +1,15 @@
-//app/(main)/events/[ið]/(event-tabs)/messagery/_layout.tsx
-import { Stack, useLocalSearchParams } from 'expo-router';
+//app/(main)/events/[id]/(event-tabs)/messagery/_layout.tsx
+import { Stack } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function EventMessageryLayout() {
-  const params = useLocalSearchParams();
-  console.log('🔍 MessageryLayout ALL params:', params);
-  
+  const { theme } = useTheme();
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: 'white' },
+        contentStyle: { backgroundColor: theme.colors.background },
       }}
     />
   );

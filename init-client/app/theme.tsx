@@ -4,6 +4,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 
 const OPTIONS: { mode: ThemeMode; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
@@ -14,7 +15,8 @@ const OPTIONS: { mode: ThemeMode; label: string; icon: keyof typeof MaterialIcon
 
 export default function ThemeScreen() {
   const { theme, themeMode, setThemeMode } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme, insets.bottom), [theme, insets.bottom]);
 
   return (
     <View style={styles.container}>
@@ -59,7 +61,7 @@ export default function ThemeScreen() {
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, bottomInset: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -68,6 +70,7 @@ const createStyles = (theme: Theme) =>
     content: {
       padding: 16,
       gap: 12,
+      paddingBottom: Math.max(bottomInset, 16) + 16,
     },
     card: {
       backgroundColor: theme.colors.card,

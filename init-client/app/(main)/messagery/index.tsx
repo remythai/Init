@@ -3,7 +3,7 @@
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEvent } from '@/context/EventContext';
+// import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
 import { useSocket } from '@/context/SocketContext';
@@ -46,8 +46,6 @@ export default function GlobalMessageryScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
-  const { setCurrentEventId } = useEvent();
-
   const [eventGroups, setEventGroups] = useState<EventConversations[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,9 +105,8 @@ export default function GlobalMessageryScreen() {
     });
   };
 
-  const handleConvPress = (conv: Conversation, eventId: number) => {
-    setCurrentEventId(eventId);
-    router.push(`/(main)/events/${eventId}/(event-tabs)/messagery/${conv.match_id}?from=global`);
+  const handleConvPress = (conv: Conversation, _eventId: number) => {
+    router.push(`/(main)/messagery/${conv.match_id}`);
   };
 
   const totalUnread = eventGroups.reduce((sum, g) =>

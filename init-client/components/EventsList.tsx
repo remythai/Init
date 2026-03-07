@@ -311,13 +311,13 @@ export function EventsList({
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         statusBarTranslucent
         onRequestClose={() => setIsAdvancedOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setIsAdvancedOpen(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtres</Text>
               <Pressable onPress={() => setIsAdvancedOpen(false)}>
@@ -409,8 +409,8 @@ export function EventsList({
                 <Text style={styles.applyButtonText}>Appliquer</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {userType === "organizer" && onCreateEvent && (
