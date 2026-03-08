@@ -17,7 +17,7 @@ export const OrgaController = {
     const { mail, password } = req.body;
     const result = await OrgaService.login(mail, password);
     setRefreshCookie(res, result.refreshToken);
-    success(res, { accessToken: result.accessToken, orga: result.orga }, 'Connexion réussie');
+    success(res, { accessToken: result.accessToken, refreshToken: result.refreshToken, orga: result.orga }, 'Connexion réussie');
   },
 
   async getProfile(req: Request, res: Response): Promise<void> {
@@ -34,13 +34,14 @@ export const OrgaController = {
   },
 
   async refreshToken(req: Request, res: Response): Promise<void> {
-    const tokens = await AuthService.rotateRefreshToken(req.cookies?.refreshToken);
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    const tokens = await AuthService.rotateRefreshToken(refreshToken);
     setRefreshCookie(res, tokens.refreshToken);
-    success(res, { accessToken: tokens.accessToken }, 'Token rafraîchi');
+    success(res, { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }, 'Token rafraîchi');
   },
 
   async logout(req: Request, res: Response): Promise<void> {
-    await AuthService.revokeRefreshToken(req.cookies?.refreshToken);
+    await AuthService.revokeRefreshToken(req.cookies?.refreshToken || req.body?.refreshToken);
     if (req.user) {
       await OrgaModel.setLogoutAt(req.user.id);
       disconnectUser(req.user.id);
