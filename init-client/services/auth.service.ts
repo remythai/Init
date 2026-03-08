@@ -1,6 +1,7 @@
 //auth.service.ts
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -60,7 +61,7 @@ class AuthService {
       console.warn('Tentative de sauvegarde d\'un token undefined/null');
       return;
     }
-    await AsyncStorage.setItem('token', token);
+    await SecureStore.setItemAsync('token', token);
   }
 
   async setRefreshToken(refreshToken: string) {
@@ -68,7 +69,7 @@ class AuthService {
       console.warn('Tentative de sauvegarde d\'un refreshToken undefined/null');
       return;
     }
-    await AsyncStorage.setItem('refreshToken', refreshToken);
+    await SecureStore.setItemAsync('refreshToken', refreshToken);
   }
 
   async setUserType(userType: 'user' | 'orga') {
@@ -80,11 +81,11 @@ class AuthService {
   }
 
   async getToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('token');
+    return await SecureStore.getItemAsync('token');
   }
 
   async getRefreshToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('refreshToken');
+    return await SecureStore.getItemAsync('refreshToken');
   }
 
   async getUserType(): Promise<'user' | 'orga' | null> {
@@ -92,7 +93,9 @@ class AuthService {
   }
 
   async clearAuth() {
-    await AsyncStorage.multiRemove(['token', 'refreshToken', 'userType']);
+    await SecureStore.deleteItemAsync('token');
+    await SecureStore.deleteItemAsync('refreshToken');
+    await AsyncStorage.removeItem('userType');
   }
 
   async login(credentials: LoginCredentials, isOrganizer: boolean): Promise<AuthResponse> {

@@ -5,13 +5,13 @@ import { type Theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // import { useEvent } from '@/context/EventContext';
 import { matchService, Conversation } from '@/services/match.service';
-import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
+import { socketService, type SocketConversationUpdate, type SocketMatch, type SocketMessage } from '@/services/socket.service';
 import { useSocket } from '@/context/SocketContext';
 import { ConversationListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -51,7 +51,7 @@ export default function GlobalMessageryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
 
-  const { isConnected } = useSocket();
+  const { isConnected, currentUserId } = useSocket();
 
   const load = useCallback(async (isRefresh = false) => {
     try {
@@ -67,7 +67,9 @@ export default function GlobalMessageryScreen() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(
+    useCallback(() => { load(); }, [load])
+  );
 
   // Real-time: update conversations when new message arrives
   useEffect(() => {
@@ -89,12 +91,40 @@ export default function GlobalMessageryScreen() {
       }));
     });
 
+    // Fallback: listen for new messages directly to update the list
+    const unsubMsg = socketService.onNewMessage((data: SocketMessage) => {
+      if (data.senderId === currentUserId) return;
+      setEventGroups(prev => {
+        let found = false;
+        const updated = prev.map(group => {
+          const idx = group.conversations.findIndex(c => c.match_id === data.matchId);
+          if (idx === -1) return group;
+          found = true;
+          const convs = [...group.conversations];
+          convs[idx] = {
+            ...convs[idx],
+            last_message: {
+              content: data.message.content,
+              sent_at: data.message.sent_at,
+              is_mine: false,
+            },
+            unread_count: (convs[idx].unread_count || 0) + 1,
+          };
+          const [item] = convs.splice(idx, 1);
+          convs.unshift(item);
+          return { ...group, conversations: convs };
+        });
+        if (!found) load(); // New conversation not in list yet
+        return found ? updated : prev;
+      });
+    });
+
     const unsubMatch = socketService.onNewMatch(() => {
       load(); // Reload all conversations to include the new match
     });
 
-    return () => { unsubConv(); unsubMatch(); };
-  }, [isConnected, load]);
+    return () => { unsubConv(); unsubMsg(); unsubMatch(); };
+  }, [isConnected, currentUserId, load]);
 
   const toggleCollapse = (eventId: number) => {
     setCollapsed(prev => {
