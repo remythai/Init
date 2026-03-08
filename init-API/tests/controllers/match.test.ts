@@ -39,6 +39,9 @@ const mocks = vi.hoisted(() => {
 
     // responses
     success: vi.fn(),
+
+    // emitters
+    emitMessageLiked: vi.fn(),
   };
 });
 
@@ -78,6 +81,10 @@ vi.mock('../../services/match.service.js', () => ({
 
 vi.mock('../../utils/responses.js', () => ({
   success: mocks.success,
+}));
+
+vi.mock('../../socket/emitters.js', () => ({
+  emitMessageLiked: mocks.emitMessageLiked,
 }));
 
 import { MatchController } from '../../controllers/match.controller';
@@ -318,13 +325,14 @@ describe('MatchController', () => {
 
     it('should toggle like and return result on success', async () => {
       mocks.getMessageById.mockResolvedValueOnce({
-        id: 1, user1_id: 1, user2_id: 2, sender_id: 2,
+        id: 1, match_id: 5, user1_id: 1, user2_id: 2, sender_id: 2,
       });
       mocks.toggleMessageLike.mockResolvedValueOnce({ is_liked: true });
 
       await MatchController.toggleLike(makeReq(), res);
 
       expect(mocks.toggleMessageLike).toHaveBeenCalledWith(1);
+      expect(mocks.emitMessageLiked).toHaveBeenCalledWith(5, 1, true, 1);
       expect(mocks.success).toHaveBeenCalledWith(res, { is_liked: true });
     });
   });
