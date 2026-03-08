@@ -1,6 +1,6 @@
 // services/socket.service.ts
 import { io, Socket } from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '@/services/auth.service';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -100,9 +100,9 @@ class SocketService {
       }
     });
 
-    // On reconnect, re-read the latest token from AsyncStorage
+    // On reconnect, re-read the latest token from SecureStore
     this.socket.io.on('reconnect_attempt', async () => {
-      const freshToken = await AsyncStorage.getItem('token');
+      const freshToken = await authService.getToken();
       if (freshToken && this.socket) {
         this.socket.auth = { token: freshToken };
       }

@@ -51,11 +51,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    // Reconnect when app comes to foreground
+    // Reconnect when app comes to foreground (refresh token if expired)
     const handleAppState = async (state: AppStateStatus) => {
       if (state === 'active') {
-        const token = await authService.getToken();
-        if (token && !socketService.isConnected()) {
+        let token = await authService.getToken();
+        if (!token) return;
+        if (!socketService.isConnected()) {
+          // Try to refresh the token in case it expired while in background
+          const freshToken = await authService.refreshAccessToken();
+          if (freshToken) token = freshToken;
           socketService.connect(token);
         }
       }
