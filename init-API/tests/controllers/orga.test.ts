@@ -100,7 +100,7 @@ describe('OrgaController', () => {
       expect(mocks.setRefreshCookie).toHaveBeenCalledWith(res, 'refresh-token');
       expect(mocks.successFn).toHaveBeenCalledWith(
         res,
-        { accessToken: 'access-token', orga: loginResult.orga },
+        { accessToken: 'access-token', refreshToken: 'refresh-token', orga: loginResult.orga },
         'Connexion r\u00e9ussie'
       );
     });
@@ -185,7 +185,7 @@ describe('OrgaController', () => {
 
       expect(mocks.AuthService.rotateRefreshToken).toHaveBeenCalledWith('old-refresh-token');
       expect(mocks.setRefreshCookie).toHaveBeenCalledWith(res, 'new-refresh-token');
-      expect(mocks.successFn).toHaveBeenCalledWith(res, { accessToken: 'new-access-token' }, 'Token rafra\u00eechi');
+      expect(mocks.successFn).toHaveBeenCalledWith(res, { accessToken: 'new-access-token', refreshToken: 'new-refresh-token' }, 'Token rafra\u00eechi');
     });
   });
 
