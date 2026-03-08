@@ -1,9 +1,12 @@
 // app/(main)/events/[id]/(event-tabs)/_layout.tsx
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
+import { useSocket } from '@/context/SocketContext';
+import { matchService } from '@/services/match.service';
+import { socketService, type SocketConversationUpdate, type SocketMessage } from '@/services/socket.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +20,41 @@ export default function EventTabsLayout() {
 
   const isInConversation = segments[segments.length - 2] === 'messagery' &&
     segments[segments.length - 1] !== 'index';
+
+  const eventId = id ? String(id) : '';
+  const { isConnected, currentUserId } = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadUnread = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      const data = await matchService.getEventConversations(eventId);
+      const count = (data?.conversations || []).reduce((s: number, c: any) => s + (c.unread_count || 0), 0);
+      setUnreadCount(count);
+    } catch {
+      // silent
+    }
+  }, [eventId]);
+
+  useEffect(() => { loadUnread(); }, [loadUnread]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubConv = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      if (!data.last_message.is_mine) {
+        setUnreadCount(prev => prev + 1);
+      }
+    });
+
+    const unsubMsg = socketService.onNewMessage((data: SocketMessage) => {
+      if (data.senderId !== currentUserId) {
+        setUnreadCount(prev => prev + 1);
+      }
+    });
+
+    return () => { unsubConv(); unsubMsg(); };
+  }, [isConnected, currentUserId]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -123,6 +161,11 @@ export default function EventTabsLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="message" size={24} color={color} />
             ),
+            tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+            tabBarBadgeStyle: { backgroundColor: theme.colors.primary, fontSize: 10, fontWeight: '700' },
+          }}
+          listeners={{
+            focus: () => loadUnread(),
           }}
         />
       </Tabs>

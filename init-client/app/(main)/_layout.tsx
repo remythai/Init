@@ -2,10 +2,12 @@ import { type Theme } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useSocket } from '@/context/SocketContext';
 import { authService } from '@/services/auth.service';
+import { matchService } from '@/services/match.service';
+import { socketService, type SocketConversationUpdate, type SocketMessage } from '@/services/socket.service';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,11 +19,46 @@ export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const [isOrga, setIsOrga] = useState(false);
-  const { isConnected } = useSocket();
+  const [totalUnread, setTotalUnread] = useState(0);
+  const { isConnected, currentUserId } = useSocket();
 
   useEffect(() => {
     authService.getUserType().then((type) => setIsOrga(type === 'orga'));
   }, []);
+
+  // Fetch total unread count
+  const loadUnread = useCallback(async () => {
+    if (isOrga) return;
+    try {
+      const data = await matchService.getAllConversations();
+      const count = (data || []).reduce((sum: number, g: any) =>
+        sum + g.conversations.reduce((s: number, c: any) => s + (c.unread_count || 0), 0), 0);
+      setTotalUnread(count);
+    } catch {
+      // silent
+    }
+  }, [isOrga]);
+
+  useEffect(() => { loadUnread(); }, [loadUnread]);
+
+  // Real-time: update unread badge on new messages
+  useEffect(() => {
+    if (!isConnected || isOrga) return;
+
+    const unsubConv = socketService.onConversationUpdate((data: SocketConversationUpdate) => {
+      if (!data.last_message.is_mine) {
+        setTotalUnread(prev => prev + 1);
+      }
+    });
+
+    const unsubMsg = socketService.onNewMessage((data: SocketMessage) => {
+      if (data.senderId !== currentUserId) {
+        setTotalUnread(prev => prev + 1);
+      }
+    });
+
+    return () => { unsubConv(); unsubMsg(); };
+  }, [isConnected, isOrga, currentUserId]);
 
   const isInEventTabs = segments.includes('(event-tabs)');
   const isInEventDetail = pathname.match(/\/events\/[^/]+/) !== null;
@@ -120,7 +157,12 @@ export default function MainLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialIcons name="message" size={24} color={color} />
             ),
+            tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : totalUnread) : undefined,
+            tabBarBadgeStyle: { backgroundColor: theme.colors.primary, fontSize: 10, fontWeight: '700' },
             ...(isOrga ? { href: null } : {}),
+          }}
+          listeners={{
+            focus: () => loadUnread(),
           }}
         />
       </Tabs>
