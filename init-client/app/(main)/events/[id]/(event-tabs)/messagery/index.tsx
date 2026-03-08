@@ -3,7 +3,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { useEvent } from '@/context/EventContext';
 import { matchService } from '@/services/match.service';
-import { socketService, type SocketConversationUpdate, type SocketMatch } from '@/services/socket.service';
+import { socketService, type SocketConversationUpdate, type SocketMatch, type SocketMessage } from '@/services/socket.service';
 import { useSocket } from '@/context/SocketContext';
 import { ConversationListSkeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
@@ -34,7 +34,7 @@ export default function EventMessageryScreen() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { isConnected } = useSocket();
+  const { isConnected, currentUserId } = useSocket();
   const conversationsRef = useRef(conversations);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
@@ -82,14 +82,35 @@ export default function EventMessageryScreen() {
       });
     });
 
+    // Fallback: listen for new messages directly
+    const unsubMsg = socketService.onNewMessage((data: SocketMessage) => {
+      if (data.senderId === currentUserId) return;
+      setConversations(prev => {
+        const idx = prev.findIndex(c => c.match_id === data.matchId);
+        if (idx === -1) return prev;
+        const updated = [...prev];
+        updated[idx] = {
+          ...updated[idx],
+          last_message: {
+            content: data.message.content,
+            sent_at: data.message.sent_at,
+            is_mine: false,
+          },
+          unread_count: (updated[idx].unread_count || 0) + 1,
+        };
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+        return updated;
+      });
+    });
+
     const unsubMatch = socketService.onNewMatch((data: SocketMatch) => {
       if (data.event_id !== eventId) return;
-      // Reload to get the new conversation
       loadConversations();
     });
 
-    return () => { unsubConv(); unsubMatch(); };
-  }, [isConnected, eventId, loadConversations]);
+    return () => { unsubConv(); unsubMsg(); unsubMatch(); };
+  }, [isConnected, currentUserId, eventId, loadConversations]);
 
   const handleMatchPress = (matchId: number, conv: any) => {
     router.push(`/(main)/events/${eventId}/(event-tabs)/messagery/${matchId}`);

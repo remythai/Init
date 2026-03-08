@@ -138,6 +138,12 @@ export default function EventLayout() {
                 <MaterialIcons name="people" size={22} color={theme.colors.foreground} />
               </Pressable>
               <Pressable
+                onPress={() => router.push(`/(main)/events/${id}/whitelist`)}
+                style={styles.headerButton}
+              >
+                <MaterialIcons name="playlist-add-check" size={22} color={theme.colors.foreground} />
+              </Pressable>
+              <Pressable
                 onPress={() => router.push(`/(main)/events/${id}/reports`)}
                 style={styles.headerButton}
               >
