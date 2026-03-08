@@ -3,9 +3,11 @@ import PhotoManager from "@/components/PhotoManager";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { authService } from "@/services/auth.service";
+import { photoService, type Photo } from "@/services/photo.service";
+import ImageCropper from "@/components/ImageCropper";
 import * as ImagePicker from "expo-image-picker";
 import { Edit2, Save, X } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -68,8 +70,18 @@ export function Profile({
   const [editedProfile, setEditedProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [cropLogoUri, setCropLogoUri] = useState<string | null>(null);
+  const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  useEffect(() => {
+    if (profileType === "user") {
+      photoService.getPhotos().then((photos) => {
+        setPrimaryPhoto(photoService.getPrimaryPhoto(photos));
+      }).catch(() => {});
+    }
+  }, [profileType]);
 
   const handleSave = async () => {
     try {
@@ -119,21 +131,24 @@ export function Profile({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        mediaTypes: "images",
+        allowsEditing: false,
+        quality: 1,
       });
 
       if (result.canceled || !result.assets[0]) return;
+      setCropLogoUri(result.assets[0].uri);
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message || "Impossible de sélectionner l'image");
+    }
+  };
 
-      const asset = result.assets[0];
-      const fileName = asset.uri.split("/").pop() || "logo.jpg";
-      const fileType = asset.mimeType || "image/jpeg";
-
+  const handleCroppedLogo = async (croppedUri: string) => {
+    setCropLogoUri(null);
+    try {
+      const fileName = croppedUri.split("/").pop() || "logo.jpg";
       setUploadingLogo(true);
-      const logoPath = await authService.uploadOrgaLogo(asset.uri, fileName, fileType);
-
+      const logoPath = await authService.uploadOrgaLogo(croppedUri, fileName, "image/jpeg");
       setEditedProfile((prev) => ({ ...prev, logo_path: logoPath }));
       Alert.alert("Succès", "Logo mis à jour !");
     } catch (error: any) {
@@ -223,7 +238,12 @@ export function Profile({
 
           {/* Avatar / Logo */}
           <View style={styles.avatarContainer}>
-            {profileType === "orga" && currentLogoPath ? (
+            {profileType === "user" && primaryPhoto ? (
+              <Image
+                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
+                style={styles.avatarImage}
+              />
+            ) : profileType === "orga" && currentLogoPath ? (
               <Image
                 source={{ uri: `${API_URL}${currentLogoPath}` }}
                 style={styles.avatarImage}
@@ -334,7 +354,10 @@ export function Profile({
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Mes photos</Text>
-                <PhotoManager onPhotosChange={() => {}} />
+                <PhotoManager onPhotosChange={(photos) => {
+                  const valid = photos.filter(Boolean);
+                  setPrimaryPhoto(photoService.getPrimaryPhoto(valid));
+                }} />
               </View>
 
               <View style={styles.card}>
@@ -430,6 +453,15 @@ export function Profile({
           )}
         </View>
       </ScrollView>
+
+      {cropLogoUri && (
+        <ImageCropper
+          uri={cropLogoUri}
+          visible={true}
+          onCrop={handleCroppedLogo}
+          onCancel={() => setCropLogoUri(null)}
+        />
+      )}
     </View>
   );
 }

@@ -524,7 +524,7 @@ export default function EditEventPage() {
                 Disponibilite de l'app *
               </h3>
               <p className="text-sm text-gray-600">
-                Periode pendant laquelle les utilisateurs peuvent acceder au swiper, matcher et discuter.
+                Periode pendant laquelle les utilisateurs peuvent accéder au swiper, matcher et discuter.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

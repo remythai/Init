@@ -13,11 +13,12 @@ import {
 import { matchService } from '@/services/match.service';
 import { Photo, photoService } from '@/services/photo.service';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -29,7 +30,7 @@ import {
 } from 'react-native';
 
 export default function EventMyProfileScreen() {
-  const { id: eventId } = useLocalSearchParams<{ id: string }>();
+  const { id: eventId } = useGlobalSearchParams<{ id: string }>();
   const router = useRouter();
   const { theme } = useTheme();
 
@@ -49,6 +50,7 @@ export default function EventMyProfileScreen() {
   const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
   const [editedProfilInfo, setEditedProfilInfo] = useState<Record<string, unknown>>({});
   const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     const initPage = async () => {
@@ -93,12 +95,31 @@ export default function EventMyProfileScreen() {
 
   const loadEventProfile = async () => {
     try {
+      setProfileError(null);
       const data = await eventService.getMyEventProfile(eventId);
       setCustomFields(data.custom_fields || []);
       setProfilInfo(data.profil_info || {});
       setEditedProfilInfo(data.profil_info || {});
-    } catch (e) {
-      console.error('Error loading event profile:', e);
+    } catch (e: any) {
+      console.warn('getMyEventProfile failed, using fallback:', e?.message);
+      try {
+        // Fallback: get data from list routes that work
+        const [publicData, registeredData] = await Promise.all([
+          eventService.getPublicEvents({ limit: 50 }),
+          eventService.getMyRegisteredEvents(),
+        ]);
+        // Get custom_fields from public events list
+        const publicEvent = publicData.events.find((ev: any) => String(ev.id) === eventId);
+        // Get profil_info from registered events
+        const reg = registeredData.events.find((ev: any) => String(ev.id) === eventId);
+        setCustomFields((publicEvent as any)?.custom_fields || []);
+        const info = (reg as any)?.profil_info || {};
+        setProfilInfo(info);
+        setEditedProfilInfo(info);
+      } catch (fallbackErr: any) {
+        console.error('Fallback also failed:', fallbackErr);
+        setProfileError(fallbackErr?.message || 'Erreur de chargement');
+      }
     }
   };
 
@@ -209,9 +230,16 @@ export default function EventMyProfileScreen() {
         {/* ── Profile header ── */}
         <View style={styles.headerSection}>
           <View style={styles.avatarWrapper}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            {primaryPhoto ? (
+              <Image
+                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.name}>
             {profile.firstname} {profile.lastname}, {profile.age}
@@ -251,221 +279,245 @@ export default function EventMyProfileScreen() {
         </View>
 
         {/* ── Custom fields ── */}
-        {customFields.length > 0 && (
-          <View style={styles.card}>
-            {/* Card header */}
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Mon profil événement</Text>
-              {!editing ? (
-                !isBlocked && (
-                  <Pressable onPress={() => setEditing(true)} hitSlop={8}>
-                    <MaterialIcons name="edit" size={20} color={theme.colors.primary} />
-                  </Pressable>
-                )
-              ) : (
-                <View style={styles.editActions}>
-                  <Pressable onPress={handleCancel} disabled={saving} hitSlop={8}>
-                    <MaterialIcons name="close" size={22} color="#f87171" />
-                  </Pressable>
-                  <Pressable onPress={handleSave} disabled={saving} hitSlop={8}>
-                    {saving
-                      ? <ActivityIndicator size="small" color="#4ade80" />
-                      : <MaterialIcons name="check" size={22} color="#4ade80" />}
-                  </Pressable>
+        <View style={styles.card}>
+          {/* Card header */}
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Mon profil événement</Text>
+            {customFields.length > 0 && !editing ? (
+              !isBlocked && (
+                <Pressable onPress={() => setEditing(true)} hitSlop={8}>
+                  <MaterialIcons name="edit" size={20} color={theme.colors.primary} />
+                </Pressable>
+              )
+            ) : editing ? (
+              <View style={styles.editActions}>
+                <Pressable onPress={handleCancel} disabled={saving} hitSlop={8}>
+                  <MaterialIcons name="close" size={22} color="#f87171" />
+                </Pressable>
+                <Pressable onPress={handleSave} disabled={saving} hitSlop={8}>
+                  {saving
+                    ? <ActivityIndicator size="small" color="#4ade80" />
+                    : <MaterialIcons name="check" size={22} color="#4ade80" />}
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+
+          {profileError ? (
+            <View style={styles.emptyFields}>
+              <MaterialIcons name="error-outline" size={20} color="#f87171" />
+              <Text style={[styles.disabledText, { color: '#f87171' }]}>
+                {profileError}
+              </Text>
+              <Pressable style={styles.fillBtn} onPress={loadEventProfile}>
+                <MaterialIcons name="refresh" size={16} color={theme.colors.primaryForeground} />
+                <Text style={styles.fillBtnText}>Réessayer</Text>
+              </Pressable>
+            </View>
+          ) : customFields.length === 0 ? (
+            <View style={styles.emptyFields}>
+              <MaterialIcons name="info-outline" size={20} color={theme.colors.mutedForeground} />
+              <Text style={styles.disabledText}>
+                Cet événement n'a pas de champs de profil personnalisés.
+              </Text>
+            </View>
+          ) : !editing ? (
+            /* View mode */
+            <View style={styles.fieldsView}>
+              {customFields.every(f => !profilInfo[getFieldId(f.label)]) ? (
+                <View style={styles.emptyFields}>
+                  <Text style={styles.disabledText}>Aucune information renseignée.</Text>
+                  {!isBlocked && (
+                    <Pressable style={styles.fillBtn} onPress={() => setEditing(true)}>
+                      <MaterialIcons name="edit" size={16} color={theme.colors.primaryForeground} />
+                      <Text style={styles.fillBtnText}>Remplir mon profil</Text>
+                    </Pressable>
+                  )}
                 </View>
+              ) : (
+                customFields.map((field) => {
+                  const fieldId = getFieldId(field.label);
+                  const value = profilInfo[fieldId];
+                  if (value === undefined || value === null || value === '') return null;
+                  return (
+                    <View key={fieldId} style={styles.fieldRow}>
+                      <Text style={styles.fieldLabel}>{field.label}</Text>
+                      <Text style={styles.fieldValue}>
+                        {getFieldDisplayValue(field, value)}
+                      </Text>
+                    </View>
+                  );
+                })
               )}
             </View>
+          ) : (
+            /* Edit mode */
+            <View style={styles.fieldsEdit}>
+              {customFields.map((field) => {
+                const fieldId = getFieldId(field.label);
+                return (
+                  <View key={fieldId} style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      {field.label}
+                      {field.required && <Text style={{ color: '#f87171' }}> *</Text>}
+                    </Text>
 
-            {/* View mode */}
-            {!editing ? (
-              <View style={styles.fieldsView}>
-                {customFields.every(f => !profilInfo[getFieldId(f.label)]) ? (
-                  <Text style={styles.disabledText}>Aucune information renseignée</Text>
-                ) : (
-                  customFields.map((field) => {
-                    const fieldId = getFieldId(field.label);
-                    const value = profilInfo[fieldId];
-                    if (value === undefined || value === null || value === '') return null;
-                    return (
-                      <View key={fieldId} style={styles.fieldRow}>
-                        <Text style={styles.fieldLabel}>{field.label}</Text>
-                        <Text style={styles.fieldValue}>
-                          {getFieldDisplayValue(field, value)}
-                        </Text>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-            ) : (
-              /* Edit mode */
-              <View style={styles.fieldsEdit}>
-                {customFields.map((field) => {
-                  const fieldId = getFieldId(field.label);
-                  return (
-                    <View key={fieldId} style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>
-                        {field.label}
-                        {field.required && <Text style={{ color: '#f87171' }}> *</Text>}
-                      </Text>
-
-                      {/* text / email / phone / number */}
-                      {(['text', 'email', 'phone', 'number'] as const).includes(field.type as any) && (
-                        <>
-                          <TextInput
-                            style={styles.input}
-                            placeholder={getFieldPlaceholder(field)}
-                            placeholderTextColor={theme.colors.mutedForeground}
-                            keyboardType={
-                              field.type === 'email' ? 'email-address'
-                              : field.type === 'phone' ? 'phone-pad'
-                              : field.type === 'number' ? 'numeric'
-                              : 'default'
-                            }
-                            value={
-                              editedProfilInfo[fieldId] !== undefined
-                                ? String(editedProfilInfo[fieldId])
-                                : ''
-                            }
-                            maxLength={field.type === 'text' ? 150 : undefined}
-                            onChangeText={(t) =>
-                              setEditedProfilInfo((prev) => ({
-                                ...prev,
-                                [fieldId]: field.type === 'number'
-                                  ? (t === '' ? '' : Number(t))
-                                  : t.slice(0, field.type === 'text' ? 150 : 9999),
-                              }))
-                            }
-                          />
-                          {field.type === 'text' && (
-                            <Text style={[
-                              styles.charCount,
-                              String(editedProfilInfo[fieldId] || '').length >= 140 && { color: '#fb923c' },
-                            ]}>
-                              {String(editedProfilInfo[fieldId] || '').length}/150
-                            </Text>
-                          )}
-                        </>
-                      )}
-
-                      {/* textarea */}
-                      {field.type === 'textarea' && (
-                        <>
-                          <TextInput
-                            style={[styles.input, styles.textarea]}
-                            placeholder={getFieldPlaceholder(field)}
-                            placeholderTextColor={theme.colors.mutedForeground}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                            value={(editedProfilInfo[fieldId] as string) || ''}
-                            maxLength={500}
-                            onChangeText={(t) =>
-                              setEditedProfilInfo((prev) => ({
-                                ...prev,
-                                [fieldId]: t.slice(0, 500),
-                              }))
-                            }
-                          />
-                          <Text style={[
-                            styles.charCount,
-                            ((editedProfilInfo[fieldId] as string) || '').length >= 450 && { color: '#fb923c' },
-                          ]}>
-                            {((editedProfilInfo[fieldId] as string) || '').length}/500
-                          </Text>
-                        </>
-                      )}
-
-                      {/* checkbox */}
-                      {field.type === 'checkbox' && (
-                        <Pressable
-                          style={styles.checkboxRow}
-                          onPress={() =>
+                    {/* text / email / phone / number */}
+                    {(['text', 'email', 'phone', 'number'] as const).includes(field.type as any) && (
+                      <>
+                        <TextInput
+                          style={styles.input}
+                          placeholder={getFieldPlaceholder(field)}
+                          placeholderTextColor={theme.colors.mutedForeground}
+                          keyboardType={
+                            field.type === 'email' ? 'email-address'
+                            : field.type === 'phone' ? 'phone-pad'
+                            : field.type === 'number' ? 'numeric'
+                            : 'default'
+                          }
+                          value={
+                            editedProfilInfo[fieldId] !== undefined
+                              ? String(editedProfilInfo[fieldId])
+                              : ''
+                          }
+                          maxLength={field.type === 'text' ? 150 : undefined}
+                          onChangeText={(t) =>
                             setEditedProfilInfo((prev) => ({
                               ...prev,
-                              [fieldId]: !prev[fieldId],
+                              [fieldId]: field.type === 'number'
+                                ? (t === '' ? '' : Number(t))
+                                : t.slice(0, field.type === 'text' ? 150 : 9999),
                             }))
                           }
-                        >
-                          <View style={[
-                            styles.checkbox,
-                            Boolean(editedProfilInfo[fieldId]) && styles.checkboxChecked,
+                        />
+                        {field.type === 'text' && (
+                          <Text style={[
+                            styles.charCount,
+                            String(editedProfilInfo[fieldId] || '').length >= 140 && { color: '#fb923c' },
                           ]}>
-                            {Boolean(editedProfilInfo[fieldId]) && (
-                              <MaterialIcons name="check" size={14} color="#fff" />
-                            )}
-                          </View>
-                          <Text style={styles.checkboxLabel}>Oui</Text>
-                        </Pressable>
-                      )}
+                            {String(editedProfilInfo[fieldId] || '').length}/150
+                          </Text>
+                        )}
+                      </>
+                    )}
 
-                      {/* radio / select */}
-                      {(field.type === 'radio' || field.type === 'select') && (
-                        <View style={styles.optionsList}>
-                          {field.options?.map((option) => (
+                    {/* textarea */}
+                    {field.type === 'textarea' && (
+                      <>
+                        <TextInput
+                          style={[styles.input, styles.textarea]}
+                          placeholder={getFieldPlaceholder(field)}
+                          placeholderTextColor={theme.colors.mutedForeground}
+                          multiline
+                          numberOfLines={4}
+                          textAlignVertical="top"
+                          value={(editedProfilInfo[fieldId] as string) || ''}
+                          maxLength={500}
+                          onChangeText={(t) =>
+                            setEditedProfilInfo((prev) => ({
+                              ...prev,
+                              [fieldId]: t.slice(0, 500),
+                            }))
+                          }
+                        />
+                        <Text style={[
+                          styles.charCount,
+                          ((editedProfilInfo[fieldId] as string) || '').length >= 450 && { color: '#fb923c' },
+                        ]}>
+                          {((editedProfilInfo[fieldId] as string) || '').length}/500
+                        </Text>
+                      </>
+                    )}
+
+                    {/* checkbox */}
+                    {field.type === 'checkbox' && (
+                      <Pressable
+                        style={styles.checkboxRow}
+                        onPress={() =>
+                          setEditedProfilInfo((prev) => ({
+                            ...prev,
+                            [fieldId]: !prev[fieldId],
+                          }))
+                        }
+                      >
+                        <View style={[
+                          styles.checkbox,
+                          Boolean(editedProfilInfo[fieldId]) && styles.checkboxChecked,
+                        ]}>
+                          {Boolean(editedProfilInfo[fieldId]) && (
+                            <MaterialIcons name="check" size={14} color="#fff" />
+                          )}
+                        </View>
+                        <Text style={styles.checkboxLabel}>Oui</Text>
+                      </Pressable>
+                    )}
+
+                    {/* radio / select */}
+                    {(field.type === 'radio' || field.type === 'select') && (
+                      <View style={styles.optionsList}>
+                        {field.options?.map((option) => (
+                          <Pressable
+                            key={option}
+                            style={[
+                              styles.optionBtn,
+                              editedProfilInfo[fieldId] === option && styles.optionBtnSelected,
+                            ]}
+                            onPress={() =>
+                              setEditedProfilInfo((prev) => ({
+                                ...prev,
+                                [fieldId]: option,
+                              }))
+                            }
+                          >
+                            <Text style={[
+                              styles.optionText,
+                              editedProfilInfo[fieldId] === option && styles.optionTextSelected,
+                            ]}>
+                              {option}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* multiselect */}
+                    {field.type === 'multiselect' && (
+                      <View style={styles.optionsList}>
+                        {field.options?.map((option) => {
+                          const selected = ((editedProfilInfo[fieldId] as string[]) || []).includes(option);
+                          return (
                             <Pressable
                               key={option}
-                              style={[
-                                styles.optionBtn,
-                                editedProfilInfo[fieldId] === option && styles.optionBtnSelected,
-                              ]}
-                              onPress={() =>
-                                setEditedProfilInfo((prev) => ({
-                                  ...prev,
-                                  [fieldId]: option,
-                                }))
-                              }
+                              style={[styles.optionBtn, selected && styles.optionBtnSelected]}
+                              onPress={() => {
+                                setEditedProfilInfo((prev) => {
+                                  const current = (prev[fieldId] as string[]) || [];
+                                  return {
+                                    ...prev,
+                                    [fieldId]: selected
+                                      ? current.filter((v) => v !== option)
+                                      : [...current, option],
+                                  };
+                                });
+                              }}
                             >
-                              <Text style={[
-                                styles.optionText,
-                                editedProfilInfo[fieldId] === option && styles.optionTextSelected,
-                              ]}>
+                              <View style={[styles.multiCheckbox, selected && styles.multiCheckboxSelected]}>
+                                {selected && <MaterialIcons name="check" size={11} color={theme.colors.primary} />}
+                              </View>
+                              <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                                 {option}
                               </Text>
                             </Pressable>
-                          ))}
-                        </View>
-                      )}
-
-                      {/* multiselect */}
-                      {field.type === 'multiselect' && (
-                        <View style={styles.optionsList}>
-                          {field.options?.map((option) => {
-                            const selected = ((editedProfilInfo[fieldId] as string[]) || []).includes(option);
-                            return (
-                              <Pressable
-                                key={option}
-                                style={[styles.optionBtn, selected && styles.optionBtnSelected]}
-                                onPress={() => {
-                                  setEditedProfilInfo((prev) => {
-                                    const current = (prev[fieldId] as string[]) || [];
-                                    return {
-                                      ...prev,
-                                      [fieldId]: selected
-                                        ? current.filter((v) => v !== option)
-                                        : [...current, option],
-                                    };
-                                  });
-                                }}
-                              >
-                                <View style={[styles.multiCheckbox, selected && styles.multiCheckboxSelected]}>
-                                  {selected && <MaterialIcons name="check" size={11} color={theme.colors.primary} />}
-                                </View>
-                                <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                                  {option}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        )}
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         {/* ── Tips ── */}
         <View style={styles.tipsCard}>
@@ -501,6 +553,10 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
       alignItems: 'center', justifyContent: 'center',
       borderWidth: 3, borderColor: colors.border,
     },
+    avatarImage: {
+      width: 96, height: 96, borderRadius: 48,
+      borderWidth: 3, borderColor: colors.border,
+    },
     avatarText: { color: colors.card, fontSize: 32, fontWeight: '700' },
     name: { color: colors.foreground, fontSize: 22, fontWeight: '700', textAlign: 'center' },
 
@@ -524,7 +580,14 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
     cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '600' },
     editActions: { flexDirection: 'row', gap: 14 },
 
-    disabledText: { color: colors.mutedForeground, fontStyle: 'italic', fontSize: 14 },
+    disabledText: { color: colors.mutedForeground, fontStyle: 'italic', fontSize: 14, flex: 1 },
+    emptyFields: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    fillBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: colors.primary, borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 8, marginTop: 8,
+    },
+    fillBtnText: { color: colors.primaryForeground, fontSize: 14, fontWeight: '600' },
 
     /* Stat card */
     statCard: {

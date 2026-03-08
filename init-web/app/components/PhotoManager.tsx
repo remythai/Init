@@ -12,6 +12,7 @@ import {
   AlertCircle,
   GripVertical,
 } from "lucide-react";
+import ImageCropper from "./ImageCropper";
 
 interface PhotoManagerProps {
   eventId?: string;
@@ -38,6 +39,8 @@ export default function PhotoManager({
   const [selectedToCopy, setSelectedToCopy] = useState<number[]>([]);
   const [copying, setCopying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -67,7 +70,7 @@ export default function PhotoManager({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -85,10 +88,22 @@ export default function PhotoManager({
       return;
     }
 
+    setError("");
+    setCropFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCropImageSrc(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropImageSrc(null);
+    setCropFile(null);
     try {
       setUploading(true);
       setError("");
-      const newPhoto = await photoService.uploadPhoto(file, eventId);
+      const newPhoto = await photoService.uploadPhoto(croppedFile, eventId);
       const updatedPhotos = [...photos, newPhoto];
       setPhotos(updatedPhotos);
       onPhotosChange?.(updatedPhotos);
@@ -98,6 +113,11 @@ export default function PhotoManager({
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleCropCancel = () => {
+    setCropImageSrc(null);
+    setCropFile(null);
   };
 
   const handleDelete = async (photo: Photo) => {
@@ -573,6 +593,17 @@ export default function PhotoManager({
             )}
           </div>
         </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          aspectRatio={3 / 4}
+          onCrop={handleCropConfirm}
+          onCancel={handleCropCancel}
+          darkMode={darkMode}
+        />
       )}
     </div>
   );

@@ -532,22 +532,26 @@ export default function EventsPage() {
 
     setIsGeocoding(true);
 
-    for (const location of uniqueLocations) {
-      try {
-        const response = await fetch(`/api/geocode?q=${encodeURIComponent(location)}`);
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          geocodeCache.current.set(location, {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          });
-        } else {
-          geocodeCache.current.set(location, null);
+    // Batch geocode in a single request
+    try {
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locations: uniqueLocations }),
+      });
+      const data = await response.json();
+      if (data && typeof data === 'object' && !data.error) {
+        for (const [loc, coords] of Object.entries(data)) {
+          if (coords && typeof coords === 'object' && 'lat' in coords && 'lon' in coords) {
+            const c = coords as { lat: string; lon: string };
+            geocodeCache.current.set(loc, { lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
+          } else {
+            geocodeCache.current.set(loc, null);
+          }
         }
-      } catch {
-        geocodeCache.current.set(location, null);
       }
-      await new Promise(resolve => setTimeout(resolve, 1100));
+    } catch {
+      uniqueLocations.forEach(loc => geocodeCache.current.set(loc, null));
     }
 
     const result: Record<string, { lat: number; lng: number } | null> = {};
@@ -573,6 +577,7 @@ export default function EventsPage() {
       theme: e.theme,
       participants: e.participants,
       maxParticipants: e.maxParticipants,
+      image: e.image,
     }));
 
   const eventsByTheme = useMemo(() => {
@@ -597,7 +602,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-page">
+    <div className="h-screen bg-page flex flex-col overflow-hidden">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50">
         <div className="absolute inset-0 bg-page pointer-events-none" />
@@ -627,7 +632,7 @@ export default function EventsPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-14 md:pt-16 pb-32">
+      <main className="pt-14 md:pt-16 pb-32 flex-1 overflow-y-auto">
         <div className="mx-auto px-4 md:px-10 lg:px-16">
           <div className="py-6 md:py-8" />
 
@@ -828,7 +833,7 @@ export default function EventsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute bottom-3 left-3 right-3 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-2 rounded-lg font-medium transition-colors text-center text-sm"
                                   >
-                                    Acceder
+                                    Accéder
                                   </Link>
                                 )}
                               </div>
@@ -924,7 +929,7 @@ export default function EventsPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
                                   >
-                                    Acceder a l'environnement
+                                    Accéder a l'environnement
                                   </Link>
                                 )}
                               </div>
@@ -1209,7 +1214,7 @@ export default function EventsPage() {
                   Disponibilite de l'app *
                 </h3>
                 <p className="text-sm text-secondary">
-                  Periode pendant laquelle les utilisateurs peuvent acceder au swiper, matcher et discuter.
+                  Periode pendant laquelle les utilisateurs peuvent accéder au swiper, matcher et discuter.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>

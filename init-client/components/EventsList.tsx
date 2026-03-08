@@ -5,6 +5,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
+  FlatList,
   Image,
   Keyboard,
   Modal,
@@ -16,6 +18,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+const CARD_WIDTH = 260;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CreateEventDialog } from "./CreateEventDialog";
 
@@ -156,6 +160,85 @@ export function EventsList({
   const fillPct = (event: Event) =>
     Math.min((event.participants / event.maxParticipants) * 100, 100);
 
+  // Group filtered events by theme (like web mobile)
+  const eventsByTheme = useMemo(() => {
+    const groups: Record<string, Event[]> = {};
+    filteredEvents.forEach(event => {
+      const t = event.theme || 'Général';
+      if (!groups[t]) groups[t] = [];
+      groups[t].push(event);
+    });
+    return Object.entries(groups);
+  }, [filteredEvents]);
+
+  const renderCard = (event: Event) => (
+    <Pressable
+      key={event.id}
+      style={styles.eventCard}
+      onPress={() => onEventClick(event)}
+    >
+      {/* Image */}
+      <View style={styles.imageContainer}>
+        <Image source={{ uri: event.image }} style={styles.eventImage} />
+
+        {/* Badges */}
+        <View style={styles.badgeContainer}>
+          {event.isRegistered && (
+            <View style={styles.registeredBadge}>
+              <Text style={styles.badgeText}>Inscrit</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Orga logo */}
+        {event.orgaLogo && (
+          <View style={styles.orgaLogoWrapper}>
+            <Image source={{ uri: event.orgaLogo }} style={styles.orgaLogo} />
+          </View>
+        )}
+      </View>
+
+      {/* Content */}
+      <View style={styles.cardContent}>
+        <Text style={styles.eventName} numberOfLines={1}>{event.name}</Text>
+
+        <View style={styles.infoContainer}>
+          {event.hasPhysicalEvent && event.location ? (
+            <View style={styles.infoRow}>
+              <MaterialIcons name="place" size={14} color={theme.colors.placeholder} />
+              <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.infoRow}>
+            <MaterialIcons name="group" size={14} color={theme.colors.placeholder} />
+            <Text style={styles.infoText}>
+              {event.participants}/{event.maxParticipants}
+            </Text>
+          </View>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${fillPct(event)}%` as any }]} />
+        </View>
+
+        {/* Enter button */}
+        {event.isRegistered && onEnterEvent && (
+          <Pressable
+            style={styles.enterButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              onEnterEvent(event);
+            }}
+          >
+            <Text style={styles.enterButtonText}>Accéder</Text>
+          </Pressable>
+        )}
+      </View>
+    </Pressable>
+  );
+
   return (
     <View style={styles.container}>
       {/* Search Bars */}
@@ -190,15 +273,12 @@ export function EventsList({
         </View>
       </View>
 
-      {/* Events List */}
+      {/* Events grouped by theme — horizontal scroll per category */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={() => { isScrolling.current = true; }}
-        onScrollEndDrag={() => { isScrolling.current = false; }}
-        onMomentumScrollEnd={() => { isScrolling.current = false; }}
       >
         {filteredEvents.length === 0 ? (
           <View style={styles.emptyState}>
@@ -213,97 +293,27 @@ export function EventsList({
             </Text>
           </View>
         ) : (
-          filteredEvents.map((event) => (
-            <Pressable
-              key={event.id}
-              style={styles.eventCard}
-              onPress={() => { if (!isScrolling.current) onEventClick(event); }}
-              unstable_pressDelay={100}
-            >
-              {/* Image */}
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
-
-                {/* Top badges */}
-                <View style={styles.badgeContainer}>
-                  <View style={[styles.themeBadge, { backgroundColor: getThemeColor(event.theme) }]}>
-                    <Text style={styles.badgeText}>{event.theme}</Text>
-                  </View>
-                  {event.isRegistered && (
-                    <View style={styles.registeredBadge}>
-                      <Text style={styles.badgeText}>✓ Inscrit</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Orga logo */}
-                {event.orgaLogo && (
-                  <View style={styles.orgaLogoWrapper}>
-                    <Image source={{ uri: event.orgaLogo }} style={styles.orgaLogo} />
-                  </View>
-                )}
+          eventsByTheme.map(([themeName, themeEvents]) => (
+            <View key={themeName} style={styles.themeSection}>
+              {/* Theme header */}
+              <View style={styles.themeHeader}>
+                <View style={[styles.themeDot, { backgroundColor: getThemeColor(themeName) }]} />
+                <Text style={styles.themeTitle}>{themeName}</Text>
+                <Text style={styles.themeCount}>({themeEvents.length})</Text>
               </View>
 
-              {/* Content */}
-              <View style={styles.cardContent}>
-                <Text style={styles.eventName} numberOfLines={2}>{event.name}</Text>
-
-                {event.orgaName && (
-                  <Text style={styles.orgaName}>{event.orgaName}</Text>
-                )}
-
-                <View style={styles.infoContainer}>
-                  {event.hasPhysicalEvent && (
-                    <>
-                      <View style={styles.infoRow}>
-                        <MaterialIcons name="event" size={15} color={theme.colors.placeholder} />
-                        <Text style={styles.infoText}>{event.physicalDate}</Text>
-                      </View>
-                      {event.location ? (
-                        <View style={styles.infoRow}>
-                          <MaterialIcons name="place" size={15} color={theme.colors.placeholder} />
-                          <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
-                        </View>
-                      ) : null}
-                    </>
-                  )}
-
-                  <View style={styles.infoRow}>
-                    <View style={styles.appBadge}>
-                      <Text style={styles.appBadgeText}>App</Text>
-                    </View>
-                    <Text style={styles.infoText}>{event.appDate}</Text>
-                  </View>
-
-                  <View style={styles.infoRow}>
-                    <MaterialIcons name="group" size={15} color={theme.colors.placeholder} />
-                    <Text style={styles.infoText}>
-                      {event.participants}/{event.maxParticipants} participants
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Progress Bar */}
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${fillPct(event)}%` as any }]} />
-                </View>
-              </View>
-
-              {/* Enter button */}
-              {event.isRegistered && onEnterEvent && (
-                <View style={styles.actionContainer}>
-                  <Pressable
-                    style={styles.enterButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      onEnterEvent(event);
-                    }}
-                  >
-                    <Text style={styles.enterButtonText}>Accéder à l'environnement</Text>
-                  </Pressable>
-                </View>
-              )}
-            </Pressable>
+              {/* Horizontal card list */}
+              <FlatList
+                data={themeEvents}
+                keyExtractor={item => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalList}
+                snapToInterval={CARD_WIDTH + 12}
+                decelerationRate="fast"
+                renderItem={({ item }) => renderCard(item)}
+              />
+            </View>
           ))
         )}
       </ScrollView>
@@ -311,13 +321,13 @@ export function EventsList({
       {/* Advanced Filters Modal */}
       <Modal
         visible={isAdvancedOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         statusBarTranslucent
         onRequestClose={() => setIsAdvancedOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setIsAdvancedOpen(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtres</Text>
               <Pressable onPress={() => setIsAdvancedOpen(false)}>
@@ -409,8 +419,8 @@ export function EventsList({
                 <Text style={styles.applyButtonText}>Appliquer</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {userType === "organizer" && onCreateEvent && (
@@ -455,61 +465,61 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
 
   // List
   scrollView: { flex: 1 },
-  scrollContent: { paddingTop: topInset + 116, paddingHorizontal: 16, paddingBottom: 110, gap: 16 },
+  scrollContent: { paddingTop: topInset + 116, paddingBottom: 110 },
+
+  // Theme sections
+  themeSection: { marginBottom: 20 },
+  themeHeader: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 10 },
+  themeDot: { width: 10, height: 10, borderRadius: 5 },
+  themeTitle: { fontFamily: "Poppins", fontWeight: "600", fontSize: 17, color: theme.colors.foreground },
+  themeCount: { fontSize: 13, color: theme.colors.mutedForeground },
+  horizontalList: { paddingHorizontal: 16, gap: 12 },
 
   // Empty
   emptyState: { paddingVertical: 64, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: "600", color: theme.colors.foreground, fontFamily: "Poppins" },
   emptyText: { fontSize: 14, color: theme.colors.mutedForeground, textAlign: "center", paddingHorizontal: 24 },
 
-  // Card
+  // Card (compact horizontal style)
   eventCard: {
-    backgroundColor: theme.colors.card, borderRadius: 16, overflow: "hidden",
+    width: CARD_WIDTH, backgroundColor: theme.colors.card, borderRadius: 14, overflow: "hidden",
     shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-  imageContainer: { position: "relative", height: 180 },
-  eventImage: { width: "100%", height: "100%" },
+  imageContainer: { position: "relative", height: 140 },
+  eventImage: { width: "100%", height: "100%", resizeMode: "cover" },
   badgeContainer: {
-    position: "absolute", top: 12, left: 12, right: 12,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
+    position: "absolute", top: 8, left: 8, right: 8,
+    flexDirection: "row", justifyContent: "flex-end", alignItems: "flex-start",
   },
-  themeBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-  registeredBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: "#22c55e" },
+  registeredBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: "#22c55e" },
   badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   orgaLogoWrapper: {
-    position: "absolute", bottom: 10, right: 12,
-    width: 36, height: 36, borderRadius: 18,
+    position: "absolute", bottom: 8, right: 8,
+    width: 32, height: 32, borderRadius: 16,
     borderWidth: 2, borderColor: "#fff", overflow: "hidden",
     shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 0, height: 1 }, shadowRadius: 3, elevation: 3,
   },
   orgaLogo: { width: "100%", height: "100%" },
 
-  cardContent: { padding: 14 },
-  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 16, color: theme.colors.foreground, marginBottom: 2 },
-  orgaName: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: 10 },
+  cardContent: { padding: 10 },
+  eventName: { fontFamily: "Poppins", fontWeight: "600", fontSize: 13, color: theme.colors.foreground, marginBottom: 6 },
 
-  infoContainer: { gap: 6, marginBottom: 10 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  infoText: { fontSize: 13, color: theme.colors.textSecondary, flex: 1 },
-  appBadge: {
-    backgroundColor: theme.colors.accent ?? "#dbeafe",
-    borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2,
-  },
-  appBadgeText: { fontSize: 10, fontWeight: "700", color: theme.colors.primary },
+  infoContainer: { gap: 3, marginBottom: 8 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  infoText: { fontSize: 12, color: theme.colors.textSecondary, flex: 1 },
 
   progressBar: {
-    width: "100%", height: 6, backgroundColor: theme.colors.accent ?? "#dbeafe",
-    borderRadius: 3, overflow: "hidden",
+    width: "100%", height: 4, backgroundColor: theme.colors.accent ?? "#dbeafe",
+    borderRadius: 2, overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: theme.colors.primary, borderRadius: 3 },
+  progressFill: { height: "100%", backgroundColor: theme.colors.primary, borderRadius: 2 },
 
-  actionContainer: { paddingHorizontal: 14, paddingBottom: 14, paddingTop: 0 },
   enterButton: {
-    backgroundColor: theme.colors.accentSolid, paddingVertical: 12,
-    borderRadius: 10, alignItems: "center",
+    backgroundColor: theme.colors.accentSolid, paddingVertical: 8,
+    borderRadius: 8, alignItems: "center", marginTop: 8,
   },
-  enterButtonText: { fontFamily: "Poppins", color: theme.colors.accentSolidText, fontSize: 15, fontWeight: "600" },
+  enterButtonText: { fontFamily: "Poppins", color: theme.colors.accentSolidText, fontSize: 13, fontWeight: "600" },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },

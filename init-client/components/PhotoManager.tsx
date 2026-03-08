@@ -3,13 +3,16 @@ import { type Theme } from "@/constants/theme";
 import { useTheme, shared } from "@/context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   Image,
+  LayoutChangeEvent,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -17,9 +20,10 @@ import {
 } from "react-native";
 import { photoService } from "@/services/photo.service";
 import type { Photo } from "@/services/photo.service";
+import ImageCropper from "@/components/ImageCropper";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 16) / 3;
+const GAP = 8;
+const COLUMNS = 3;
 
 export type { Photo } from "@/services/photo.service";
 
@@ -27,6 +31,22 @@ interface PhotoManagerProps {
   eventId?: string;
   maxPhotos?: number;
   onPhotosChange?: (photos: Photo[]) => void;
+}
+
+function getPosition(index: number, photoSize: number) {
+  const col = index % COLUMNS;
+  const row = Math.floor(index / COLUMNS);
+  return { x: col * (photoSize + GAP), y: row * (photoSize + GAP) };
+}
+
+function getIndexFromCenter(cx: number, cy: number, total: number, photoSize: number): number | null {
+  for (let i = 0; i < total; i++) {
+    const pos = getPosition(i, photoSize);
+    if (cx >= pos.x && cx < pos.x + photoSize && cy >= pos.y && cy < pos.y + photoSize) {
+      return i;
+    }
+  }
+  return null;
 }
 
 export default function PhotoManager({
@@ -42,8 +62,175 @@ export default function PhotoManager({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Photo | null>(null);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<Photo | null>(null);
+  const [cropUri, setCropUri] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const photoSize = containerWidth > 0 ? (containerWidth - GAP * (COLUMNS - 1)) / COLUMNS : 0;
+
+  // Drag state
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [hoverTarget, setHoverTarget] = useState<number | null>(null);
+  const dragTranslate = useRef(new Animated.ValueXY()).current;
+  const dragOpacity = useRef(new Animated.Value(1)).current;
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+
+  // Track grid position on screen
+  const gridRef = useRef<View>(null);
+  const gridPageY = useRef(0);
+  const gridPageX = useRef(0);
+
+  const handleGridLayout = useCallback(() => {
+    gridRef.current?.measureInWindow((x, y) => {
+      gridPageX.current = x;
+      gridPageY.current = y;
+    });
+  }, []);
+
+  // Drag refs for PanResponder (avoid stale closures)
+  const photoSizeRef = useRef(photoSize);
+  photoSizeRef.current = photoSize;
+  const dragFromRef = useRef<number | null>(null);
+  const isLongPress = useRef(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
+
+  const doReorder = useCallback(async (fromIndex: number, toIndex: number) => {
+    const current = photosRef.current;
+    if (fromIndex < 0 || fromIndex >= current.length || toIndex < 0 || toIndex >= current.length) return;
+
+    const newPhotos = [...current];
+    const [moved] = newPhotos.splice(fromIndex, 1);
+    if (!moved) return;
+    newPhotos.splice(toIndex, 0, moved);
+
+    const newFirstId = newPhotos[0].id;
+    const oldFirstId = current[0].id;
+    const primaryChanged = newFirstId !== oldFirstId;
+
+    setPhotos(newPhotos);
+    onPhotosChange?.(newPhotos);
+
+    try {
+      if (primaryChanged) {
+        await photoService.setPrimaryPhoto(newFirstId);
+      }
+      const photoIds = newPhotos.map((p) => p.id);
+      await photoService.reorderPhotos(photoIds, eventId);
+      // Reload from server
+      const loaded = await photoService.getPhotos(eventId);
+      setPhotos(loaded);
+      onPhotosChange?.(loaded);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de la reorganisation");
+      const loaded = await photoService.getPhotos(eventId);
+      setPhotos(loaded);
+      onPhotosChange?.(loaded);
+    }
+  }, [eventId, onPhotosChange]);
+
+  const panResponder = useMemo(() =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => isLongPress.current,
+      onMoveShouldSetPanResponderCapture: () => isLongPress.current,
+      onPanResponderGrant: (e) => {
+        // Measure grid position right now (handles scroll)
+        gridRef.current?.measureInWindow((gx, gy) => {
+          gridPageX.current = gx;
+          gridPageY.current = gy;
+        });
+        const locX = e.nativeEvent.pageX - gridPageX.current;
+        const locY = e.nativeEvent.pageY - gridPageY.current;
+        touchStartRef.current = { x: locX, y: locY };
+        const idx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current);
+        if (idx === null) return;
+
+        longPressTimer.current = setTimeout(() => {
+          isLongPress.current = true;
+          dragFromRef.current = idx;
+          setDragFrom(idx);
+          dragTranslate.setValue({ x: 0, y: 0 });
+          Animated.timing(dragOpacity, { toValue: 0.7, duration: 150, useNativeDriver: true }).start();
+        }, 250);
+      },
+      onPanResponderMove: (_, gesture) => {
+        // If moved too much before long press, cancel
+        if (!isLongPress.current) {
+          if (Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5) {
+            if (longPressTimer.current) {
+              clearTimeout(longPressTimer.current);
+              longPressTimer.current = null;
+            }
+          }
+          return;
+        }
+
+        dragTranslate.setValue({ x: gesture.dx, y: gesture.dy });
+
+        const from = dragFromRef.current;
+        if (from === null) return;
+        const sz = photoSizeRef.current;
+        const origin = getPosition(from, sz);
+        const cx = origin.x + sz / 2 + gesture.dx;
+        const cy = origin.y + sz / 2 + gesture.dy;
+        const target = getIndexFromCenter(cx, cy, photosRef.current.length, sz);
+        setHoverTarget(target !== null && target !== from ? target : null);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+
+        const from = dragFromRef.current;
+        const wasDragging = isLongPress.current;
+
+        // Reset drag state
+        isLongPress.current = false;
+        dragFromRef.current = null;
+        setDragFrom(null);
+        setHoverTarget(null);
+        dragTranslate.setValue({ x: 0, y: 0 });
+        dragOpacity.setValue(1);
+
+        if (!wasDragging || from === null) {
+          // Short tap — open preview
+          if (!wasDragging && Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
+            const locX = gesture.x0 - gridPageX.current;
+            const locY = gesture.y0 - gridPageY.current;
+            const tappedIdx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current);
+            if (tappedIdx !== null && photosRef.current[tappedIdx]) {
+              setPreviewPhoto(photosRef.current[tappedIdx]);
+            }
+          }
+          return;
+        }
+
+        const sz = photoSizeRef.current;
+        const origin = getPosition(from, sz);
+        const cx = origin.x + sz / 2 + gesture.dx;
+        const cy = origin.y + sz / 2 + gesture.dy;
+        const to = getIndexFromCenter(cx, cy, photosRef.current.length, sz);
+
+        if (to !== null && to !== from) {
+          doReorder(from, to);
+        }
+      },
+      onPanResponderTerminate: () => {
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        isLongPress.current = false;
+        dragFromRef.current = null;
+        setDragFrom(null);
+        setHoverTarget(null);
+        dragTranslate.setValue({ x: 0, y: 0 });
+        dragOpacity.setValue(1);
+      },
+    }),
+  [doReorder]);
 
   useEffect(() => {
     loadPhotos();
@@ -63,25 +250,29 @@ export default function PhotoManager({
     }
   };
 
-  const uploadPhoto = async () => {
+  const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission refusée", "Autorisez l'accès à la galerie.");
+      Alert.alert("Permission refusee", "Autorisez l'acces a la galerie.");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (result.canceled || !result.assets[0]) return;
+    setCropUri(result.assets[0].uri);
+  };
 
+  const uploadCroppedPhoto = async (croppedUri: string) => {
+    setCropUri(null);
     try {
       setUploading(true);
       setError("");
-      const newPhoto = await photoService.uploadPhoto(result.assets[0].uri, eventId);
+      const newPhoto = await photoService.uploadPhoto(croppedUri, eventId);
       const updated = [...photos, newPhoto];
       setPhotos(updated);
       onPhotosChange?.(updated);
@@ -105,54 +296,9 @@ export default function PhotoManager({
     }
   };
 
-  const setPrimary = async (photo: Photo) => {
-    try {
-      setError("");
-      await photoService.setPrimaryPhoto(photo.id);
-      await loadPhotos();
-    } catch (err: any) {
-      setError(err.message || "Impossible de définir comme principale");
-    }
-  };
-
-  const reorderPhotos = async (newPhotos: Photo[]) => {
-    setPhotos(newPhotos);
-    onPhotosChange?.(newPhotos);
-    try {
-      const photoIds = newPhotos.map((p) => p.id);
-      const reordered = await photoService.reorderPhotos(photoIds, eventId);
-      setPhotos(reordered);
-      onPhotosChange?.(reordered);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la réorganisation");
-      await loadPhotos();
-    }
-  };
-
-  const photoPositions = useRef<{ x: number; y: number }[]>([]);
-
-  const handleLongPressReorder = (fromIndex: number) => {
-    Alert.alert(
-      "Déplacer la photo",
-      `Déplacer la photo ${fromIndex + 1} vers :`,
-      [
-        ...photos.map((_, toIndex) =>
-          toIndex !== fromIndex
-            ? {
-                text: `Position ${toIndex + 1}${toIndex === 0 ? " (principale)" : ""}`,
-                onPress: () => {
-                  const newPhotos = [...photos];
-                  const [moved] = newPhotos.splice(fromIndex, 1);
-                  newPhotos.splice(toIndex, 0, moved);
-                  reorderPhotos(newPhotos);
-                },
-              }
-            : null
-        ).filter(Boolean) as any,
-        { text: "Annuler", style: "cancel" },
-      ]
-    );
-  };
+  const totalSlots = photos.length + (photos.length < maxPhotos ? 1 : 0);
+  const gridRows = Math.ceil(totalSlots / COLUMNS);
+  const gridHeight = photoSize > 0 ? gridRows * (photoSize + GAP) - GAP : 0;
 
   if (loading) {
     return (
@@ -164,7 +310,6 @@ export default function PhotoManager({
 
   return (
     <View style={styles.container}>
-      {/* Erreur */}
       {!!error && (
         <View style={styles.errorBanner}>
           <MaterialIcons name="error-outline" size={16} color={theme.colors.destructive} />
@@ -175,88 +320,119 @@ export default function PhotoManager({
         </View>
       )}
 
-      {/* Hint */}
       {photos.length > 1 && (
         <Text style={styles.hint}>
-          Appuyez longuement sur une photo pour la déplacer.
+          Maintenez puis glissez pour reorganiser.
         </Text>
       )}
 
-      {/* Grille */}
-      <View style={styles.grid}>
-        {photos.map((photo, index) => (
-          <Pressable
-            key={photo.id}
-            style={[styles.photoCell, draggingIndex === index && styles.photoCellDragging]}
-            onLongPress={() => handleLongPressReorder(index)}
-            delayLongPress={400}
-          >
-            <Image
-              source={{ uri: photoService.getPhotoUrl(photo.file_path) }}
-              style={styles.photoImage}
-              resizeMode="cover"
-            />
+      <View
+        ref={gridRef}
+        style={[styles.grid, { height: gridHeight }]}
+        onLayout={(e) => {
+          setContainerWidth(e.nativeEvent.layout.width);
+          handleGridLayout();
+        }}
+        {...panResponder.panHandlers}
+      >
+        {photos.map((photo, index) => {
+          const pos = getPosition(index, photoSize);
+          const isDragged = dragFrom === index;
+          const isHover = hoverTarget === index;
 
-            {/* Numéro de position */}
-            <View style={styles.positionBadge}>
-              <Text style={styles.positionText}>{index + 1}</Text>
-            </View>
+          return (
+            <Animated.View
+              key={photo.id}
+              style={[
+                styles.photoCell,
+                { position: "absolute", left: pos.x, top: pos.y, width: photoSize, height: photoSize },
+                isDragged && {
+                  transform: [
+                    { translateX: dragTranslate.x },
+                    { translateY: dragTranslate.y },
+                    { scale: 1.08 },
+                  ],
+                  opacity: dragOpacity,
+                  zIndex: 100,
+                  elevation: 10,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                },
+              ]}
+            >
+              <Image
+                source={{ uri: photoService.getPhotoUrl(photo.file_path) }}
+                style={styles.photoImage}
+                resizeMode="cover"
+              />
 
-            {/* Badge principale */}
-            {index === 0 && (
-              <View style={styles.primaryBadge}>
-                <MaterialIcons name="star" size={10} color={theme.colors.card} />
-                <Text style={styles.primaryText}>Principale</Text>
+              {/* Position number */}
+              <View style={styles.positionBadge}>
+                <Text style={styles.positionText}>{index + 1}</Text>
               </View>
-            )}
 
-            {/* Actions : étoile + poubelle */}
-            <View style={styles.actionsOverlay}>
-              {index > 0 && (
-                <Pressable
-                  style={[styles.actionBtn, styles.primaryBtn]}
-                  onPress={() => setPrimary(photo)}
-                  hitSlop={8}
-                >
-                  <MaterialIcons name="star" size={14} color={theme.colors.card} />
-                </Pressable>
+              {/* Primary badge */}
+              {index === 0 && (
+                <View style={styles.primaryBadge}>
+                  <MaterialIcons name="star" size={10} color="#fff" />
+                  <Text style={styles.primaryText}>Principale</Text>
+                </View>
               )}
-              <Pressable
-                style={[styles.actionBtn, styles.deleteBtn]}
-                onPress={() => setDeleteTarget(photo)}
-                hitSlop={8}
-              >
-                <MaterialIcons name="delete" size={14} color={theme.colors.card} />
-              </Pressable>
-            </View>
-          </Pressable>
-        ))}
 
-        {/* Bouton ajouter */}
-        {photos.length < maxPhotos && (
-          <Pressable
-            style={styles.addCell}
-            onPress={uploadPhoto}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator size="small" color={theme.colors.placeholder} />
-            ) : (
-              <>
-                <MaterialIcons name="add" size={32} color={theme.colors.placeholder} />
-                <Text style={styles.addText}>Ajouter</Text>
-              </>
-            )}
-          </Pressable>
-        )}
+              {/* Delete button - only when not dragging */}
+              {dragFrom === null && (
+                <View style={styles.actionsOverlay}>
+                  <Pressable
+                    style={[styles.actionBtn, styles.deleteBtn]}
+                    onPress={() => setDeleteTarget(photo)}
+                    hitSlop={8}
+                  >
+                    <MaterialIcons name="delete" size={14} color="#fff" />
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Hover indicator */}
+              {isHover && (
+                <View style={styles.hoverBorder} pointerEvents="none" />
+              )}
+            </Animated.View>
+          );
+        })}
+
+        {/* Add photo slot */}
+        {photos.length < maxPhotos && (() => {
+          const addPos = getPosition(photos.length, photoSize);
+          return (
+            <Pressable
+              style={[
+                styles.addCell,
+                { position: "absolute", left: addPos.x, top: addPos.y, width: photoSize, height: photoSize },
+              ]}
+              onPress={pickPhoto}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator size="small" color={theme.colors.placeholder} />
+              ) : (
+                <>
+                  <MaterialIcons name="add" size={32} color={theme.colors.placeholder} />
+                  <Text style={styles.addText}>Ajouter</Text>
+                </>
+              )}
+            </Pressable>
+          );
+        })()}
       </View>
 
-      {/* Compteur */}
+      {/* Counter */}
       <Text style={styles.counter}>
         {photos.length} / {maxPhotos} photos
       </Text>
 
-      {/* Modal suppression */}
+      {/* Delete modal */}
       <Modal
         visible={!!deleteTarget}
         transparent
@@ -267,7 +443,6 @@ export default function PhotoManager({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Supprimer cette photo ?</Text>
-
             {deleteTarget && (
               <Image
                 source={{ uri: photoService.getPhotoUrl(deleteTarget.file_path) }}
@@ -275,9 +450,7 @@ export default function PhotoManager({
                 resizeMode="cover"
               />
             )}
-
-            <Text style={styles.modalSubtitle}>Cette action est irréversible.</Text>
-
+            <Text style={styles.modalSubtitle}>Cette action est irreversible.</Text>
             <View style={styles.modalActions}>
               <Pressable
                 style={[styles.modalBtn, styles.modalCancelBtn]}
@@ -295,6 +468,38 @@ export default function PhotoManager({
           </View>
         </View>
       </Modal>
+
+      {/* Photo preview modal */}
+      <Modal
+        visible={!!previewPhoto}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={() => setPreviewPhoto(null)}
+      >
+        <Pressable style={styles.previewOverlay} onPress={() => setPreviewPhoto(null)}>
+          {previewPhoto && (
+            <Image
+              source={{ uri: photoService.getPhotoUrl(previewPhoto.file_path) }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          )}
+          <View style={styles.previewCloseBtn}>
+            <MaterialIcons name="close" size={28} color="#fff" />
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Custom crop screen */}
+      {cropUri && (
+        <ImageCropper
+          uri={cropUri}
+          visible={true}
+          onCrop={uploadCroppedPhoto}
+          onCancel={() => setCropUri(null)}
+        />
+      )}
     </View>
   );
 }
@@ -315,21 +520,13 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   errorText: { flex: 1, fontSize: 13, color: theme.colors.destructive },
   hint: { fontSize: 12, color: theme.colors.placeholder, textAlign: "center" },
   grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    position: "relative",
+    width: "100%",
   },
   photoCell: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
     borderRadius: 12,
     overflow: "hidden",
-    position: "relative",
     backgroundColor: theme.colors.secondary,
-  },
-  photoCellDragging: {
-    opacity: 0.5,
-    transform: [{ scale: 0.95 }],
   },
   photoImage: {
     width: "100%",
@@ -342,11 +539,11 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: theme.colors.overlay,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
-  positionText: { color: theme.colors.card, fontSize: 10, fontWeight: "700" },
+  positionText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   primaryBadge: {
     position: "absolute",
     top: 6,
@@ -359,7 +556,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     backgroundColor: "#eab308",
     borderRadius: 99,
   },
-  primaryText: { color: theme.colors.card, fontSize: 9, fontWeight: "700" },
+  primaryText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   actionsOverlay: {
     position: "absolute",
     bottom: 6,
@@ -374,11 +571,14 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryBtn: { backgroundColor: "#eab308" },
   deleteBtn: { backgroundColor: "#ef4444" },
+  hoverBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 3,
+    borderColor: theme.colors.primary,
+    borderRadius: 12,
+  },
   addCell: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed",
@@ -390,10 +590,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   addText: { fontSize: 12, color: theme.colors.placeholder },
   counter: { fontSize: 13, color: theme.colors.placeholder, textAlign: "center" },
-  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: theme.colors.overlay,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -423,5 +622,26 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   modalCancelBtn: { backgroundColor: theme.colors.secondary },
   modalDeleteBtn: { backgroundColor: "#ef4444" },
   modalCancelText: { fontWeight: "600", color: theme.colors.foreground },
-  modalDeleteText: { fontWeight: "600", color: theme.colors.card },
+  modalDeleteText: { fontWeight: "600", color: "#fff" },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  previewCloseBtn: {
+    position: "absolute",
+    top: 54,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

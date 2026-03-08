@@ -1,12 +1,12 @@
 // app/(main)/events/[id]/(event-tabs)/swiper.tsx
 import { View, StyleSheet, Text } from "react-native";
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { EventSwiper } from "@/components/EventSwiper";
 import { useEffect, useState } from 'react';
 import { useEvent } from '@/context/EventContext';
 
 export default function SwiperScreen() {
-  const { id: eventIdParam } = useLocalSearchParams<{ id: string }>();
+  const { id: eventIdParam } = useGlobalSearchParams<{ id: string }>();
   const router = useRouter();
   const { currentEventId, setCurrentEventId } = useEvent();
   
@@ -41,12 +41,7 @@ export default function SwiperScreen() {
         onMatch={() => {
           console.log("🎉 NOUVEAU MATCH ! event:", eventId);
           setMatchCount(c => c + 1);
-          
-          // ✅ S'assurer que le context est à jour avant de naviguer
           setCurrentEventId(eventId);
-          
-          // ✅ Navigation avec l'ID explicite dans l'URL
-          router.push(`/(main)/events/${eventId}/(event-tabs)/messagery`);
         }}
       />
     </View>

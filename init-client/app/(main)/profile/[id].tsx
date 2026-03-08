@@ -2,7 +2,7 @@
 import { Profile, UserProfile } from "@/components/Profile";
 import { type Theme } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
-import { ScreenLoader } from "@/components/ui/ScreenLoader";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { authService } from "@/services/auth.service";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -42,7 +42,7 @@ export default function UserProfileScreen() {
     }
   };
 
-  if (loading) return <ScreenLoader color={theme.colors.foreground} />;
+  if (loading) return <ProfileSkeleton />;
 
   if (error || !userProfile) {
     return (

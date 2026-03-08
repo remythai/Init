@@ -3,7 +3,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterTabs } from '@/components/ui/FilterTabs';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { ScreenLoader } from '@/components/ui/ScreenLoader';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { StatsBanner } from '@/components/ui/StatsBanner';
 import { type Theme } from '@/constants/theme';
@@ -201,7 +201,7 @@ export default function ReportsScreen() {
     );
   };
 
-  if (loading) return <ScreenLoader />;
+  if (loading) return <ListSkeleton />;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -242,13 +242,13 @@ export default function ReportsScreen() {
       {/* Detail modal */}
       <Modal
         visible={!!selected || loadingDetails}
-        animationType="slide"
+        animationType="fade"
         transparent
         statusBarTranslucent
         onRequestClose={() => { setSelected(null); }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
+        <Pressable style={styles.modalOverlay} onPress={() => setSelected(null)}>
+          <Pressable style={styles.modalBox} onPress={(e) => e.stopPropagation()}>
             {loadingDetails ? (
               <View style={styles.center}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -382,8 +382,8 @@ export default function ReportsScreen() {
                 </View>
               </>
             ) : null}
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
