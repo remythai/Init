@@ -17,17 +17,18 @@ export const UserController = {
     const { tel, password } = req.body;
     const result = await UserService.login(tel, password);
     setRefreshCookie(res, result.refreshToken);
-    success(res, { accessToken: result.accessToken, user: result.user }, 'Connexion réussie');
+    success(res, { accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user }, 'Connexion réussie');
   },
 
   async refreshToken(req: Request, res: Response): Promise<void> {
-    const tokens = await AuthService.rotateRefreshToken(req.cookies?.refreshToken);
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    const tokens = await AuthService.rotateRefreshToken(refreshToken);
     setRefreshCookie(res, tokens.refreshToken);
-    success(res, { accessToken: tokens.accessToken }, 'Token rafraîchi');
+    success(res, { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }, 'Token rafraîchi');
   },
 
   async logout(req: Request, res: Response): Promise<void> {
-    await AuthService.revokeRefreshToken(req.cookies?.refreshToken);
+    await AuthService.revokeRefreshToken(req.cookies?.refreshToken || req.body?.refreshToken);
     if (req.user) {
       await UserModel.setLogoutAt(req.user.id);
       disconnectUser(req.user.id);
