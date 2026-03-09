@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { MessageCircle, Send, ArrowLeft, MoreVertical, X, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, MoreVertical, X, ChevronLeft, ChevronRight, AlertTriangle, Heart } from "lucide-react";
 import { authService } from "../../../../services/auth.service";
 import { matchService, Conversation, Message, Photo, MatchUserProfile } from "../../../../services/match.service";
 import { reportService, ReportType, ReportReason } from "../../../../services/report.service";
 
 import { useRealTimeMessages } from "../../../../hooks/useRealTimeMessages";
-import { SocketConversationUpdate } from "../../../../services/socket.service";
+import { SocketConversationUpdate, SocketMessageLiked } from "../../../../services/socket.service";
 import { useUnreadMessagesContext } from "../../../../contexts/UnreadMessagesContext";
 
 interface ConversationData {
@@ -109,11 +109,41 @@ export default function MessagesPage() {
     });
   }, [selectedMatchId, markConversationAsRead]);
 
+  const handleMessageLiked = useCallback((data: SocketMessageLiked) => {
+    setConversationData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: prev.messages.map((m) =>
+          m.id === data.messageId ? { ...m, is_liked: data.isLiked } : m
+        ),
+      };
+    });
+  }, []);
+
+  const handleToggleLike = useCallback(async (messageId: number) => {
+    try {
+      await matchService.toggleMessageLike(messageId);
+      setConversationData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m) =>
+            m.id === messageId ? { ...m, is_liked: !m.is_liked } : m
+          ),
+        };
+      });
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  }, []);
+
   // Use real-time messages hook
   const { typingUsers, sendTyping } = useRealTimeMessages({
     matchId: selectedMatchId,
     onNewMessage: handleNewMessage,
     onConversationUpdate: handleConversationUpdate,
+    onMessageLiked: handleMessageLiked,
   });
 
   useEffect(() => {
@@ -540,13 +570,14 @@ export default function MessagesPage() {
                           </div>
                         )}
                         <div
-                          className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                          className={`flex ${isMine ? "justify-end" : "justify-start"} ${message.is_liked ? "mb-2" : ""}`}
                         >
                           <div
-                            className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
+                            onDoubleClick={() => !isMine && handleToggleLike(message.id)}
+                            className={`relative max-w-[75%] px-4 py-2.5 rounded-2xl select-none ${
                               isMine
                                 ? "bg-[#1271FF] text-white rounded-br-md"
-                                : "bg-received-msg text-primary shadow-sm rounded-bl-md"
+                                : "bg-received-msg text-primary shadow-sm rounded-bl-md cursor-pointer"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words hyphens-auto text-md">{message.content}</p>
@@ -557,6 +588,11 @@ export default function MessagesPage() {
                             >
                               {formatTime(message.sent_at)}
                             </p>
+                            {message.is_liked && (
+                              <div className="absolute -right-2 -bottom-2 bg-white/30 backdrop-blur-md rounded-full p-[6px]">
+                                <Heart className="w-[18px] h-[18px] fill-red-500 text-red-500 animate-like-bounce" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

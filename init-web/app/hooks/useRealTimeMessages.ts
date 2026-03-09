@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { socketService, SocketMessage, SocketTyping, SocketConversationUpdate } from '../services/socket.service';
+import { socketService, SocketMessage, SocketTyping, SocketConversationUpdate, SocketMessageLiked } from '../services/socket.service';
 import { authService } from '../services/auth.service';
 import { Message } from '../services/match.service';
 
@@ -10,6 +10,7 @@ interface UseRealTimeMessagesOptions {
   onNewMessage?: (message: Message) => void;
   onTyping?: (data: SocketTyping) => void;
   onConversationUpdate?: (data: SocketConversationUpdate) => void;
+  onMessageLiked?: (data: SocketMessageLiked) => void;
 }
 
 /**
@@ -17,7 +18,7 @@ interface UseRealTimeMessagesOptions {
  * Handles joining/leaving chat rooms and receiving new messages
  */
 export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
-  const { matchId, onNewMessage, onTyping, onConversationUpdate } = options;
+  const { matchId, onNewMessage, onTyping, onConversationUpdate, onMessageLiked } = options;
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<number[]>([]);
   const [isReady, setIsReady] = useState(false);
@@ -30,6 +31,7 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
   const onNewMessageRef = useRef(onNewMessage);
   const onTypingRef = useRef(onTyping);
   const onConversationUpdateRef = useRef(onConversationUpdate);
+  const onMessageLikedRef = useRef(onMessageLiked);
   const matchIdRef = useRef(matchId);
 
   // Keep refs in sync with props
@@ -44,6 +46,10 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
   useEffect(() => {
     onConversationUpdateRef.current = onConversationUpdate;
   }, [onConversationUpdate]);
+
+  useEffect(() => {
+    onMessageLikedRef.current = onMessageLiked;
+  }, [onMessageLiked]);
 
   useEffect(() => {
     matchIdRef.current = matchId;
@@ -167,6 +173,16 @@ export function useRealTimeMessages(options: UseRealTimeMessagesOptions = {}) {
         }
       });
       cleanupFns.push(unsubConvUpdate);
+
+      // Message liked listener
+      const unsubMessageLiked = socketService.onMessageLiked((data: SocketMessageLiked) => {
+        if (!mountedRef.current) return;
+        const currentMatchId = matchIdRef.current;
+        if (currentMatchId && data.matchId === currentMatchId && onMessageLikedRef.current) {
+          onMessageLikedRef.current(data);
+        }
+      });
+      cleanupFns.push(unsubMessageLiked);
 
       // Also check after a delay as fallback
       const timeout = setTimeout(() => {
