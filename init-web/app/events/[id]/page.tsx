@@ -694,7 +694,10 @@ export default function EventDetailPage() {
                 <h2 className="font-semibold text-lg text-primary mb-3">
                   Organisateur
                 </h2>
-                <div className="flex items-center gap-3 p-4 bg-badge rounded-xl">
+                <Link
+                  href={event.orgaId ? `/orga/${event.orgaId}` : '#'}
+                  className="w-full flex items-center gap-3 p-4 bg-badge rounded-xl hover:bg-hover transition-colors text-left"
+                >
                   {event.orgaLogo ? (
                     <img
                       src={event.orgaLogo}
@@ -708,11 +711,12 @@ export default function EventDetailPage() {
                       </span>
                     </div>
                   )}
-                  <div>
+                  <div className="flex-1">
                     <p className="font-semibold text-primary">{event.orgaName}</p>
                     <p className="text-xs text-muted">Organisateur</p>
                   </div>
-                </div>
+                  <ArrowLeft className="w-4 h-4 text-muted rotate-180" />
+                </Link>
               </div>
             )}
           </div>
