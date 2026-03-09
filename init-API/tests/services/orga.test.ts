@@ -11,7 +11,10 @@ const mockArgon2 = vi.hoisted(() => {
 
 const mockOrgaModel = vi.hoisted(() => ({
   create: vi.fn(),
+  findById: vi.fn(),
   findByMail: vi.fn(),
+  findPublicProfile: vi.fn(),
+  findPublicEvents: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
 }));
@@ -244,6 +247,44 @@ describe('OrgaService', () => {
 
       expect(mockDeleteOrgaLogo).toHaveBeenCalledWith(10);
       expect(mockOrgaModel.update).toHaveBeenCalledWith(10, { logo_path: null });
+    });
+  });
+
+  describe('getPublicProfile', () => {
+    it('should return public profile from model', async () => {
+      const profile = { id: 5, nom: 'TestOrga', event_count: 3, total_participants: 150 };
+      mockOrgaModel.findPublicProfile.mockResolvedValueOnce(profile);
+
+      const result = await OrgaService.getPublicProfile(5);
+
+      expect(mockOrgaModel.findPublicProfile).toHaveBeenCalledWith(5);
+      expect(result).toEqual(profile);
+    });
+
+    it('should throw NotFoundError when orga not found', async () => {
+      mockOrgaModel.findPublicProfile.mockResolvedValueOnce(undefined);
+
+      await expect(OrgaService.getPublicProfile(999)).rejects.toThrow('Organisation non trouvée');
+    });
+  });
+
+  describe('getPublicEvents', () => {
+    it('should return public events from model', async () => {
+      mockOrgaModel.findById.mockResolvedValueOnce({ id: 5, nom: 'TestOrga' });
+      const events = [{ id: 1, name: 'Event 1' }];
+      mockOrgaModel.findPublicEvents.mockResolvedValueOnce(events);
+
+      const result = await OrgaService.getPublicEvents(5, 50, 0);
+
+      expect(mockOrgaModel.findById).toHaveBeenCalledWith(5);
+      expect(mockOrgaModel.findPublicEvents).toHaveBeenCalledWith(5, 50, 0);
+      expect(result).toEqual(events);
+    });
+
+    it('should throw NotFoundError when orga not found', async () => {
+      mockOrgaModel.findById.mockResolvedValueOnce(undefined);
+
+      await expect(OrgaService.getPublicEvents(999, 50, 0)).rejects.toThrow('Organisation non trouvée');
     });
   });
 });

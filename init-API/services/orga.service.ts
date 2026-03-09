@@ -4,7 +4,7 @@ import { TokenModel } from '../models/token.model.js';
 import { EventModel } from '../models/event.model.js';
 import { normalizePhone } from '../utils/phone.js';
 import { getOrgaLogoUrl, deleteOrgaLogo, deleteOrgaDir, deleteEventDir } from '../config/multer.config.js';
-import { ValidationError, UnauthorizedError } from '../utils/errors.js';
+import { ValidationError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { AuthService } from './auth.service.js';
 import logger from '../utils/logger.js';
 
@@ -93,5 +93,21 @@ export const OrgaService = {
   async deleteLogo(orgaId: number) {
     deleteOrgaLogo(orgaId);
     await OrgaModel.update(orgaId, { logo_path: null });
+  },
+
+  async getPublicProfile(orgaId: number) {
+    const orga = await OrgaModel.findPublicProfile(orgaId);
+    if (!orga) {
+      throw new NotFoundError('Organisation non trouvée');
+    }
+    return orga;
+  },
+
+  async getPublicEvents(orgaId: number, limit: number, offset: number) {
+    const orga = await OrgaModel.findById(orgaId);
+    if (!orga) {
+      throw new NotFoundError('Organisation non trouvée');
+    }
+    return OrgaModel.findPublicEvents(orgaId, limit, offset);
   }
 };

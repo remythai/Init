@@ -22,6 +22,21 @@ router.get(
   asyncHandler(OrgaController.getProfile)
 );
 
+// Public profile routes (authenticated users)
+router.get(
+  '/:id',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(OrgaController.getPublicProfile)
+);
+
+router.get(
+  '/:id/events',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(OrgaController.getPublicEvents)
+);
+
 router.put(
   '/me',
   authMiddleware,
