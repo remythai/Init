@@ -11,9 +11,13 @@ const mocks = vi.hoisted(() => {
       deleteAccount: vi.fn(),
       uploadLogo: vi.fn(),
       deleteLogo: vi.fn(),
+      getPublicProfile: vi.fn(),
+      getPublicEvents: vi.fn(),
     },
     OrgaModel: {
       findById: vi.fn(),
+      findPublicProfile: vi.fn(),
+      findPublicEvents: vi.fn(),
       setLogoutAt: vi.fn(),
     },
     AuthService: {
@@ -262,6 +266,54 @@ describe('OrgaController', () => {
 
       expect(mocks.OrgaService.deleteLogo).toHaveBeenCalledWith(10);
       expect(mocks.successFn).toHaveBeenCalledWith(res, null, 'Logo supprim\u00e9 avec succ\u00e8s');
+    });
+  });
+
+  describe('getPublicProfile', () => {
+    it('delegates to OrgaService.getPublicProfile', async () => {
+      const profileData = { id: 5, nom: 'TestOrga', description: 'Desc', event_count: 3, total_participants: 150 };
+      mocks.OrgaService.getPublicProfile.mockResolvedValueOnce(profileData);
+
+      const req = mockReq({ params: { id: '5' }, user: { id: 1, role: 'user' } });
+      const res = mockRes();
+      await OrgaController.getPublicProfile(req as any, res as any);
+
+      expect(mocks.OrgaService.getPublicProfile).toHaveBeenCalledWith(5);
+      expect(mocks.successFn).toHaveBeenCalledWith(res, profileData);
+    });
+
+    it('propagates NotFoundError from service', async () => {
+      mocks.OrgaService.getPublicProfile.mockRejectedValueOnce(
+        new (await import('../../utils/errors.js')).NotFoundError('Organisation non trouv\u00e9e')
+      );
+
+      const req = mockReq({ params: { id: '999' }, user: { id: 1, role: 'user' } });
+      const res = mockRes();
+      await expect(OrgaController.getPublicProfile(req as any, res as any)).rejects.toThrow('Organisation non trouv\u00e9e');
+    });
+  });
+
+  describe('getPublicEvents', () => {
+    it('delegates to OrgaService.getPublicEvents', async () => {
+      const events = [{ id: 1, name: 'Event 1' }];
+      mocks.OrgaService.getPublicEvents.mockResolvedValueOnce(events);
+
+      const req = mockReq({ params: { id: '5' }, query: { limit: '10', offset: '0' }, user: { id: 1, role: 'user' } });
+      const res = mockRes();
+      await OrgaController.getPublicEvents(req as any, res as any);
+
+      expect(mocks.OrgaService.getPublicEvents).toHaveBeenCalledWith(5, 10, 0);
+      expect(mocks.successFn).toHaveBeenCalledWith(res, events);
+    });
+
+    it('propagates NotFoundError from service', async () => {
+      mocks.OrgaService.getPublicEvents.mockRejectedValueOnce(
+        new (await import('../../utils/errors.js')).NotFoundError('Organisation non trouv\u00e9e')
+      );
+
+      const req = mockReq({ params: { id: '999' }, query: {}, user: { id: 1, role: 'user' } });
+      const res = mockRes();
+      await expect(OrgaController.getPublicEvents(req as any, res as any)).rejects.toThrow('Organisation non trouv\u00e9e');
     });
   });
 });

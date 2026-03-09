@@ -62,6 +62,58 @@ export const OrgaModel = {
     return result.rows[0]?.logout_at ?? null;
   },
 
+  async findPublicProfile(id: number): Promise<unknown | undefined> {
+    const result = await pool.query(`
+      SELECT
+        o.id,
+        o.nom,
+        o.description,
+        o.logo_path,
+        o.created_at,
+        (SELECT COUNT(*) FROM events WHERE orga_id = o.id AND is_public = true) as event_count,
+        (SELECT COALESCE(SUM(sub.cnt), 0) FROM (
+          SELECT COUNT(*) as cnt FROM user_event_rel uer
+          JOIN events e ON uer.event_id = e.id
+          WHERE e.orga_id = o.id AND e.is_public = true
+        ) sub) as total_participants
+      FROM orga o
+      WHERE o.id = $1
+    `, [id]);
+    if (!result.rows[0]) return undefined;
+    const row = result.rows[0];
+    return {
+      ...row,
+      event_count: parseInt(row.event_count),
+      total_participants: parseInt(row.total_participants)
+    };
+  },
+
+  async findPublicEvents(orgaId: number, limit: number = 50, offset: number = 0): Promise<unknown[]> {
+    const result = await pool.query(`
+      SELECT
+        e.id,
+        e.name,
+        e.description,
+        e.location,
+        e.event_date,
+        e.start_at,
+        e.end_at,
+        e.app_start_at,
+        e.app_end_at,
+        e.theme,
+        e.banner_path,
+        e.max_participants,
+        (SELECT COUNT(*) FROM user_event_rel WHERE event_id = e.id) as participant_count
+      FROM events e
+      WHERE e.orga_id = $1 AND e.is_public = true
+      ORDER BY
+        CASE WHEN e.app_end_at >= NOW() THEN 0 ELSE 1 END,
+        e.start_at ASC
+      LIMIT $2 OFFSET $3
+    `, [orgaId, limit, offset]);
+    return result.rows;
+  },
+
   async delete(id: number): Promise<void> {
     await pool.query('DELETE FROM orga WHERE id = $1', [id]);
   }
