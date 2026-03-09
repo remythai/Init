@@ -65,6 +65,13 @@ export interface SocketConversationUpdate {
   };
 }
 
+export interface SocketMessageLiked {
+  matchId: number;
+  messageId: number;
+  isLiked: boolean;
+  userId: number;
+}
+
 export interface SocketTyping {
   matchId: number;
   userId: number;
@@ -242,6 +249,21 @@ class SocketService {
     this.socket.on('chat:conversationUpdate', callback);
     return () => {
       this.socket?.off('chat:conversationUpdate', callback);
+    };
+  }
+
+  /**
+   * Listen for message like events
+   */
+  onMessageLiked(callback: (data: SocketMessageLiked) => void): () => void {
+    if (isDevMode()) return () => {};
+    if (!this.socket) {
+      console.warn('Socket: Cannot add messageLiked listener - socket not initialized');
+      return () => {};
+    }
+    this.socket.on('chat:messageLiked', callback);
+    return () => {
+      this.socket?.off('chat:messageLiked', callback);
     };
   }
 
