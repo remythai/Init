@@ -66,5 +66,20 @@ export const OrgaController = {
   async deleteLogo(req: Request, res: Response): Promise<void> {
     await OrgaService.deleteLogo(req.user!.id);
     success(res, null, 'Logo supprimé avec succès');
+  },
+
+  async getPublicProfile(req: Request, res: Response): Promise<void> {
+    const orgaId = parseInt(req.params.id);
+    const orga = await OrgaService.getPublicProfile(orgaId);
+    success(res, orga);
+  },
+
+  async getPublicEvents(req: Request, res: Response): Promise<void> {
+    const orgaId = parseInt(req.params.id);
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const events = await OrgaService.getPublicEvents(orgaId, limit, offset);
+    success(res, events);
   }
 };

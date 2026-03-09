@@ -188,6 +188,42 @@ describe('OrgaModel', () => {
     });
   });
 
+  describe('findPublicProfile', () => {
+    it('should return public profile with counts', async () => {
+      const mockRow = { id: 5, nom: 'TestOrga', description: 'Desc', logo_path: null, created_at: '2024-01-01', event_count: '3', total_participants: '150' };
+      mockQuery.mockResolvedValueOnce({ rows: [mockRow] });
+
+      const result = await OrgaModel.findPublicProfile(5) as any;
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('FROM orga o'), [5]);
+      expect(result.event_count).toBe(3);
+      expect(result.total_participants).toBe(150);
+    });
+
+    it('should return undefined when orga not found', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await OrgaModel.findPublicProfile(999);
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('findPublicEvents', () => {
+    it('should return public events for orga with pagination', async () => {
+      const mockEvents = [{ id: 1, name: 'Event 1' }, { id: 2, name: 'Event 2' }];
+      mockQuery.mockResolvedValueOnce({ rows: mockEvents });
+
+      const result = await OrgaModel.findPublicEvents(5, 10, 0);
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('is_public = true'),
+        [5, 10, 0]
+      );
+      expect(result).toEqual(mockEvents);
+    });
+  });
+
   describe('delete', () => {
     it('should delete the orga by id', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
