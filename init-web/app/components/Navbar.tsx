@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Globe, ChevronDown } from "lucide-react";
+import { ArrowRight, Globe, ChevronDown, Menu, X } from "lucide-react";
 import { authService } from "../services/auth.service";
 import { useLang, Lang } from "../contexts/LangContext";
 
@@ -19,11 +19,14 @@ export default function Navbar() {
   const { lang, setLang, t } = useLang();
   const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
   const [langOpen, setLangOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await authService.logout();
     setIsAuthenticated(false);
+    setMenuOpen(false);
     router.push("/");
   };
 
@@ -31,6 +34,9 @@ export default function Navbar() {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setLangOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -50,7 +56,8 @@ export default function Navbar() {
           />
         </Link>
 
-        <div className="flex items-center gap-3 md:gap-4">
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-4">
           {isAuthenticated && (
             <button
               onClick={handleLogout}
@@ -60,11 +67,10 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* Language selector */}
           <div ref={dropdownRef} className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1.5 font-poppins text-xs md:text-sm text-white font-bold hover:text-white/80 transition-colors"
+              className="flex items-center gap-1.5 font-poppins text-sm text-white font-bold hover:text-white/80 transition-colors"
             >
               <Globe className="w-4 h-4" />
               {lang}
@@ -96,21 +102,87 @@ export default function Navbar() {
           <a
             href="/init.apk"
             download
-            className="bg-[#4A90D9] text-white hover:bg-[#3a7bc8] font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5"
+            className="bg-[#4A90D9] text-white hover:bg-[#3a7bc8] font-medium px-6 py-3 rounded-full text-base transition-colors flex items-center gap-1.5"
           >
             {t.navbar.download}
-            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.523 2.226a.75.75 0 0 0-1.046-.177l-1.867 1.302A8.962 8.962 0 0 0 12 2.726a8.96 8.96 0 0 0-2.61.625L7.523 2.05a.75.75 0 1 0-.869 1.222l1.548 1.08A8.987 8.987 0 0 0 3 12.226v.75h18v-.75a8.987 8.987 0 0 0-5.202-8.174l1.548-1.08a.75.75 0 0 0 .177-1.046zM8.25 10.226a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm7.5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM3 14.476v3.75A3.75 3.75 0 0 0 6.75 22h10.5A3.75 3.75 0 0 0 21 18.226v-3.75H3z"/>
             </svg>
           </a>
 
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
-            className="bg-white text-black hover:bg-white/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5 group"
+            className="bg-white text-black hover:bg-white/90 font-medium px-6 py-3 rounded-full text-base transition-colors flex items-center gap-1.5 group"
           >
             {isAuthenticated ? t.navbar.access : t.navbar.start}
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
+        </div>
+
+        {/* Mobile burger button */}
+        <div ref={menuRef} className="md:hidden relative">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="text-white p-2"
+            aria-label="Menu"
+          >
+            {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+
+          {/* Mobile dropdown menu */}
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl min-w-[220px] flex flex-col p-3 gap-2">
+              {/* Language selector */}
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Globe className="w-4 h-4 text-white/60" />
+                {languages.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => setLang(l.code)}
+                    className={`font-poppins text-sm px-2 py-1 rounded-lg transition-colors ${
+                      lang === l.code
+                        ? "text-white bg-white/10"
+                        : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    {l.code}
+                  </button>
+                ))}
+              </div>
+
+              <hr className="border-white/10" />
+
+              <a
+                href="/init.apk"
+                download
+                onClick={() => setMenuOpen(false)}
+                className="bg-[#4A90D9] text-white hover:bg-[#3a7bc8] font-medium px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                {t.navbar.download}
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.523 2.226a.75.75 0 0 0-1.046-.177l-1.867 1.302A8.962 8.962 0 0 0 12 2.726a8.96 8.96 0 0 0-2.61.625L7.523 2.05a.75.75 0 1 0-.869 1.222l1.548 1.08A8.987 8.987 0 0 0 3 12.226v.75h18v-.75a8.987 8.987 0 0 0-5.202-8.174l1.548-1.08a.75.75 0 0 0 .177-1.046zM8.25 10.226a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm7.5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM3 14.476v3.75A3.75 3.75 0 0 0 6.75 22h10.5A3.75 3.75 0 0 0 21 18.226v-3.75H3z"/>
+                </svg>
+              </a>
+
+              <Link
+                href={isAuthenticated ? "/events" : "/auth"}
+                onClick={() => setMenuOpen(false)}
+                className="bg-white text-black hover:bg-white/90 font-medium px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5"
+              >
+                {isAuthenticated ? t.navbar.access : t.navbar.start}
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="font-poppins text-sm text-white/50 hover:text-white transition-colors py-2"
+                >
+                  {t.navbar.logout}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
