@@ -20,6 +20,7 @@ interface PhotoManagerProps {
   showCopyFromGeneral?: boolean;
   onPhotosChange?: (photos: Photo[]) => void;
   darkMode?: boolean;
+  aspectRatio?: string;
 }
 
 export default function PhotoManager({
@@ -28,6 +29,7 @@ export default function PhotoManager({
   showCopyFromGeneral = false,
   onPhotosChange,
   darkMode = false,
+  aspectRatio,
 }: PhotoManagerProps) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [generalPhotos, setGeneralPhotos] = useState<Photo[]>([]);
@@ -344,26 +346,8 @@ export default function PhotoManager({
         </div>
       )}
 
-      {/* Instructions */}
-      {photos.length > 1 && (
-        <p className={`text-xs ${textMuted}`}>
-          Glissez-deposez pour reorganiser. La premiere photo est votre photo principale.
-        </p>
-      )}
-
-      {/* Copy from general button */}
-      {showCopyFromGeneral && eventId && generalPhotos.length > 0 && (
-        <button
-          onClick={() => setShowCopyModal(true)}
-          className={`flex items-center gap-2 px-4 py-2 ${cardBg} ${textColor} rounded-lg ${hoverBg} transition-colors`}
-        >
-          <Copy className="w-4 h-4" />
-          <span>Copier depuis mon profil general</span>
-        </button>
-      )}
-
       {/* Photo grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {photos.map((photo, index) => (
           <div
             key={photo.id}
@@ -377,7 +361,8 @@ export default function PhotoManager({
             onTouchStart={(e) => handleTouchStart(e, index)}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className={`relative aspect-square rounded-xl overflow-hidden ${cardBg} group cursor-grab active:cursor-grabbing transition-all duration-200 ${
+            style={aspectRatio ? { aspectRatio } : undefined}
+            className={`relative ${aspectRatio ? '' : 'aspect-square'} rounded-[19px] overflow-hidden ${cardBg} group cursor-grab active:cursor-grabbing transition-all duration-200 ${
               draggedIndex === index ? "opacity-50 scale-95" : ""
             } ${
               dragOverIndex === index
@@ -446,7 +431,8 @@ export default function PhotoManager({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className={`aspect-square rounded-xl border-2 border-dashed ${borderColor} ${hoverBg} transition-colors flex flex-col items-center justify-center gap-2 ${textMuted} disabled:opacity-50`}
+            style={aspectRatio ? { aspectRatio } : undefined}
+            className={`${aspectRatio ? '' : 'aspect-square'} rounded-[19px] border-2 border-dashed ${borderColor} ${hoverBg} transition-colors flex flex-col items-center justify-center gap-2 ${textMuted} disabled:opacity-50`}
           >
             {uploading ? (
               <Loader2 className="w-8 h-8 animate-spin" />
