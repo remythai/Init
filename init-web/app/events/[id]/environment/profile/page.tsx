@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Camera, Edit2, Check, X, AlertTriangle } from "lucide-react";
+import { Edit2, Check, X, AlertTriangle, Heart, Sparkles } from "lucide-react";
 import { authService, User } from "../../../../services/auth.service";
-import { matchService } from "../../../../services/match.service";
-import { eventService, CustomField, getFieldId, getFieldPlaceholder } from "../../../../services/event.service";
+import { eventService } from "../../../../services/event.service";
 import { Photo, photoService } from "../../../../services/photo.service";
 import PhotoManager from "../../../../components/PhotoManager";
 
@@ -17,18 +16,28 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [matchCount, setMatchCount] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [profile, setProfile] = useState<{
+  const [userData, setUserData] = useState<User | null>(null);
+  const [editedUser, setEditedUser] = useState<{
     firstname: string;
     lastname: string;
-    age: number;
-    image: string;
-  } | null>(null);
-  const [customFields, setCustomFields] = useState<CustomField[]>([]);
-  const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
-  const [editedProfilInfo, setEditedProfilInfo] = useState<Record<string, unknown>>({});
+    tel: string;
+    mail: string;
+    birthday: string;
+  }>({ firstname: "", lastname: "", tel: "", mail: "", birthday: "" });
   const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
+
+  const getAge = (birthday?: string): number => {
+    if (!birthday) return 0;
+    const birth = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   useEffect(() => {
     const initPage = async () => {
@@ -39,15 +48,12 @@ export default function ProfilePage() {
         return;
       }
 
-      // Only users can access event environment
       if (validatedType !== "user") {
         router.push("/events");
         return;
       }
 
       loadProfile();
-      loadMatchStats();
-      loadEventProfile();
       loadEventPhotos();
       checkBlockedStatus();
     };
@@ -58,52 +64,21 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const userData = await authService.getCurrentProfile() as User;
-      if (userData) {
-        // Calculate age from birthday
-        let age = 25; // Default
-        if (userData.birthday) {
-          const birth = new Date(userData.birthday);
-          const today = new Date();
-          age = today.getFullYear() - birth.getFullYear();
-          const monthDiff = today.getMonth() - birth.getMonth();
-          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-          }
-        }
-
-        // Generate avatar URL based on name
-        const avatarUrl = `https://ui-avatars.com/api/?name=${userData.firstname || "U"}+${userData.lastname || ""}&size=400&background=1271FF&color=fff`;
-
-        setProfile({
-          firstname: userData.firstname || "Utilisateur",
-          lastname: userData.lastname || "",
-          age,
-          image: avatarUrl,
+      const data = await authService.getCurrentProfile() as User;
+      if (data) {
+        setUserData(data);
+        setEditedUser({
+          firstname: data.firstname || "",
+          lastname: data.lastname || "",
+          tel: data.tel || "",
+          mail: data.mail || "",
+          birthday: data.birthday || "",
         });
       }
     } catch (error) {
       console.error("Error loading profile:", error);
-      // Use fallback data if API fails
-      setProfile({
-        firstname: "Utilisateur",
-        lastname: "",
-        age: 25,
-        image: "https://ui-avatars.com/api/?name=U&size=400&background=1271FF&color=fff",
-      });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadEventProfile = async () => {
-    try {
-      const data = await eventService.getMyEventProfile(eventId);
-      setCustomFields(data.custom_fields || []);
-      setProfilInfo(data.profil_info || {});
-      setEditedProfilInfo(data.profil_info || {});
-    } catch (error) {
-      console.error("Error loading event profile:", error);
     }
   };
 
@@ -122,20 +97,6 @@ export default function ProfilePage() {
     setPrimaryPhoto(primary);
   };
 
-  const loadMatchStats = async () => {
-    try {
-      const data = await matchService.getAllMatches();
-      // Filtrer les matchs pour cet événement uniquement
-      const eventMatches = data.by_event?.find(
-        (e) => String(e.event.id) === eventId
-      );
-      setMatchCount(eventMatches?.matches?.length || 0);
-    } catch (error) {
-      console.error("Error loading match stats:", error);
-      setMatchCount(0);
-    }
-  };
-
   const checkBlockedStatus = async () => {
     try {
       const eventData = await eventService.getEventById(eventId);
@@ -146,12 +107,18 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!profile) return;
+    if (!userData) return;
     setSaving(true);
 
     try {
-      await eventService.updateMyEventProfile(eventId, editedProfilInfo);
-      setProfilInfo(editedProfilInfo);
+      await authService.updateCurrentUser({
+        firstname: editedUser.firstname,
+        lastname: editedUser.lastname,
+        tel: editedUser.tel,
+        mail: editedUser.mail,
+        birthday: editedUser.birthday,
+      });
+      await loadProfile();
       setEditing(false);
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -161,30 +128,23 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
-    setEditedProfilInfo(profilInfo);
+    if (userData) {
+      setEditedUser({
+        firstname: userData.firstname || "",
+        lastname: userData.lastname || "",
+        tel: userData.tel || "",
+        mail: userData.mail || "",
+        birthday: userData.birthday || "",
+      });
+    }
     setEditing(false);
   };
 
-  const getFieldValue = (fieldId: string): string => {
-    const value = profilInfo[fieldId];
-    if (value === undefined || value === null) return "";
-    if (Array.isArray(value)) return value.join(", ");
-    return String(value);
-  };
+  const avatarUrl = userData
+    ? `https://ui-avatars.com/api/?name=${userData.firstname || "U"}+${userData.lastname || ""}&size=400&background=1271FF&color=fff`
+    : "";
 
-  const getFieldDisplayValue = (field: CustomField, value: unknown): string => {
-    if (field.type === "select" || field.type === "radio") {
-      // Options sont maintenant des strings simples
-      return String(value || "");
-    }
-    if (field.type === "multiselect" && Array.isArray(value)) {
-      return value.join(", ");
-    }
-    if (field.type === "checkbox") {
-      return value ? "Oui" : "Non";
-    }
-    return String(value || "");
-  };
+  const age = getAge(userData?.birthday);
 
   if (loading) {
     return (
@@ -197,7 +157,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
+  if (!userData) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-muted">Erreur lors du chargement du profil</p>
@@ -205,279 +165,164 @@ export default function ProfilePage() {
     );
   }
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-lg mx-auto p-4">
-        {/* Profile Header */}
-        <div className="text-center mb-6">
-          <div className="relative inline-block">
-            {primaryPhoto ? (
-              <img
-                src={photoService.getPhotoUrl(primaryPhoto.file_path)}
-                alt={profile.firstname}
-                className="w-32 h-32 rounded-full object-cover border-4 border-border"
-              />
-            ) : (
-              <img
-                src={profile.image}
-                alt={profile.firstname}
-                className="w-32 h-32 rounded-full object-cover border-4 border-border"
-              />
-            )}
+  const profileHeader = (
+    <div className="flex items-center gap-4 lg:gap-5 mb-8 lg:mb-10">
+      <div className="shrink-0">
+        {primaryPhoto ? (
+          <img
+            src={photoService.getPhotoUrl(primaryPhoto.file_path)}
+            alt={userData.firstname}
+            className="w-20 h-20 lg:w-[130px] lg:h-[130px] rounded-full object-cover"
+          />
+        ) : (
+          <img
+            src={avatarUrl}
+            alt={userData.firstname}
+            className="w-20 h-20 lg:w-[130px] lg:h-[130px] rounded-full object-cover"
+          />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h1 className="font-poppins text-2xl lg:text-[42px] font-semibold text-primary leading-tight">
+          {userData.firstname}
+        </h1>
+        <p className="text-primary/70 text-lg lg:text-[26px]">{age > 0 ? `${age} ans` : ""}</p>
+      </div>
+      {!editing && !isBlocked && (
+        <button
+          onClick={() => setEditing(true)}
+          className="w-12 h-12 lg:w-[60px] lg:h-[60px] rounded-full bg-[#808080]/40 hover:bg-[#808080]/60 flex items-center justify-center transition-colors shrink-0"
+        >
+          <Edit2 className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
+        </button>
+      )}
+    </div>
+  );
+
+  const photosSection = (
+    <div>
+      {isBlocked ? (
+        <p className="text-muted italic text-sm">Modification des photos desactivee</p>
+      ) : (
+        <PhotoManager
+          eventId={eventId}
+          showCopyFromGeneral={true}
+          onPhotosChange={handlePhotosChange}
+          darkMode={true}
+          aspectRatio="9 / 16"
+        />
+      )}
+    </div>
+  );
+
+  const profileFields = (
+    <div>
+      {editing ? (
+        <div className="space-y-5">
+          <input
+            type="date"
+            className="w-full px-5 py-4 bg-[#808080]/20 border-none rounded-[19px] text-primary text-base focus:outline-none focus:ring-2 focus:ring-[#1271FF] transition-all"
+            value={editedUser.birthday}
+            onChange={(e) => setEditedUser((prev) => ({ ...prev, birthday: e.target.value }))}
+          />
+          <input
+            type="tel"
+            className="w-full px-5 py-4 bg-[#808080]/20 border-none rounded-[19px] text-primary text-base placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] transition-all"
+            placeholder="Votre numero"
+            value={editedUser.tel}
+            onChange={(e) => setEditedUser((prev) => ({ ...prev, tel: e.target.value }))}
+          />
+          <input
+            type="email"
+            className="w-full px-5 py-4 bg-[#808080]/20 border-none rounded-[19px] text-primary text-base placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] transition-all"
+            placeholder="Votre email"
+            value={editedUser.mail}
+            onChange={(e) => setEditedUser((prev) => ({ ...prev, mail: e.target.value }))}
+          />
+
+          <div className="flex gap-4 pt-3">
+            <button
+              onClick={handleCancel}
+              disabled={saving}
+              className="flex items-center gap-2 text-red-500 text-base font-medium hover:bg-red-500/10 px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+              Annuler
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 text-green-600 text-base font-medium hover:bg-green-500/10 px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Check className="w-5 h-5" />
+              {saving ? "..." : "Sauvegarder"}
+            </button>
           </div>
-          <h1 className="font-poppins text-2xl font-bold text-primary mt-4">
-            {profile.firstname} {profile.lastname}, {profile.age}
-          </h1>
         </div>
+      ) : (
+        <div className="bg-[#808080]/30 rounded-[19px] px-6 lg:px-8 py-5 lg:py-6 space-y-5">
+          <div>
+            <p className="text-muted text-sm lg:text-base">Age</p>
+            <p className="text-primary text-base lg:text-xl">{age > 0 ? `${age} ans` : ""}</p>
+          </div>
+          <div>
+            <p className="text-muted text-sm lg:text-base">Telephone</p>
+            <p className="text-primary text-base lg:text-xl">{userData.tel}</p>
+          </div>
+          <div>
+            <p className="text-muted text-sm lg:text-base">Email</p>
+            <p className="text-primary text-base lg:text-xl">{userData.mail}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const descriptionSection = (
+    <div className="bg-[#808080]/30 rounded-[19px] px-6 lg:px-8 py-5 lg:py-6 min-h-[120px] lg:min-h-[150px]">
+      <p className="text-muted text-sm lg:text-base mb-1">Description</p>
+      <p className="text-muted/50 italic text-base">Cette fonctionnalite sera bientot disponible</p>
+    </div>
+  );
+
+  return (
+    <div className="h-full overflow-y-auto min-[1250px]:overflow-hidden">
+      <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-8 lg:py-12">
 
         {/* Blocked Warning */}
         {isBlocked && (
-          <div className="bg-red-50 dark:bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4 flex items-center gap-3">
+          <div className="bg-red-50 dark:bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-8 flex items-center gap-3">
             <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
             <div>
-              <p className="text-red-500 font-semibold">Profil bloque</p>
-              <p className="text-red-500/80 text-sm">
+              <p className="text-red-500 font-semibold text-sm">Profil bloque</p>
+              <p className="text-red-500/80 text-xs">
                 Vous avez ete retire de cet evenement. Vous ne pouvez plus modifier votre profil ni vos photos.
               </p>
             </div>
           </div>
         )}
 
-        {/* Photos */}
-        <div className="bg-badge rounded-2xl p-5 mb-4">
-          <h2 className="font-semibold text-primary mb-4">Mes photos</h2>
-          {isBlocked ? (
-            <p className="text-muted italic text-sm">Modification des photos desactivee</p>
-          ) : (
-            <PhotoManager
-              eventId={eventId}
-              showCopyFromGeneral={true}
-              onPhotosChange={handlePhotosChange}
-              darkMode={true}
-            />
-          )}
+        {/* Mobile/Tablet layout */}
+        <div className="min-[1250px]:hidden space-y-8">
+          {profileHeader}
+          {photosSection}
+          {profileFields}
+          {descriptionSection}
         </div>
 
-        {/* Stats */}
-        <div className="flex justify-center mb-4">
-          <div className="bg-badge rounded-2xl p-4 text-center min-w-[140px]">
-            <p className="text-3xl font-bold text-primary">{matchCount}</p>
-            <p className="text-muted text-sm">Matchs sur cet evenement</p>
+        {/* Desktop layout */}
+        <div className="hidden min-[1250px]:flex flex-row gap-20 justify-center h-[calc(100vh-120px)]">
+          {/* Left - Profile (fixed, no scroll) */}
+          <div className="flex-1 min-w-[500px] max-w-[700px] space-y-8 overflow-hidden">
+            {profileHeader}
+            {profileFields}
+            {descriptionSection}
           </div>
-        </div>
 
-        {/* Profile Info Card */}
-        {customFields.length > 0 && (
-          <div className="bg-badge rounded-2xl p-5 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-primary">Mon profil evenement</h2>
-              {!editing ? (
-                !isBlocked && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="text-[#1271FF] hover:bg-[#1271FF]/80 transition-colors"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                )
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleCancel}
-                    disabled={saving}
-                    className="text-red-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="text-green-500 hover:text-green-400 transition-colors disabled:opacity-50"
-                  >
-                    <Check className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {editing ? (
-              <div className="space-y-4">
-                {customFields.map((field) => {
-                  const fieldId = getFieldId(field.label);
-                  return (
-                  <div key={fieldId}>
-                    <label className="block text-base font-semibold text-primary mb-2">
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </label>
-                    {(field.type === "text" || field.type === "email" || field.type === "phone" || field.type === "number") && (
-                      <>
-                        <input
-                          type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : "text"}
-                          className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                          placeholder={getFieldPlaceholder(field)}
-                          value={editedProfilInfo[fieldId] !== undefined ? String(editedProfilInfo[fieldId]) : ""}
-                          maxLength={field.type === "text" ? 150 : undefined}
-                          onChange={(e) =>
-                            setEditedProfilInfo((prev) => ({
-                              ...prev,
-                              [fieldId]: field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : (field.type === "text" ? e.target.value.slice(0, 150) : e.target.value),
-                            }))
-                          }
-                        />
-                        {field.type === "text" && (
-                          <p className={`text-xs mt-1 text-right ${String(editedProfilInfo[fieldId] || "").length >= 140 ? 'text-orange-500' : 'text-muted'}`}>
-                            {String(editedProfilInfo[fieldId] || "").length}/150
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {field.type === "textarea" && (
-                      <>
-                        <textarea
-                          className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[#1271FF] resize-none min-h-[100px] break-words hyphens-auto"
-                          style={{ wordBreak: 'break-word' }}
-                          placeholder={getFieldPlaceholder(field)}
-                          value={(editedProfilInfo[fieldId] as string) || ""}
-                          maxLength={500}
-                          onChange={(e) =>
-                            setEditedProfilInfo((prev) => ({
-                              ...prev,
-                              [fieldId]: e.target.value.slice(0, 500),
-                            }))
-                          }
-                        />
-                        <p className={`text-xs mt-1 text-right ${((editedProfilInfo[fieldId] as string) || "").length >= 450 ? 'text-orange-500' : 'text-muted'}`}>
-                          {((editedProfilInfo[fieldId] as string) || "").length}/500
-                        </p>
-                      </>
-                    )}
-                    {field.type === "date" && (
-                      <input
-                        type="date"
-                        className="w-full px-4 py-3 bg-badge border border-border rounded-xl text-primary focus:outline-none focus:ring-2 focus:ring-[#1271FF]"
-                        value={(editedProfilInfo[fieldId] as string) || ""}
-                        onChange={(e) =>
-                          setEditedProfilInfo((prev) => ({
-                            ...prev,
-                            [fieldId]: e.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                    {field.type === "checkbox" && (
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                            editedProfilInfo[fieldId] ? "bg-[#1271FF] border-[#1271FF]" : "border-muted"
-                          }`}
-                          onClick={() =>
-                            setEditedProfilInfo((prev) => ({
-                              ...prev,
-                              [fieldId]: !prev[fieldId],
-                            }))
-                          }
-                        >
-                          {Boolean(editedProfilInfo[fieldId]) && <Check className="w-4 h-4 text-white" />}
-                        </div>
-                      </label>
-                    )}
-                    {(field.type === "radio" || field.type === "select") && (
-                      <div className="space-y-2">
-                        {field.options?.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            className={`w-full px-4 py-3 border rounded-xl text-left transition-colors ${
-                              editedProfilInfo[fieldId] === option
-                                ? "bg-[#1271FF] text-white border-[#1271FF]"
-                                : "border-border text-secondary hover:border-border"
-                            }`}
-                            onClick={() =>
-                              setEditedProfilInfo((prev) => ({
-                                ...prev,
-                                [fieldId]: option,
-                              }))
-                            }
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {field.type === "multiselect" && (
-                      <div className="space-y-2">
-                        {field.options?.map((option) => {
-                          const selectedValues = (editedProfilInfo[fieldId] as string[]) || [];
-                          const isSelected = selectedValues.includes(option);
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              className={`w-full px-4 py-3 border rounded-xl text-left transition-colors flex items-center gap-3 ${
-                                isSelected
-                                  ? "bg-[#1271FF] text-white border-[#1271FF]"
-                                  : "border-border text-secondary hover:border-border"
-                              }`}
-                              onClick={() => {
-                                setEditedProfilInfo((prev) => {
-                                  const current = (prev[fieldId] as string[]) || [];
-                                  const newValues = isSelected
-                                    ? current.filter((v) => v !== option)
-                                    : [...current, option];
-                                  return {
-                                    ...prev,
-                                    [fieldId]: newValues,
-                                  };
-                                });
-                              }}
-                            >
-                              <div
-                                className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                  isSelected ? "bg-[#1271FF] border-[#1271FF]" : "border-muted"
-                                }`}
-                              >
-                                {isSelected && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                              {option}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {customFields.map((field) => {
-                  const fieldId = getFieldId(field.label);
-                  const value = profilInfo[fieldId];
-                  if (value === undefined || value === null || value === "") return null;
-                  return (
-                    <div key={fieldId} className="overflow-hidden">
-                      <p className="text-muted text-sm">{field.label}</p>
-                      <p className="text-primary whitespace-pre-wrap break-words hyphens-auto">{getFieldDisplayValue(field, value)}</p>
-                    </div>
-                  );
-                })}
-                {customFields.every(f => !profilInfo[getFieldId(f.label)]) && (
-                  <p className="text-muted italic">Aucune information renseignee</p>
-                )}
-              </div>
-            )}
+          {/* Right - Photos (scrollable) */}
+          <div className="flex-1 min-w-[600px] max-w-[900px] overflow-y-auto pr-2">
+            {photosSection}
           </div>
-        )}
-
-        {/* Tips */}
-        <div className="bg-[#1271FF]/10 rounded-2xl p-5">
-          <h3 className="font-semibold text-primary mb-2">💡 Conseils</h3>
-          <ul className="text-secondary text-sm space-y-2">
-            <li>• Ajoutez une photo de profil claire et souriante</li>
-            <li>• Décrivez vos centres d'intérêt dans votre bio</li>
-            <li>• Soyez authentique et ouvert aux nouvelles rencontres</li>
-          </ul>
         </div>
       </div>
     </div>
