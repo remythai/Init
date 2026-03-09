@@ -11,6 +11,7 @@ const en = {
     start: "Get started",
     access: "Enter",
     logout: "Log out",
+    download: "Download",
   },
   footer: {
     tagline: "Events. People. Connections.",

@@ -11,6 +11,7 @@ const fr = {
     start: "Commencer",
     access: "Accéder",
     logout: "Déconnexion",
+    download: "Télécharger",
   },
   footer: {
     tagline: "Des événements. Des personnes. Des connexions.",

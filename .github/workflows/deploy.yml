@@ -15,8 +15,9 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 30m
           script: |
             cd /home/deploy/Init
             git pull origin main
+            bash build-apk.sh
             COMPOSE_BAKE=false docker compose up -d --build
