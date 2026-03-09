@@ -1,5 +1,5 @@
 import type { User } from '../auth.service';
-import type { EventResponse, EventListResponse, CustomField } from '../event.service';
+import type { EventResponse, EventListResponse, CustomField, OrgaPublicProfile } from '../event.service';
 import type { Profile, Match, Conversation, Message, MatchUserProfile } from '../match.service';
 import type { Photo, PhotosGrouped } from '../photo.service';
 import { DEV_MODE_USER_ID } from './dev-mode';
@@ -27,6 +27,7 @@ export const MOCK_USER: User = {
 export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   {
     id: 1,
+    orga_id: 1,
     name: 'Soiree Networking Tech Paris',
     location: '42 Rue de Rivoli, 75001 Paris',
     max_participants: 80,
@@ -53,6 +54,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 2,
+    orga_id: 2,
     name: 'Brunch & Rencontres Lyon',
     location: 'Cafe de la Paix, 69002 Lyon',
     max_participants: 40,
@@ -78,6 +80,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 3,
+    orga_id: 3,
     name: 'Festival Electro Marseille',
     location: 'Friche Belle de Mai, 13003 Marseille',
     max_participants: 200,
@@ -100,6 +103,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 4,
+    orga_id: 4,
     name: 'After-Work Etudiants Bordeaux',
     location: 'Darwin Eco-systeme, 33100 Bordeaux',
     max_participants: 60,
@@ -125,6 +129,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 5,
+    orga_id: 5,
     name: 'Tournoi Sportif Nantes',
     location: 'Parc de la Beaujoire, 44300 Nantes',
     max_participants: 100,
@@ -151,6 +156,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   // ── Extra mock events for horizontal scroll demo ──
   {
     id: 6,
+    orga_id: 6,
     name: 'Hackathon IA & Data',
     location: 'Station F, 75013 Paris',
     max_participants: 120,
@@ -173,6 +179,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 7,
+    orga_id: 7,
     name: 'Meetup Product & Design',
     location: '15 Rue de la Banque, 75002 Paris',
     max_participants: 50,
@@ -195,6 +202,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 8,
+    orga_id: 8,
     name: 'Conference Startup Pitch',
     location: 'La Felicita, 75013 Paris',
     max_participants: 200,
@@ -217,6 +225,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 9,
+    orga_id: 9,
     name: 'Jazz au Parc Toulouse',
     location: 'Jardin des Plantes, 31000 Toulouse',
     max_participants: 150,
@@ -239,6 +248,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 10,
+    orga_id: 10,
     name: 'Open Mic Night Lille',
     location: 'La Capsule, 59000 Lille',
     max_participants: 60,
@@ -261,6 +271,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 11,
+    orga_id: 11,
     name: 'Karaoke & Cocktails',
     location: 'Le Social Bar, 75010 Paris',
     max_participants: 45,
@@ -283,6 +294,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 12,
+    orga_id: 12,
     name: 'Coffee Dating Montpellier',
     location: 'Cafe Bloom, 34000 Montpellier',
     max_participants: 30,
@@ -305,6 +317,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 13,
+    orga_id: 13,
     name: 'Gouter Litteraire Strasbourg',
     location: 'Librairie Kleber, 67000 Strasbourg',
     max_participants: 25,
@@ -327,6 +340,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 14,
+    orga_id: 14,
     name: 'Soiree Integration INSA',
     location: 'Campus INSA, 69100 Villeurbanne',
     max_participants: 150,
@@ -349,6 +363,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 15,
+    orga_id: 15,
     name: 'Revisions & Chill',
     location: 'BU Sciences, 75005 Paris',
     max_participants: 40,
@@ -371,6 +386,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 16,
+    orga_id: 16,
     name: 'Run & Meet Nice',
     location: 'Promenade des Anglais, 06000 Nice',
     max_participants: 80,
@@ -393,6 +409,7 @@ export const MOCK_EVENT_RESPONSES: EventResponse[] = [
   },
   {
     id: 17,
+    orga_id: 17,
     name: 'Yoga & Brunch Rennes',
     location: 'Parc du Thabor, 35000 Rennes',
     max_participants: 35,
@@ -731,4 +748,26 @@ export const MOCK_EVENT_PROFILE: Record<string, { profil_info: Record<string, un
     custom_fields: MOCK_EVENT_RESPONSES[4].custom_fields || [],
     profil_info: { sport_prefere: 'Volley', niveau: 'Intermediaire' },
   },
+};
+
+// ── Mock Orga Public Profiles ──
+
+export const MOCK_ORGA_PROFILES: Record<number, OrgaPublicProfile> = {
+  1: { id: 1, nom: 'TechMeet Paris', description: 'Communaute de professionnels de la tech parisienne. Nous organisons des evenements networking, des meetups et des conferences pour connecter les talents du numerique.', logo_path: undefined, created_at: '2024-06-01T10:00:00Z', event_count: 12, total_participants: 580 },
+  2: { id: 2, nom: 'Brunch Club', description: 'Le Brunch Club organise des brunches conviviaux dans toute la France pour faire de nouvelles rencontres autour de bons plats.', logo_path: undefined, created_at: '2024-09-15T10:00:00Z', event_count: 8, total_participants: 320 },
+  3: { id: 3, nom: 'Electro Sud', description: 'Collectif musical base a Marseille, specialise dans l\'organisation de festivals et soirees electro dans le sud de la France.', logo_path: undefined, created_at: '2023-11-20T10:00:00Z', event_count: 5, total_participants: 1200 },
+  4: { id: 4, nom: 'BDE Connect', description: 'Plateforme inter-BDE pour connecter les etudiants de differentes ecoles et universites a travers des evenements sociaux.', logo_path: undefined, created_at: '2025-01-10T10:00:00Z', event_count: 15, total_participants: 890 },
+  5: { id: 5, nom: 'Sport Connect', description: 'Organisation de tournois multi-sports ouverts a tous niveaux. Notre mission : creer du lien par le sport.', logo_path: undefined, created_at: '2024-03-01T10:00:00Z', event_count: 20, total_participants: 1500 },
+  6: { id: 6, nom: 'AI France', description: 'Communaute francaise dediee a l\'intelligence artificielle. Hackathons, conferences et ateliers pratiques.', logo_path: undefined, created_at: '2024-01-15T10:00:00Z', event_count: 6, total_participants: 450 },
+  7: { id: 7, nom: 'Product School FR', description: 'La communaute francophone des Product Managers et Designers. Meetups, formations et networking.', logo_path: undefined, created_at: '2024-05-01T10:00:00Z', event_count: 10, total_participants: 380 },
+  8: { id: 8, nom: 'French Tech', description: 'Mouvement francais des startups innovantes. Conferences, pitch sessions et evenements networking.', logo_path: undefined, created_at: '2023-06-01T10:00:00Z', event_count: 25, total_participants: 3200 },
+  9: { id: 9, nom: 'Jazz Occitanie', description: 'Association promouvant le jazz en Occitanie a travers des concerts en plein air et des festivals.', logo_path: undefined, created_at: '2024-02-01T10:00:00Z', event_count: 7, total_participants: 620 },
+  10: { id: 10, nom: 'Lille Music', description: 'Collectif lillois organisant des scenes ouvertes et concerts pour les artistes emergents.', logo_path: undefined, created_at: '2024-08-01T10:00:00Z', event_count: 4, total_participants: 180 },
+  11: { id: 11, nom: 'Social Events', description: 'Organisateur de soirees thematiques a Paris pour faire des rencontres dans une ambiance fun et decontractee.', logo_path: undefined, created_at: '2024-04-01T10:00:00Z', event_count: 18, total_participants: 920 },
+  12: { id: 12, nom: 'Cafe Connect', description: 'Speed dating et rencontres autour du cafe de specialite dans les plus belles villes de France.', logo_path: undefined, created_at: '2024-07-01T10:00:00Z', event_count: 9, total_participants: 270 },
+  13: { id: 13, nom: 'Cercle Lecteur', description: 'Club de lecture itinerant organisant des rencontres litteraires dans des librairies independantes.', logo_path: undefined, created_at: '2024-10-01T10:00:00Z', event_count: 6, total_participants: 150 },
+  14: { id: 14, nom: 'BDE INSA', description: 'Bureau des Etudiants de l\'INSA Lyon. Organisation des soirees, evenements sportifs et activites pour tous les etudiants.', logo_path: undefined, created_at: '2023-09-01T10:00:00Z', event_count: 30, total_participants: 2400 },
+  15: { id: 15, nom: 'StudyBuddies', description: 'Plateforme de revisions collaboratives et de rencontres entre etudiants motives.', logo_path: undefined, created_at: '2025-01-20T10:00:00Z', event_count: 3, total_participants: 95 },
+  16: { id: 16, nom: 'Run Together', description: 'Communaute de runners organisant des courses conviviales suivies de petits dejeuners. Tous niveaux bienvenus !', logo_path: undefined, created_at: '2024-04-15T10:00:00Z', event_count: 11, total_participants: 680 },
+  17: { id: 17, nom: 'Zen Connect', description: 'Bien-etre et rencontres : yoga, meditation et brunchs healthy pour une communaute bienveillante.', logo_path: undefined, created_at: '2024-06-15T10:00:00Z', event_count: 8, total_participants: 240 },
 };

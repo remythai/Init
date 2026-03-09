@@ -131,6 +131,7 @@ export const EventModel = {
     const result = await pool.query(`
       SELECT
         e.id,
+        e.orga_id,
         e.name,
         e.location,
         e.max_participants,
@@ -159,6 +160,7 @@ export const EventModel = {
     let query = `
       SELECT
         e.id,
+        e.orga_id,
         e.name,
         e.location,
         e.max_participants,
@@ -220,6 +222,7 @@ export const EventModel = {
     let query = `
       SELECT
         e.id,
+        e.orga_id,
         e.name,
         e.location,
         e.max_participants,

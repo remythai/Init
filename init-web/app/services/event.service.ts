@@ -1,12 +1,13 @@
 // services/event.service.ts
 import { authService } from './auth.service';
 import { isDevMode } from './dev/dev-mode';
-import { MOCK_PUBLIC_EVENTS, MOCK_REGISTERED_EVENTS, MOCK_EVENT_RESPONSES, MOCK_EVENT_PROFILE } from './dev/mock-data';
+import { MOCK_PUBLIC_EVENTS, MOCK_REGISTERED_EVENTS, MOCK_EVENT_RESPONSES, MOCK_EVENT_PROFILE, MOCK_ORGA_PROFILES } from './dev/mock-data';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface EventResponse {
   id: number;
+  orga_id?: number;
   name: string;
   location?: string;
   max_participants: number;
@@ -78,6 +79,7 @@ export interface EventListResponse {
 
 export interface Event {
   id: string;
+  orgaId?: number;
   name: string;
   theme: string;
   // Physical event (optional)
@@ -102,6 +104,16 @@ export interface Event {
   orgaLogo?: string;
   hasWhitelist?: boolean;
   bannerPath?: string;
+}
+
+export interface OrgaPublicProfile {
+  id: number;
+  nom: string;
+  description?: string;
+  logo_path?: string;
+  created_at: string;
+  event_count: number;
+  total_participants: number;
 }
 
 class EventService {
@@ -491,6 +503,42 @@ class EventService {
     return data.data.banner_path;
   }
 
+  async getOrgaPublicProfile(orgaId: number): Promise<OrgaPublicProfile> {
+    if (isDevMode()) {
+      const profile = MOCK_ORGA_PROFILES[orgaId];
+      if (!profile) throw new Error('Organisation non trouvée');
+      return profile;
+    }
+    const response = await authService.authenticatedFetch(`/api/orga/${orgaId}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la récupération du profil');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async getOrgaPublicEvents(orgaId: number, limit: number = 50, offset: number = 0): Promise<EventResponse[]> {
+    if (isDevMode()) {
+      return MOCK_EVENT_RESPONSES.filter(e => e.orga_id === orgaId);
+    }
+    const params = new URLSearchParams();
+    params.append('limit', String(limit));
+    params.append('offset', String(offset));
+
+    const response = await authService.authenticatedFetch(`/api/orga/${orgaId}/events?${params.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || 'Erreur lors de la récupération des événements');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
   async deleteEventBanner(eventId: string): Promise<void> {
     const response = await authService.authenticatedFetch(`/api/events/${eventId}/banner`, {
       method: 'DELETE',
@@ -640,6 +688,7 @@ export function transformEventResponse(event: EventResponse): Event {
 
   return {
     id: String(event.id),
+    orgaId: event.orga_id,
     name: event.name,
     theme,
     // Physical event (optional)
