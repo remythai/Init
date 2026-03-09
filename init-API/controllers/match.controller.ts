@@ -6,6 +6,7 @@ import { BlockedUserModel } from '../models/blockedUser.model.js';
 import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import { success } from '../utils/responses.js';
 import { MatchService } from '../services/match.service.js';
+import { emitMessageLiked } from '../socket/emitters.js';
 
 export const MatchController = {
   async getProfiles(req: Request, res: Response): Promise<void> {
@@ -167,6 +168,8 @@ export const MatchController = {
     }
 
     const updated = await MatchModel.toggleMessageLike(messageId);
+
+    emitMessageLiked(message.match_id, messageId, updated!.is_liked, userId);
 
     success(res, { is_liked: updated!.is_liked });
   },

@@ -17,6 +17,7 @@ import {
   emitNewMatch,
   emitUserJoinedEvent,
   emitConversationUpdate,
+  emitMessageLiked,
   disconnectUser,
 } from '../../socket/emitters';
 
@@ -123,6 +124,28 @@ describe('socket/emitters', () => {
 
       expect(fakeIO.to).toHaveBeenCalledWith('user:42');
       expect(fakeIO._emit).toHaveBeenCalledWith('chat:conversationUpdate', { matchId: 5 });
+    });
+  });
+
+  describe('emitMessageLiked', () => {
+    it('should emit chat:messageLiked to match room', () => {
+      const fakeIO = makeFakeIO();
+      initEmitters(fakeIO as any);
+
+      emitMessageLiked(5, 42, true, 1);
+
+      expect(fakeIO.to).toHaveBeenCalledWith('match:5');
+      expect(fakeIO._emit).toHaveBeenCalledWith('chat:messageLiked', {
+        matchId: 5,
+        messageId: 42,
+        isLiked: true,
+        userId: 1,
+      });
+    });
+
+    it('should return early when io is null', () => {
+      initEmitters(null as any);
+      expect(() => emitMessageLiked(1, 1, true, 1)).not.toThrow();
     });
   });
 

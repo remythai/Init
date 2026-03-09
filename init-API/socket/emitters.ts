@@ -63,6 +63,20 @@ export const emitConversationUpdate = (userId: number, conversationData: unknown
   emitToUser(userId, 'chat:conversationUpdate', conversationData);
 };
 
+export const emitMessageLiked = (matchId: number, messageId: number, isLiked: boolean, userId: number): void => {
+  if (!io) return;
+
+  const roomName = `match:${matchId}`;
+  io.to(roomName).emit('chat:messageLiked', {
+    matchId,
+    messageId,
+    isLiked,
+    userId
+  });
+
+  logger.debug({ matchId, messageId, room: roomName }, 'Emitted chat:messageLiked');
+};
+
 export const disconnectUser = (userId: number): void => {
   if (!io) return;
 
