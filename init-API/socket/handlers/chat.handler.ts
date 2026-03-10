@@ -1,9 +1,16 @@
 import { Server } from 'socket.io';
 import { MatchModel } from '../../models/match.model.js';
+import { SessionModel } from '../../models/session.model.js';
 import type { AuthenticatedSocket } from '../../types/index.js';
 
 function isPositiveInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v > 0;
+}
+
+function touchActivity(socket: AuthenticatedSocket): void {
+  if (socket.sessionId) {
+    SessionModel.updateLastActivity(socket.sessionId).catch(() => {});
+  }
 }
 
 export const registerChatHandlers = (io: Server, socket: AuthenticatedSocket): void => {
@@ -33,6 +40,7 @@ export const registerChatHandlers = (io: Server, socket: AuthenticatedSocket): v
     if (!socket.rooms.has(roomName)) return;
     const isInMatch = await MatchModel.isUserInMatch(matchId, userId);
     if (!isInMatch) return;
+    touchActivity(socket);
     socket.to(roomName).emit('chat:typing', {
       matchId,
       userId,
@@ -49,6 +57,7 @@ export const registerChatHandlers = (io: Server, socket: AuthenticatedSocket): v
     if (!socket.rooms.has(roomName)) return;
     const isInMatch = await MatchModel.isUserInMatch(matchId, userId);
     if (!isInMatch) return;
+    touchActivity(socket);
     socket.to(roomName).emit('chat:messageRead', {
       matchId,
       messageId,

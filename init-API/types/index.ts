@@ -371,6 +371,7 @@ export interface SocketUser {
 
 export interface AuthenticatedSocket extends Socket {
   user: SocketUser;
+  sessionId?: number;
 }
 
 // ─── Event Statistics ────────────────────────────────────────────────────────

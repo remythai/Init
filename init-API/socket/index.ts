@@ -4,6 +4,7 @@ import { socketAuthMiddleware } from './middleware/socket.auth.js';
 import { registerChatHandlers } from './handlers/chat.handler.js';
 import { registerEventHandlers } from './handlers/event.handler.js';
 import { initEmitters } from './emitters.js';
+import { SessionModel } from '../models/session.model.js';
 import type { AuthenticatedSocket } from '../types/index.js';
 import logger from '../utils/logger.js';
 
@@ -53,11 +54,22 @@ export const initializeSocket = (httpServer: http.Server): Server => {
 
     authSocket.join(`user:${userId}`);
 
+    // Track session for users only (not orga)
+    if (userType === 'user') {
+      SessionModel.createSession(userId)
+        .then((sessionId) => { authSocket.sessionId = sessionId; })
+        .catch((err) => logger.error({ err, userId }, 'Failed to create session'));
+    }
+
     registerChatHandlers(io, authSocket);
     registerEventHandlers(io, authSocket);
 
     authSocket.on('disconnect', (reason: string) => {
       logger.info({ userId, reason }, 'User disconnected');
+      if (authSocket.sessionId) {
+        SessionModel.endSession(authSocket.sessionId)
+          .catch((err) => logger.error({ err, userId }, 'Failed to end session'));
+      }
     });
 
     authSocket.on('error', (error: Error) => {

@@ -2,6 +2,7 @@ import { MatchModel } from '../models/match.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
 import { EventModel } from '../models/event.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
+import { SessionModel } from '../models/session.model.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError, EventExpiredError, UserBlockedError } from '../utils/errors.js';
 import { emitNewMessage, emitNewMatch, emitConversationUpdate } from '../socket/emitters.js';
 import { withTransaction } from '../config/database.js';
@@ -84,6 +85,8 @@ export const MatchService = {
       return null;
     });
 
+    SessionModel.updateLastActivityByUser(userId).catch(() => {});
+
     if (result) {
       const matchedUser = await MatchModel.getUserBasicInfo(targetUserId, eventId);
       const currentUser = await MatchModel.getUserBasicInfo(userId, eventId);
@@ -147,6 +150,7 @@ export const MatchService = {
     }
 
     await MatchModel.createLike(userId, targetUserId, eventId, false);
+    SessionModel.updateLastActivityByUser(userId).catch(() => {});
   },
 
   async getAllConversations(userId: number, limit: number = 50, offset: number = 0): Promise<unknown[]> {
@@ -340,6 +344,7 @@ export const MatchService = {
 
     const message = await MatchModel.createMessage(matchId, userId, content.trim());
 
+    SessionModel.updateLastActivityByUser(userId).catch(() => {});
     emitNewMessage(matchId, message as unknown as Record<string, unknown>, userId);
 
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
