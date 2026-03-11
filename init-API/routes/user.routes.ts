@@ -251,6 +251,20 @@ router.put(
   asyncHandler(UserController.changePassword)
 );
 
+router.post(
+  '/push-token',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(UserController.savePushToken)
+);
+
+router.delete(
+  '/push-token',
+  authMiddleware,
+  requireRole('user'),
+  asyncHandler(UserController.deletePushToken)
+);
+
 router.delete(
   '/me',
   authMiddleware,

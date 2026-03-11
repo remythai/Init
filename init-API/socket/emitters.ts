@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import logger from '../utils/logger.js';
+import { PushService } from '../services/push.service.js';
 
 let io: Server | null = null;
 
@@ -14,7 +15,7 @@ export const getIO = (): Server | null => {
   return io;
 };
 
-export const emitNewMessage = (matchId: number, message: Record<string, unknown>, senderId: number): void => {
+export const emitNewMessage = (matchId: number, message: Record<string, unknown>, senderId: number, recipientId?: number): void => {
   if (!io) return;
 
   const roomName = `match:${matchId}`;
@@ -23,6 +24,14 @@ export const emitNewMessage = (matchId: number, message: Record<string, unknown>
     message,
     senderId
   });
+
+  if (recipientId) {
+    PushService.sendToUser(recipientId, 'Nouveau message', (message.content as string) || 'Vous avez reçu un message', {
+      type: 'message',
+      matchId,
+      senderId
+    }).catch(err => logger.error({ err }, 'Failed to send push for new message'));
+  }
 
   logger.debug({ matchId, room: roomName }, 'Emitted chat:newMessage');
 };
@@ -41,6 +50,16 @@ export const emitNewMatch = (user1Id: number, user2Id: number, matchData: unknow
 
   emitToUser(user1Id, 'match:new', matchData);
   emitToUser(user2Id, 'match:new', matchData);
+
+  PushService.sendToUser(user1Id, 'Nouveau match !', 'Vous avez un nouveau match', {
+    type: 'match',
+    ...(matchData as Record<string, unknown>)
+  }).catch(err => logger.error({ err }, 'Failed to send push for new match'));
+
+  PushService.sendToUser(user2Id, 'Nouveau match !', 'Vous avez un nouveau match', {
+    type: 'match',
+    ...(matchData as Record<string, unknown>)
+  }).catch(err => logger.error({ err }, 'Failed to send push for new match'));
 
   logger.debug({ user1Id, user2Id }, 'Emitted match:new');
 };
