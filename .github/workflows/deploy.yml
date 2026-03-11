@@ -5,8 +5,25 @@ on:
     branches: [ "main" ]
 
 jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            cd /home/deploy/Init
+            git pull origin main
+            COMPOSE_BAKE=false docker compose up -d --build
+
   build-apk:
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -35,37 +52,22 @@ jobs:
           name: init-apk
           path: init-client/android/app/build/outputs/apk/release/*.apk
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build-apk
-
-    steps:
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: init-apk
-          path: apk
-
       - name: Copy APK to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: apk/*.apk
+          source: init-client/android/app/build/outputs/apk/release/*.apk
           target: /home/deploy/Init/init-web/public/
-          strip_components: 1
+          strip_components: 5
 
-      - name: Rename APK and deploy
+      - name: Rename APK on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          command_timeout: 30m
           script: |
-            cd /home/deploy/Init
-            # Rename APK to init.apk
-            mv init-web/public/app-release.apk init-web/public/init.apk 2>/dev/null || true
-            git pull origin main
-            COMPOSE_BAKE=false docker compose up -d --build
+            cd /home/deploy/Init/init-web/public
+            mv app-release.apk init.apk 2>/dev/null || true
