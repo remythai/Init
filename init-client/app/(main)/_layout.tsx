@@ -81,12 +81,35 @@ export default function MainLayout() {
         return true;
       }
 
-      router.push('/(main)/events');
+      // Let event-tabs layout handle its own back navigation
+      if (segments.includes('(event-tabs)')) {
+        return false;
+      }
+
+      // Management pages (edit, settings, whitelist, etc.) → back to event detail
+      const isInManagement = pathname.match(/\/events\/[^/]+\/(edit|settings|statistics|participants|whitelist|reports)/);
+      if (isInManagement) {
+        const eventId = segments[2]; // [id] segment
+        if (eventId) {
+          router.back();
+          return true;
+        }
+      }
+
+      // Event detail page → back to events list
+      const isInEventDetail = segments[1] === 'events' && segments[2] && segments.length === 3;
+      if (isInEventDetail) {
+        router.push('/(main)/events');
+        return true;
+      }
+
+      // Everything else → back
+      router.back();
       return true;
     });
 
     return () => backHandler.remove();
-  }, [segments, router]);
+  }, [segments, pathname, router]);
 
   return (
     <View style={styles.container}>
@@ -96,8 +119,8 @@ export default function MainLayout() {
           <Image
             style={styles.logo}
             source={isDark
-              ? require('../../assets/images/logoLight.svg')
-              : require('../../assets/images/logoDark.svg')
+              ? require('../../assets/images/initLogoGray.png')
+              : require('../../assets/images/InitLogoTransparent.png')
             }
           />
           <Pressable onPress={() => router.push('/settings')}>

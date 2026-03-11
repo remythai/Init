@@ -6,7 +6,7 @@ import { authService } from "@/services/auth.service";
 import { photoService, type Photo } from "@/services/photo.service";
 import ImageCropper from "@/components/ImageCropper";
 import * as ImagePicker from "expo-image-picker";
-import { Edit2, Save, X } from "lucide-react-native";
+import { Building2, Check, Edit2, Save, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -71,6 +71,7 @@ export function Profile({
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [cropLogoUri, setCropLogoUri] = useState<string | null>(null);
+  const [logoKey, setLogoKey] = useState(Date.now());
   const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -150,6 +151,7 @@ export function Profile({
       setUploadingLogo(true);
       const logoPath = await authService.uploadOrgaLogo(croppedUri, fileName, "image/jpeg");
       setEditedProfile((prev) => ({ ...prev, logo_path: logoPath }));
+      setLogoKey(Date.now());
       Alert.alert("Succès", "Logo mis à jour !");
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Impossible de mettre à jour le logo");
@@ -207,76 +209,89 @@ export function Profile({
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>
-              {profileType === "user" ? "Mon Profil" : "Profil de l'Organisation"}
-            </Text>
-
-            {isOwnProfile && !isEditing ? (
-              <TouchableOpacity
-                onPress={() => setIsEditing(true)}
-                style={styles.editButton}
-                disabled={loading}
-              >
-                <Edit2 color={theme.colors.foreground} size={16} />
-                <Text style={styles.editButtonText}>Modifier</Text>
-              </TouchableOpacity>
-            ) : isOwnProfile && isEditing ? (
-              <View style={styles.actionButtons}>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
-                  <X color={theme.colors.foreground} size={16} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
-                  <Save color={theme.colors.foreground} size={16} />
-                  <Text style={styles.saveButtonText}>{saving ? "..." : "Enregistrer"}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Avatar / Logo */}
-          <View style={styles.avatarContainer}>
-            {profileType === "user" && primaryPhoto ? (
-              <Image
-                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
-                style={styles.avatarImage}
-              />
-            ) : profileType === "orga" && currentLogoPath ? (
-              <Image
-                source={{ uri: `${API_URL}${currentLogoPath}` }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getAvatarInitial()}</Text>
-              </View>
-            )}
-
-            {/* Bouton changement logo pour orga */}
-            {isOwnProfile && profileType === "orga" && (
-              <View style={styles.logoActions}>
-                <TouchableOpacity
-                  onPress={handlePickLogo}
-                  style={styles.logoButton}
-                  disabled={uploadingLogo}
-                >
-                  <Text style={styles.logoButtonText}>
-                    {uploadingLogo ? "..." : currentLogoPath ? "Changer" : "Ajouter un logo"}
-                  </Text>
-                </TouchableOpacity>
-                {currentLogoPath && !uploadingLogo && (
-                  <TouchableOpacity onPress={handleDeleteLogo} style={styles.logoDeleteButton}>
-                    <Text style={styles.logoDeleteText}>Supprimer</Text>
-                  </TouchableOpacity>
+        {profileType === "orga" ? (
+          /* ── Orga header: horizontal like web ── */
+          <View style={styles.orgaHeader}>
+            <TouchableOpacity onPress={handlePickLogo} disabled={uploadingLogo || !isEditing}>
+              <View style={styles.orgaLogoWrapper}>
+                {currentLogoPath ? (
+                  <Image
+                    key={logoKey}
+                    source={{ uri: `${API_URL}${currentLogoPath}?v=${logoKey}` }}
+                    style={styles.orgaLogoImage}
+                  />
+                ) : (
+                  <View style={styles.orgaLogoPlaceholder}>
+                    <Text style={styles.orgaLogoText}>{getAvatarInitial()}</Text>
+                  </View>
+                )}
+                {isEditing && (
+                  <View style={styles.orgaLogoCameraOverlay}>
+                    <Edit2 color="#fff" size={16} />
+                  </View>
                 )}
               </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgaName}>{getDisplayName()}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <Building2 color={`${theme.colors.foreground}B3`} size={14} />
+                <Text style={styles.orgaSubtitle}>Organisateur</Text>
+              </View>
+            </View>
+            {isOwnProfile && !isEditing && (
+              <TouchableOpacity
+                onPress={() => setIsEditing(true)}
+                style={styles.orgaEditBtn}
+                disabled={loading}
+              >
+                <Edit2 color={theme.colors.foreground} size={20} />
+              </TouchableOpacity>
             )}
           </View>
-        </View>
+        ) : (
+          /* ── User header: original centered layout ── */
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <Text style={styles.headerTitle}>Mon Profil</Text>
+              {isOwnProfile && !isEditing ? (
+                <TouchableOpacity
+                  onPress={() => setIsEditing(true)}
+                  style={styles.editButton}
+                  disabled={loading}
+                >
+                  <Edit2 color={theme.colors.foreground} size={16} />
+                  <Text style={styles.editButtonText}>Modifier</Text>
+                </TouchableOpacity>
+              ) : isOwnProfile && isEditing ? (
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} disabled={saving}>
+                    <X color={theme.colors.foreground} size={16} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={saving}>
+                    <Save color={theme.colors.foreground} size={16} />
+                    <Text style={styles.saveButtonText}>{saving ? "..." : "Enregistrer"}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
 
-        <View style={styles.content}>
+            <View style={styles.avatarContainer}>
+              {primaryPhoto ? (
+                <Image
+                  source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{getAvatarInitial()}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={profileType === "orga" ? styles.orgaContent : styles.content}>
           {/* Profil Utilisateur */}
           {profileType === "user" && isUserProfile(profile) && isUserProfile(editedProfile) && (
             <>
@@ -375,80 +390,98 @@ export function Profile({
           {/* Profil Organisation */}
           {profileType === "orga" && isOrgaProfile(profile) && isOrgaProfile(editedProfile) && (
             <>
-              <View style={styles.card}>
-                <View style={styles.fullWidthField}>
-                  <Text style={styles.label}>Nom de l'organisation</Text>
-                  {isEditing ? (
+              {isEditing ? (
+                <View style={{ gap: 16 }}>
+                  <View style={styles.orgaInputGroup}>
+                    <Text style={styles.orgaInputLabel}>Nom de l'organisation</Text>
                     <TextInput
                       value={editedProfile.nom}
                       onChangeText={(text) => setEditedProfile({ ...editedProfile, nom: text })}
-                      style={styles.input}
+                      style={styles.orgaInput}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      placeholder="Nom de l'organisation"
                       editable={!saving}
                     />
-                  ) : (
-                    <Text style={styles.value}>{profile.nom}</Text>
-                  )}
-                </View>
-
-                <View style={styles.fullWidthField}>
-                  <Text style={styles.label}>Email</Text>
-                  {isEditing ? (
+                  </View>
+                  <View style={styles.orgaInputGroup}>
+                    <Text style={styles.orgaInputLabel}>Email</Text>
                     <TextInput
                       value={editedProfile.mail}
                       onChangeText={(text) => setEditedProfile({ ...editedProfile, mail: text })}
-                      style={styles.input}
+                      style={styles.orgaInput}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      placeholder="Email de contact"
                       keyboardType="email-address"
                       autoCapitalize="none"
                       editable={!saving}
                     />
-                  ) : (
-                    <Text style={styles.value}>{profile.mail}</Text>
-                  )}
-                </View>
-
-                <View style={styles.fullWidthField}>
-                  <Text style={styles.label}>Téléphone</Text>
-                  {isEditing ? (
+                  </View>
+                  <View style={styles.orgaInputGroup}>
+                    <Text style={styles.orgaInputLabel}>Téléphone</Text>
                     <TextInput
                       value={editedProfile.tel || ""}
                       onChangeText={(text) => setEditedProfile({ ...editedProfile, tel: text })}
-                      style={styles.input}
+                      style={styles.orgaInput}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      placeholder="Téléphone"
                       keyboardType="phone-pad"
                       editable={!saving}
-                      placeholder="Téléphone"
                     />
-                  ) : (
-                    <Text style={styles.value}>{profile.tel || "Non renseigné"}</Text>
-                  )}
-                </View>
-
-                <View style={styles.fullWidthField}>
-                  <Text style={styles.label}>Description</Text>
-                  {isEditing ? (
+                  </View>
+                  <View style={styles.orgaInputGroup}>
+                    <Text style={styles.orgaInputLabel}>Description</Text>
                     <TextInput
                       value={editedProfile.description || ""}
                       onChangeText={(text) => setEditedProfile({ ...editedProfile, description: text })}
-                      style={[styles.input, styles.textArea]}
+                      style={[styles.orgaInput, styles.orgaTextArea]}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      placeholder="Description de l'organisation..."
                       multiline
                       numberOfLines={4}
                       editable={!saving}
-                      placeholder="Description de l'organisation..."
                     />
-                  ) : (
-                    <Text style={styles.value}>{profile.description || "Aucune description"}</Text>
-                  )}
+                  </View>
+
+                  <View style={styles.orgaEditActions}>
+                    <TouchableOpacity onPress={handleCancel} style={styles.orgaCancelBtn} disabled={saving}>
+                      <X color="#f87171" size={18} />
+                      <Text style={styles.orgaCancelText}>Annuler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleSave} style={styles.orgaSaveBtn} disabled={saving}>
+                      <Check color="#fff" size={18} />
+                      <Text style={styles.orgaSaveText}>{saving ? "..." : "Sauvegarder"}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+              ) : (
+                <View style={{ gap: 20 }}>
+                  {/* Info section */}
+                  <View style={styles.orgaSectionBox}>
+                    <View style={styles.orgaFieldRow}>
+                      <Text style={styles.orgaFieldLabel}>Organisation</Text>
+                      <Text style={styles.orgaFieldValue}>{profile.nom}</Text>
+                    </View>
+                    <View style={styles.orgaFieldRow}>
+                      <Text style={styles.orgaFieldLabel}>Email</Text>
+                      <Text style={styles.orgaFieldValue}>{profile.mail}</Text>
+                    </View>
+                    <View style={styles.orgaFieldRow}>
+                      <Text style={styles.orgaFieldLabel}>Téléphone</Text>
+                      <Text style={styles.orgaFieldValue}>{profile.tel || "Non renseigné"}</Text>
+                    </View>
+                  </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Événements créés</Text>
-                <Text style={styles.placeholderText}>Cette fonctionnalité sera bientôt disponible</Text>
-              </View>
+                  {/* Description section */}
+                  <View style={[styles.orgaSectionBox, { minHeight: 100 }]}>
+                    <Text style={styles.orgaFieldLabel}>Description</Text>
+                    <Text style={styles.orgaFieldValue}>
+                      {profile.description || "Aucune description"}
+                    </Text>
+                  </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Statistiques</Text>
-                <Text style={styles.placeholderText}>Cette fonctionnalité sera bientôt disponible</Text>
-              </View>
+
+                </View>
+              )}
             </>
           )}
         </View>
@@ -460,6 +493,8 @@ export function Profile({
           visible={true}
           onCrop={handleCroppedLogo}
           onCancel={() => setCropLogoUri(null)}
+          aspectRatio={1}
+          circular
         />
       )}
     </View>
@@ -573,4 +608,112 @@ const createStyles = (theme: Theme) =>
     textArea: { minHeight: 100, textAlignVertical: "top" },
     cardTitle: { fontWeight: "600", fontSize: 18, color: theme.colors.foreground, marginBottom: 12 },
     placeholderText: { color: theme.colors.placeholder, fontSize: 14, fontStyle: "italic" },
+
+    /* ── Orga-specific styles (matching web) ── */
+    orgaHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    orgaLogoWrapper: {
+      position: "relative" as const,
+    },
+    orgaLogoImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      borderWidth: 3,
+      borderColor: theme.colors.border,
+    },
+    orgaLogoPlaceholder: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: "#1271FF",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: "rgba(255,255,255,0.2)",
+    },
+    orgaLogoCameraOverlay: {
+      position: "absolute" as const,
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: "#1271FF",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.colors.background,
+    },
+    orgaLogoText: { color: "#fff", fontSize: 32, fontWeight: "700" },
+    orgaName: { color: theme.colors.foreground, fontSize: 24, fontWeight: "600" },
+    orgaSubtitle: { color: `${theme.colors.foreground}B3`, fontSize: 14 },
+    orgaEditBtn: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: `${theme.colors.mutedForeground}40`,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    orgaContent: { paddingHorizontal: 16 },
+
+    /* Orga view mode: gray rounded sections */
+    orgaSectionBox: {
+      backgroundColor: `${theme.colors.mutedForeground}30`,
+      borderRadius: 19,
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+      gap: 16,
+    },
+    orgaFieldRow: { gap: 2 },
+    orgaFieldLabel: { color: theme.colors.mutedForeground, fontSize: 14 },
+    orgaFieldValue: { color: theme.colors.foreground, fontSize: 16 },
+
+    /* Orga edit mode: inputs */
+    orgaInputGroup: { gap: 6 },
+    orgaInputLabel: { color: theme.colors.mutedForeground, fontSize: 14, marginLeft: 4 },
+    orgaInput: {
+      backgroundColor: `${theme.colors.mutedForeground}20`,
+      borderRadius: 19,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      color: theme.colors.foreground,
+      fontSize: 15,
+    },
+    orgaTextArea: { minHeight: 100, textAlignVertical: "top" as const },
+    orgaEditActions: {
+      flexDirection: "row",
+      gap: 16,
+      marginTop: 8,
+    },
+    orgaCancelBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      backgroundColor: "rgba(248,113,113,0.15)",
+    },
+    orgaCancelText: { color: "#f87171", fontSize: 15, fontWeight: "600" },
+    orgaSaveBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      backgroundColor: "#1271FF",
+    },
+    orgaSaveText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   });

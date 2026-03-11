@@ -33,7 +33,7 @@ export function AuthHeader({ subtitle = 'Là où tout commence' }: AuthHeaderPro
     <View style={styles.header}>
       <View style={styles.logoContainer}>
         <Image
-          source={require('../../assets/images/logoDark.svg')}
+          source={require('../../assets/images/InitLogoTransparent.png')}
           style={styles.logo}
         />
       </View>

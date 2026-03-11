@@ -167,7 +167,7 @@ export default function SettingsScreen() {
         <View style={[styles.card, styles.dangerCard]}>
           <View style={styles.cardTitleRow}>
             <MaterialIcons name="delete" size={20} color={theme.colors.destructive} />
-            <Text style={[styles.cardTitle, { color: theme.colors.destructive }]}>Zone de danger</Text>
+            <Text style={[styles.cardTitle, { color: theme.colors.destructive, marginBottom: 0 }]}>Zone de danger</Text>
           </View>
           <Text style={styles.dangerText}>
             La suppression de l'événement est irréversible. Tous les participants seront désincrits et toutes les données supprimées.

@@ -6,15 +6,10 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 interface SlideUpModalProps {
   visible: boolean;
   onRequestClose: () => void;
-  /** The content that slides up (do NOT include overlay — it's handled internally) */
   children: ReactNode;
-  /** Overlay background color. Defaults to rgba(0,0,0,0.5) */
   overlayColor?: string;
-  /** Justify content: 'flex-end' for bottom sheets, 'center' for centered dialogs */
   position?: 'bottom' | 'center';
-  /** Set to true for full-screen modals (no overlay) */
   fullScreen?: boolean;
-  /** Close when tapping overlay. Default true */
   dismissOnOverlay?: boolean;
 }
 
@@ -56,7 +51,7 @@ export function SlideUpModal({
     <Modal visible={visible} animationType="none" transparent statusBarTranslucent onRequestClose={onRequestClose}>
       <View style={[styles.overlay, { backgroundColor: overlayColor, justifyContent: position === 'center' ? 'center' : 'flex-end' }]}>
         {dismissOnOverlay && <Pressable style={StyleSheet.absoluteFill} onPress={onRequestClose} />}
-        <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
+        <Animated.View style={{ width: '100%', transform: [{ translateY: slideAnim }] }}>
           {children}
         </Animated.View>
       </View>
