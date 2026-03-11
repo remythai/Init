@@ -6,6 +6,7 @@ import { matchService } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMessage } from '@/services/socket.service';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { MaterialIcons } from '@expo/vector-icons';
+import { User, Calendar, MessageCircle, Building2 } from 'lucide-react-native';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -137,7 +138,7 @@ export default function MainLayout() {
           options={{
             title: "Profil",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name={isOrga ? "business" : "person"} size={24} color={color} />
+              isOrga ? <Building2 size={22} color={color} /> : <User size={22} color={color} />
             ),
           }}
         />
@@ -146,7 +147,7 @@ export default function MainLayout() {
           options={{
             title: isOrga ? "Mes événements" : "Événements",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="event" size={24} color={color} />
+              <Calendar size={22} color={color} />
             ),
           }}
         />
@@ -155,7 +156,7 @@ export default function MainLayout() {
           options={{
             title: "Messages",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="message" size={24} color={color} />
+              <MessageCircle size={22} color={color} />
             ),
             tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : totalUnread) : undefined,
             tabBarBadgeStyle: { backgroundColor: theme.colors.primary, fontSize: 10, fontWeight: '700' },
@@ -177,7 +178,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: topInset,
+    paddingTop: topInset + 8,
     paddingBottom: 10,
     backgroundColor: theme.colors.background,
     borderBottomWidth: 0,

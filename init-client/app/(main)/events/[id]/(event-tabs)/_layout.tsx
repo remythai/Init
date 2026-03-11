@@ -5,6 +5,7 @@ import { useSocket } from '@/context/SocketContext';
 import { matchService } from '@/services/match.service';
 import { socketService, type SocketConversationUpdate, type SocketMessage } from '@/services/socket.service';
 import { MaterialIcons } from '@expo/vector-icons';
+import { User, Users, MessageCircle, ArrowLeft } from 'lucide-react-native';
 import { Tabs, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -108,7 +109,7 @@ export default function EventTabsLayout() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.push(`/events/${id}`)}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.foreground} />
+          <ArrowLeft size={22} color={theme.colors.foreground} />
         </Pressable>
         <Text style={styles.eventName}>Décoeurtique moi</Text>
         <View style={{ width: 24 }} />
@@ -124,8 +125,9 @@ export default function EventTabsLayout() {
             backgroundColor: theme.colors.nav,
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
-            paddingVertical: 6,
-            height: 70,
+            paddingTop: 6,
+            paddingBottom: Math.max(insets.bottom, 10),
+            height: 54 + Math.max(insets.bottom, 10),
           },
           tabBarLabelStyle: {
             fontSize: 12,
@@ -141,7 +143,7 @@ export default function EventTabsLayout() {
           options={{
             title: "Profil",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="person" size={24} color={color} />
+              <User size={22} color={color} />
             ),
           }}
         />
@@ -150,7 +152,7 @@ export default function EventTabsLayout() {
           options={{
             title: "Découvrir",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="swipe" size={24} color={color} />
+              <Users size={22} color={color} />
             ),
           }}
         />
@@ -159,7 +161,7 @@ export default function EventTabsLayout() {
           options={{
             title: "Messages",
             tabBarIcon: ({ color }) => (
-              <MaterialIcons name="message" size={24} color={color} />
+              <MessageCircle size={22} color={color} />
             ),
             tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
             tabBarBadgeStyle: { backgroundColor: theme.colors.primary, fontSize: 10, fontWeight: '700' },
@@ -180,7 +182,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: topInset,
+    paddingTop: topInset + 8,
     paddingBottom: 10,
     backgroundColor: theme.colors.card,
     borderBottomWidth: 1,

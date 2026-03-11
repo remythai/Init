@@ -52,7 +52,7 @@ const createStyles = (theme: Theme, variant: 'card' | 'solid', topInset: number)
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingTop: topInset,
+      paddingTop: topInset + 8,
       paddingBottom: 12,
       backgroundColor: isSolid ? theme.colors.accentSolid : theme.colors.card,
       borderBottomWidth: 1,
