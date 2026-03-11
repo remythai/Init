@@ -831,7 +831,7 @@ export default function EventsPage() {
                                   <Link
                                     href={`/events/${event.id}/environment/swiper`}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="absolute bottom-3 left-3 right-3 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-2 rounded-lg font-medium transition-colors text-center text-sm"
+                                    className="absolute bottom-3 left-3 right-3 bg-[#1271FF] hover:bg-[#1271FF]/80 text-white py-2 rounded-lg font-medium transition-colors text-center text-sm"
                                   >
                                     Accéder
                                   </Link>
@@ -927,7 +927,7 @@ export default function EventsPage() {
                                   <Link
                                     href={`/events/${event.id}/environment/swiper`}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="absolute bottom-4 left-4 right-4 bg-accent-solid hover:bg-accent-solid/80 text-accent-solid-text py-3 rounded-lg font-medium transition-colors text-center"
+                                    className="absolute bottom-4 left-4 right-4 bg-[#1271FF] hover:bg-[#1271FF]/80 text-white py-3 rounded-lg font-medium transition-colors text-center"
                                   >
                                     Accéder a l'environnement
                                   </Link>
