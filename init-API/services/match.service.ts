@@ -340,9 +340,9 @@ export const MatchService = {
 
     const message = await MatchModel.createMessage(matchId, userId, content.trim());
 
-    emitNewMessage(matchId, message as unknown as Record<string, unknown>, userId);
-
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+
+    emitNewMessage(matchId, message as unknown as Record<string, unknown>, userId, otherUserId);
 
     emitConversationUpdate(otherUserId, {
       match_id: matchId,
