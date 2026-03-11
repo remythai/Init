@@ -168,6 +168,12 @@ class SocketService {
     return () => { this.socket?.off('chat:messageRead', callback); };
   }
 
+  onMessageLiked(callback: (data: { matchId: number; messageId: number; isLiked: boolean; userId: number }) => void): () => void {
+    if (!this.socket) return () => {};
+    this.socket.on('chat:messageLiked', callback);
+    return () => { this.socket?.off('chat:messageLiked', callback); };
+  }
+
   // ---- Events ----
 
   joinEvent(eventId: number | string): void {

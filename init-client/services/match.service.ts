@@ -154,6 +154,14 @@ class MatchService {
     return json.data;
   }
 
+  async toggleMessageLike(messageId: number): Promise<void> {
+    const res = await authService.authenticatedFetch(
+      `/api/matching/messages/${messageId}/like`,
+      { method: 'PUT' }
+    );
+    if (!res.ok) throw new Error('Erreur like message');
+  }
+
   // ✅ NOUVEAU : marquer une conversation comme lue
   async markConversationMessagesAsRead(matchId: number): Promise<void> {
     try {

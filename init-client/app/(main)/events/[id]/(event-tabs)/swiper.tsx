@@ -1,6 +1,7 @@
 // app/(main)/events/[id]/(event-tabs)/swiper.tsx
 import { View, StyleSheet, Text } from "react-native";
 import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
 import { EventSwiper } from "@/components/EventSwiper";
 import { useEffect, useState } from 'react';
 import { useEvent } from '@/context/EventContext';
@@ -8,6 +9,7 @@ import { useEvent } from '@/context/EventContext';
 export default function SwiperScreen() {
   const { id: eventIdParam } = useGlobalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { theme } = useTheme();
   const { currentEventId, setCurrentEventId } = useEvent();
   
   // ✅ Priorité : params d'URL > context
@@ -26,7 +28,7 @@ export default function SwiperScreen() {
 
   if (!eventId || isNaN(eventId)) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
         <Text style={styles.errorText}>ID événement manquant</Text>
         <Text style={styles.errorSubtext}>eventIdParam: {eventIdParam}</Text>
         <Text style={styles.errorSubtext}>currentEventId: {currentEventId}</Text>
@@ -35,7 +37,7 @@ export default function SwiperScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <EventSwiper
         eventId={eventId}
         onMatch={() => {
@@ -49,12 +51,12 @@ export default function SwiperScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { 
     flex: 1, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'transparent',
     padding: 20,
   },
   errorText: {

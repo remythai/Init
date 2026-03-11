@@ -171,7 +171,7 @@ export default function EventLayout() {
         </View>
       )}
 
-      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: theme.colors.background } }}>
         <Stack.Screen name="index" options={{ animation: 'fade' }} />
         <Stack.Screen name="edit/index" />
         <Stack.Screen name="settings/index" />
@@ -186,7 +186,7 @@ export default function EventLayout() {
 }
 
 const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.card },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

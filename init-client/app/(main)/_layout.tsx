@@ -130,13 +130,14 @@ export default function MainLayout() {
       )}
 
       <Tabs
+        sceneContainerStyle={{ backgroundColor: theme.colors.background }}
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: true,
           tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.mutedForeground,
           tabBarStyle: shouldHideNavigation
-            ? { display: "none" }
+            ? { display: "none", backgroundColor: theme.colors.background }
             : {
                 backgroundColor: theme.colors.background,
                 borderTopWidth: 1,

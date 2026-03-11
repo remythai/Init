@@ -1,11 +1,12 @@
 // app/_layout.tsx
-import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { ThemeProvider as AppThemeProvider, useTheme } from '@/context/ThemeContext';
 import { authService } from '@/services/auth.service';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
+import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
@@ -60,14 +61,25 @@ function RootLayoutInner() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      NavigationBar.setBackgroundColorAsync(theme.colors.background);
       NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
     }
-  }, [isDark, theme.colors.background]);
+  }, [isDark]);
+
+  const navigationTheme = useMemo(() => ({
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.colors.background,
+      card: theme.colors.card,
+      border: theme.colors.border,
+      text: theme.colors.foreground,
+      primary: theme.colors.primary,
+    },
+  }), [isDark, theme]);
 
   if (!isReady || isAuthenticated === null) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.card }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -76,10 +88,11 @@ function RootLayoutInner() {
   const statusBarStyle = isDark ? 'light' : 'dark';
 
   return (
+    <NavThemeProvider value={navigationTheme}>
     <EventProvider>
       <SocketProvider>
         <StatusBar style={statusBarStyle} />
-        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+        <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: theme.colors.background } }}>
           <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
           <Stack.Screen name="(main)" options={{ animation: 'fade' }} />
           <Stack.Screen
@@ -124,6 +137,7 @@ function RootLayoutInner() {
         </Stack>
       </SocketProvider>
     </EventProvider>
+    </NavThemeProvider>
   );
 }
 
@@ -142,12 +156,12 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
+    <AppThemeProvider>
       <LangProvider>
         <SafeAreaProvider>
           <RootLayoutInner />
         </SafeAreaProvider>
       </LangProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 }

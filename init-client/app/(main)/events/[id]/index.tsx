@@ -3,12 +3,14 @@ import { Event, EventDetail } from "@/components/EventDetails";
 import { authService } from "@/services/auth.service";
 import { eventService } from "@/services/event.service";
 import { transformEventResponse } from "@/utils/event.utils";
+import { useTheme } from "@/context/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 export default function EventDetailScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const { id } = useLocalSearchParams();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -91,8 +93,8 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#303030" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.foreground} />
       </View>
     );
   }
@@ -116,6 +118,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
   },
 });
