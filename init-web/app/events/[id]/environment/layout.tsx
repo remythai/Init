@@ -59,7 +59,7 @@ export default function EnvironmentLayout({
       {/* Header - hidden on mobile when in conversation */}
       <header className={`flex-shrink-0 ${isInConversation ? "hidden md:block" : ""}`}>
         <div className="absolute inset-x-0 top-0 bg-page pointer-events-none h-0" />
-        <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
+        <div className="relative px-6 md:px-12 w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href={`/events/${eventId}`}
@@ -68,8 +68,8 @@ export default function EnvironmentLayout({
               <ArrowLeft className="w-5 h-5 text-primary" />
             </Link>
             <Link href="/">
-              <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
-              <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
+              <Image src="/logoLight.svg" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto dark:hidden" />
+              <Image src="/logoDark.svg" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto hidden dark:block" />
             </Link>
           </div>
           <DesktopNav eventId={eventId} />

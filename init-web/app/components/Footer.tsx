@@ -17,11 +17,11 @@ export default function Footer() {
             <div className="flex flex-col items-center md:items-start gap-4">
               <Link href="/">
                 <Image
-                  src="/initLogoGray.png"
+                  src="/logoDark.svg"
                   alt="Init Logo"
                   width={120}
                   height={48}
-                  className="h-8 md:h-10 w-auto"
+                  className="h-16 md:h-20 w-auto"
                 />
               </Link>
               <p className="font-roboto text-sm text-white/40 max-w-xs text-center md:text-left">

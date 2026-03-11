@@ -214,11 +214,11 @@ export default function StatisticsPage() {
         <div className="max-w-7xl mx-auto px-3 md:px-8 py-2 md:py-3 flex items-center justify-between">
           <Link href="/">
             <Image
-              src="/initLogoGray.png"
+              src="/logoDark.svg"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-8 md:h-12 w-auto"
+              className="h-20 md:h-24 w-auto"
             />
           </Link>
           <Link
@@ -235,11 +235,11 @@ export default function StatisticsPage() {
       <div className="hidden print:block mb-6 border-b-2 border-[#1271FF] pb-4">
         <div className="flex items-center justify-between mb-4">
           <Image
-            src="/initLogoGray.png"
+            src="/logoDark.svg"
             alt="Init Logo"
             width={120}
             height={48}
-            className="h-10 w-auto"
+            className="h-20 w-auto"
           />
           <p className="text-sm text-gray-500">
             Exporté le {new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}

@@ -405,10 +405,10 @@ export default function ProfilePage() {
   const renderHeader = () => (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="absolute inset-0 bg-page pointer-events-none" />
-      <div className="relative px-6 md:px-12 w-full py-4 md:py-6 flex items-center justify-between">
+      <div className="relative px-6 md:px-12 w-full flex items-center justify-between">
         <Link href="/">
-          <Image src="/LogoPng.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto dark:hidden" />
-          <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-7 md:h-9 w-auto hidden dark:block" />
+          <Image src="/logoLight.svg" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto dark:hidden" />
+          <Image src="/logoDark.svg" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto hidden dark:block" />
         </Link>
         <DesktopNav />
         <div className="flex items-center gap-3 md:gap-4">
