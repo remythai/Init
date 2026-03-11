@@ -1,6 +1,6 @@
 // services/event.service.ts
 import { authService } from './auth.service';
-import { isDevMode } from './dev/dev-mode';
+import { isDevMode, isMockOrganizer, DEV_MODE_ORGA_ID } from './dev/dev-mode';
 import { MOCK_PUBLIC_EVENTS, MOCK_REGISTERED_EVENTS, MOCK_EVENT_RESPONSES, MOCK_EVENT_PROFILE, MOCK_ORGA_PROFILES } from './dev/mock-data';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -196,7 +196,11 @@ class EventService {
   }
 
   async getMyOrgaEvents(): Promise<EventResponse[]> {
-    if (isDevMode()) return [];
+    if (isDevMode()) {
+      return isMockOrganizer()
+        ? MOCK_EVENT_RESPONSES.filter(e => e.orga_id === DEV_MODE_ORGA_ID)
+        : [];
+    }
     const response = await authService.authenticatedFetch('/api/events/orga/my-events');
 
     if (!response.ok) {
