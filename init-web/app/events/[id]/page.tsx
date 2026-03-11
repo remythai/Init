@@ -842,7 +842,7 @@ export default function EventDetailPage() {
             /* User registered - enter button */
             <Link
               href={`/events/${eventId}/environment/swiper`}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-accent-solid text-accent-solid-text font-semibold hover:opacity-90 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-[#1271FF] text-white font-semibold hover:opacity-90 transition-colors"
             >
               <LogIn className="w-5 h-5" />
               Entrer
