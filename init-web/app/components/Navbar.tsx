@@ -46,7 +46,7 @@ export default function Navbar() {
             alt="Init Logo"
             width={200}
             height={80}
-            className="h-7 md:h-25 w-auto"
+            className="h-15 md:h-25 w-auto"
           />
         </Link>
 
@@ -96,17 +96,17 @@ export default function Navbar() {
           <a
             href="/init.apk"
             download
-            className="bg-[#4A90D9] text-white hover:bg-[#3a7bc8] font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5"
+            className="hidden md:flex bg-[#4A90D9] text-white hover:bg-[#3a7bc8] font-medium px-6 py-3 rounded-full text-base transition-colors items-center gap-1.5"
           >
             {t.navbar.download}
-            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.523 2.226a.75.75 0 0 0-1.046-.177l-1.867 1.302A8.962 8.962 0 0 0 12 2.726a8.96 8.96 0 0 0-2.61.625L7.523 2.05a.75.75 0 1 0-.869 1.222l1.548 1.08A8.987 8.987 0 0 0 3 12.226v.75h18v-.75a8.987 8.987 0 0 0-5.202-8.174l1.548-1.08a.75.75 0 0 0 .177-1.046zM8.25 10.226a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm7.5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM3 14.476v3.75A3.75 3.75 0 0 0 6.75 22h10.5A3.75 3.75 0 0 0 21 18.226v-3.75H3z"/>
             </svg>
           </a>
 
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
-            className="bg-white text-black hover:bg-white/90 font-medium px-3 md:px-6 py-2 md:py-3 rounded-full text-xs md:text-base transition-colors flex items-center gap-1.5 group"
+            className="hidden md:flex bg-white text-black hover:bg-white/90 font-medium px-6 py-3 rounded-full text-base transition-colors items-center gap-1.5 group"
           >
             {isAuthenticated ? t.navbar.access : t.navbar.start}
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
