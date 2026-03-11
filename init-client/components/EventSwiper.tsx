@@ -22,6 +22,7 @@ import { useTheme, shared } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { SwiperSkeleton } from '@/components/ui/Skeleton';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const { width, height } = Dimensions.get("window");
 const SWIPE_THRESHOLD = width * 0.25;
 
@@ -48,7 +49,7 @@ function profileToEventProfile(profile: Profile): EventProfile {
     age,
     bio: profile.profil_info?.bio || "Aucune bio fournie",
     interests: profile.profil_info?.interests || [],
-    images: profile.photos.map(p => p.file_path),
+    images: profile.photos.map(p => p.file_path.startsWith('http') ? p.file_path : `${API_URL}${p.file_path}`),
     customFields: profile.profil_info || {},
   };
 }
@@ -70,6 +71,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
 
   const position = useRef(new Animated.ValueXY()).current;
   const currentProfile = profiles[currentIndex];
+
+  // Refs to avoid stale closures in PanResponder
+  const currentProfileRef = useRef(currentProfile);
+  currentProfileRef.current = currentProfile;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const profilesRef = useRef(profiles);
+  profilesRef.current = profiles;
 
   // 🔄 LOAD API PROFILES
   useEffect(() => {
@@ -101,49 +110,61 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   const resetPosition = () => {
     Animated.spring(position, {
       toValue: { x: 0, y: 0 },
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
-  const forceSwipe = async (direction: "left" | "right") => {
-    Haptics.impactAsync(direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
-    const x = direction === "right" ? width + 100 : -width - 100;
-    Animated.timing(position, {
-      toValue: { x, y: 0 },
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => onSwipeComplete(direction));
-  };
-
   const onSwipeComplete = async (direction: "left" | "right") => {
-    if (!currentProfile) return;
+    const profile = currentProfileRef.current;
+    if (!profile) return;
 
     let isMatch = false;
     try {
       if (direction === "right") {
-        const result = await matchService.likeProfile(eventId, currentProfile.user_id);
+        const result = await matchService.likeProfile(eventId, profile.user_id);
         if (result.matched) {
           isMatch = true;
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setMatchedProfile(currentProfile);
+          setMatchedProfile(profile);
           setMatchId(result.match?.match_id || null);
           setShowMatchModal(true);
         }
       } else {
-        await matchService.passProfile(eventId, currentProfile.user_id);
+        await matchService.passProfile(eventId, profile.user_id);
       }
     } catch (error) {
       console.error(`${direction} failed:`, error);
     }
 
     if (!isMatch) {
-      nextProfile();
+      const idx = currentIndexRef.current;
+      if (idx + 1 < profilesRef.current.length) {
+        setCurrentIndex(idx + 1);
+      } else {
+        loadProfiles();
+      }
     }
   };
 
+  const forceSwipe = (direction: "left" | "right") => {
+    Haptics.impactAsync(direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+    const x = direction === "right" ? width + 100 : -width - 100;
+    Animated.timing(position, {
+      toValue: { x, y: 0 },
+      duration: 250,
+      useNativeDriver: false,
+    }).start(() => onSwipeComplete(direction));
+  };
+
+  const forceSwipeRef = useRef(forceSwipe);
+  forceSwipeRef.current = forceSwipe;
+  const resetPositionRef = useRef(resetPosition);
+  resetPositionRef.current = resetPosition;
+
   const nextProfile = () => {
-    if (currentIndex + 1 < profiles.length) {
-      setCurrentIndex(currentIndex + 1);
+    const idx = currentIndexRef.current;
+    if (idx + 1 < profilesRef.current.length) {
+      setCurrentIndex(idx + 1);
     } else {
       loadProfiles();
     }
@@ -161,10 +182,14 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
         const isHorizontal = Math.abs(gesture.dx) > Math.abs(gesture.dy);
         return isHorizontal && Math.abs(gesture.dx) > 5;
       },
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        const isHorizontal = Math.abs(gesture.dx) > Math.abs(gesture.dy);
+        return isHorizontal && Math.abs(gesture.dx) > 10;
+      },
       onPanResponderGrant: () => {
         position.setOffset({
-          x: position.x._value,
-          y: position.y._value,
+          x: (position.x as any)._value,
+          y: (position.y as any)._value,
         });
         position.setValue({ x: 0, y: 0 });
       },
@@ -175,15 +200,15 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
       onPanResponderRelease: (_, gesture) => {
         position.flattenOffset();
         if (gesture.dx > SWIPE_THRESHOLD) {
-          forceSwipe("right");
+          forceSwipeRef.current("right");
         } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          forceSwipe("left");
+          forceSwipeRef.current("left");
         } else {
-          resetPosition();
+          resetPositionRef.current();
         }
       },
     }),
-    [currentIndex]
+    []
   );
 
   if (loading) {
@@ -338,7 +363,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                 <View style={styles.matchAvatarContainer}>
                   {matchedProfile.photos?.[0] ? (
                     <Image
-                      source={{ uri: matchedProfile.photos[0].file_path }}
+                      source={{ uri: matchedProfile.photos[0].file_path.startsWith('http') ? matchedProfile.photos[0].file_path : `${API_URL}${matchedProfile.photos[0].file_path}` }}
                       style={styles.matchAvatar}
                     />
                   ) : (
@@ -422,7 +447,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
                     {selectedProfile.images.map((img, i) => (
                       <Image
                         key={i}
-                        source={{ uri: img }}
+                        source={{ uri: img.startsWith('http') ? img : `${API_URL}${img}` }}
                         style={styles.photoGridItem}
                         resizeMode="cover"
                       />
