@@ -3,6 +3,7 @@
 import { useTheme } from '@/context/ThemeContext';
 import { type Theme } from '@/constants/theme';
 import { matchService, type MatchUserProfile, type Photo } from '@/services/match.service';
+import { socketService } from '@/services/socket.service';
 import { reportService, ReportType } from '@/services/report.service';
 import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 import { Avatar } from '@/components/ui/Avatar';
@@ -48,6 +49,7 @@ interface Message {
   text: string;
   timestamp: string;
   date: string;
+  isLiked?: boolean;
 }
 
 interface DateGroup {
@@ -190,6 +192,32 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
     onNewMessage: handleRealTimeMessage,
   });
 
+  // Like handler
+  const handleToggleLike = useCallback(async (messageId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, isLiked: !m.isLiked } : m
+    ));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await matchService.toggleMessageLike(parseInt(messageId));
+    } catch {
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, isLiked: !m.isLiked } : m
+      ));
+    }
+  }, []);
+
+  // Socket listener for likes
+  useEffect(() => {
+    const unsub = socketService.onMessageLiked((data) => {
+      if (data.matchId !== matchId) return;
+      setMessages(prev => prev.map(m =>
+        m.id === data.messageId.toString() ? { ...m, isLiked: data.isLiked } : m
+      ));
+    });
+    return unsub;
+  }, [matchId]);
+
   // Report modal
   const [showMenu, setShowMenu] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -245,6 +273,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
         text: m.content,
         timestamp: formatMsgTime(m.sent_at),
         date: toDateKey(m.sent_at),
+        isLiked: m.is_liked,
       }));
       setMessages(mapped);
       matchService.markConversationMessagesAsRead(matchId).catch(() => {});
@@ -345,25 +374,46 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
     return groups;
   }, [messages]);
 
+  const lastTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+
+  const handleDoubleTap = useCallback((msg: Message) => {
+    if (msg.senderId === 'me') return;
+    const now = Date.now();
+    if (lastTapRef.current.id === msg.id && now - lastTapRef.current.time < 300) {
+      handleToggleLike(msg.id);
+      lastTapRef.current = { id: '', time: 0 };
+    } else {
+      lastTapRef.current = { id: msg.id, time: now };
+    }
+  }, [handleToggleLike]);
+
   const renderDateGroup = ({ item: group }: { item: DateGroup }) => (
     <View>
       <View style={styles.dateSeparator}>
         <Text style={styles.dateSeparatorText}>{group.dateLabel}</Text>
       </View>
       {group.messages.map(msg => (
-        <View
+        <Pressable
           key={msg.id}
-          style={[styles.msgRow, msg.senderId === 'me' ? styles.msgRowRight : styles.msgRowLeft]}
+          style={[styles.msgRow, msg.senderId === 'me' ? styles.msgRowRight : styles.msgRowLeft, msg.isLiked && { marginBottom: 10 }]}
+          onPress={() => handleDoubleTap(msg)}
         >
-          <View style={[styles.bubble, msg.senderId === 'me' ? styles.bubbleMe : styles.bubbleOther]}>
-            <Text style={[styles.bubbleText, msg.senderId === 'me' ? styles.bubbleTextMe : styles.bubbleTextOther]}>
-              {msg.text}
-            </Text>
-            <Text style={[styles.bubbleTime, msg.senderId === 'me' ? styles.bubbleTimeMe : styles.bubbleTimeOther]}>
-              {msg.timestamp}
-            </Text>
+          <View style={{ maxWidth: '75%' }}>
+            <View style={[styles.bubble, msg.senderId === 'me' ? styles.bubbleMe : styles.bubbleOther]}>
+              <Text style={[styles.bubbleText, msg.senderId === 'me' ? styles.bubbleTextMe : styles.bubbleTextOther]}>
+                {msg.text}
+              </Text>
+              <Text style={[styles.bubbleTime, msg.senderId === 'me' ? styles.bubbleTimeMe : styles.bubbleTimeOther]}>
+                {msg.timestamp}
+              </Text>
+            </View>
+            {msg.isLiked && (
+              <View style={[styles.likeIcon, styles.likeIconRight]}>
+                <MaterialIcons name="favorite" size={12} color="#ff0000" />
+              </View>
+            )}
           </View>
-        </View>
+        </Pressable>
       ))}
     </View>
   );
@@ -647,7 +697,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
 }
 
 const createStyles = (theme: Theme, topInset: number, bottomInset: number) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.card },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 8, paddingTop: topInset + 8, paddingBottom: 12,
@@ -669,7 +719,7 @@ const createStyles = (theme: Theme, topInset: number, bottomInset: number) => St
   msgRow: { flexDirection: 'row', marginBottom: 8 },
   msgRowRight: { justifyContent: 'flex-end' },
   msgRowLeft: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '75%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
+  bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   bubbleMe: { backgroundColor: theme.colors.sentMsg, borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: theme.colors.receivedMsg, borderBottomLeftRadius: 4, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
   bubbleText: { fontSize: 14, lineHeight: 20 },
@@ -678,6 +728,17 @@ const createStyles = (theme: Theme, topInset: number, bottomInset: number) => St
   bubbleTime: { fontSize: 11, marginTop: 3 },
   bubbleTimeMe: { color: theme.colors.textMuted, textAlign: 'right' },
   bubbleTimeOther: { color: theme.colors.placeholder },
+  likeIcon: {
+    position: 'absolute',
+    bottom: -10,
+    backgroundColor: theme.colors.background,
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  likeIconRight: { right: 4 },
   typingContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: theme.colors.background },
   typingText: { fontSize: 12, color: theme.colors.placeholder, fontStyle: 'italic' },
   inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingTop: 10, paddingBottom: Math.max(bottomInset, 10) },

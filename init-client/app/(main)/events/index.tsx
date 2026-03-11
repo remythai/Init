@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { EventsList, Event } from '@/components/EventsList';
 import { router } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
 
 import { authService } from '@/services/auth.service';
 import { eventService } from '@/services/event.service';
 import { transformEventResponses } from '@/utils/event.utils';
 
 export default function EventsScreen() {
+  const { theme } = useTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState<"user" | "organizer">("user");
@@ -62,8 +64,8 @@ export default function EventsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#303030" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.foreground} />
       </View>
     );
   }
@@ -84,6 +86,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'transparent',
   },
 });

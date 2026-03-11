@@ -93,9 +93,10 @@ export default function EventTabsLayout() {
   if (isInConversation) {
     return (
       <Tabs
+        sceneContainerStyle={{ backgroundColor: theme.colors.background }}
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: "none" },
+          tabBarStyle: { display: "none", backgroundColor: theme.colors.background },
         }}
       >
         <Tabs.Screen name="profile" />
@@ -116,6 +117,7 @@ export default function EventTabsLayout() {
       </View>
 
       <Tabs
+        sceneContainerStyle={{ backgroundColor: theme.colors.background }}
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: true,
