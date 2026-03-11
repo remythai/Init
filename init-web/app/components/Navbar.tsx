@@ -45,14 +45,14 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12">
-      <div className="w-full py-4 md:py-6 flex items-center justify-between">
+      <div className="w-full flex items-center justify-between">
         <Link href="/">
           <Image
-            src="/logo.png"
+            src="/logoDark.svg"
             alt="Init Logo"
             width={200}
             height={80}
-            className="h-7 md:h-9 w-auto"
+            className="h-7 md:h-25 w-auto"
           />
         </Link>
 
