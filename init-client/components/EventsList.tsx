@@ -22,6 +22,7 @@ import {
 const CARD_WIDTH = 260;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CreateEventDialog } from "./CreateEventDialog";
+import { EventsMap } from "./EventsMap";
 
 export interface Event {
   id: string;
@@ -42,6 +43,7 @@ export interface Event {
   isRegistered?: boolean;
   isBlocked?: boolean;
   customFields?: any[];
+  orgaId?: number;
   orgaName?: string;
   orgaLogo?: string;
   hasWhitelist?: boolean;
@@ -67,6 +69,7 @@ export function EventsList({
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [activeFilter, setActiveFilter] = useState<"all" | "registered">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -254,6 +257,12 @@ export function EventsList({
               placeholderTextColor={theme.colors.placeholder}
             />
           </View>
+          <Pressable
+            style={[styles.filterButton, viewMode === "map" && styles.filterButtonActive]}
+            onPress={() => setViewMode(viewMode === "list" ? "map" : "list")}
+          >
+            <MaterialIcons name={viewMode === "list" ? "map" : "view-list"} size={20} color={viewMode === "map" ? theme.colors.accentSolidText : theme.colors.foreground} />
+          </Pressable>
           <Pressable style={styles.filterButton} onPress={() => setIsAdvancedOpen(true)}>
             <MaterialIcons name="tune" size={20} color={theme.colors.foreground} />
             {hasActiveAdvancedFilters && <View style={styles.filterDot} />}
@@ -273,8 +282,15 @@ export function EventsList({
         </View>
       </View>
 
+      {/* Map view */}
+      {viewMode === "map" && (
+        <View style={styles.mapContainer}>
+          <EventsMap events={filteredEvents} />
+        </View>
+      )}
+
       {/* Events grouped by theme — horizontal scroll per category */}
-      <ScrollView
+      {viewMode === "list" && <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -316,7 +332,7 @@ export function EventsList({
             </View>
           ))
         )}
-      </ScrollView>
+      </ScrollView>}
 
       {/* Advanced Filters Modal */}
       <Modal
@@ -458,10 +474,16 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     shadowColor: theme.colors.shadow, shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 3, position: "relative",
   },
+  filterButtonActive: {
+    backgroundColor: theme.colors.accentSolid,
+  },
   filterDot: {
     position: "absolute", top: 8, right: 8, width: 8, height: 8,
     backgroundColor: theme.colors.primary, borderRadius: 4,
   },
+
+  // Map
+  mapContainer: { flex: 1, paddingTop: topInset + 116 },
 
   // List
   scrollView: { flex: 1 },

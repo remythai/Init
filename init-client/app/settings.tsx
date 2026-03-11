@@ -4,6 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { authService } from '@/services/auth.service';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useLang } from '@/context/LangContext';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -12,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function SettingsScreen() {
   const router = useRouter();
   const { theme, isDark, themeMode } = useTheme();
+  const { t, lang } = useLang();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, insets.bottom), [theme, insets.bottom]);
 
@@ -26,26 +28,32 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Paramètres" />
+      <ScreenHeader title={t.settings.title} />
 
       <ScrollView style={styles.scrollContent}>
         <View style={styles.content}>
           {/* Section Général */}
           <View style={styles.card}>
-            <ThemedText style={styles.cardTitle}>Général</ThemedText>
-            
+            <ThemedText style={styles.cardTitle}>{t.settings.general}</ThemedText>
+
             <View style={styles.cardContentDivided}>
-              <Pressable style={styles.dividedItem}>
+              <Pressable style={styles.dividedItem} onPress={() => router.push('/language')}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="language" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Langue</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.language}</ThemedText>
+                </View>
+                <View style={styles.settingRight}>
+                  <ThemedText style={styles.settingHint}>
+                    {lang === 'fr' ? 'Français' : lang === 'en' ? 'English' : 'Español'}
+                  </ThemedText>
+                  <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
                 </View>
               </Pressable>
 
               <Pressable style={styles.dividedItem}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="notifications" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Notifications</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.notifications}</ThemedText>
                 </View>
               </Pressable>
 
@@ -55,11 +63,11 @@ export default function SettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="palette" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Thème</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.theme}</ThemedText>
                 </View>
                 <View style={styles.settingRight}>
                   <ThemedText style={styles.settingHint}>
-                    {themeMode === 'system' ? 'Système' : themeMode === 'dark' ? 'Sombre' : 'Clair'}
+                    {themeMode === 'system' ? t.settings.themeSystem : themeMode === 'dark' ? t.settings.themeDark : t.settings.themeLight}
                   </ThemedText>
                   <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
                 </View>
@@ -69,48 +77,51 @@ export default function SettingsScreen() {
 
           {/* Section Confidentialité et sécurité */}
           <View style={styles.card}>
-            <ThemedText style={styles.cardTitle}>Confidentialité et sécurité</ThemedText>
-            
+            <ThemedText style={styles.cardTitle}>{t.settings.privacy}</ThemedText>
+
             <View style={styles.cardContentDivided}>
-              <Pressable style={styles.dividedItem}>
+              <Pressable style={styles.dividedItem} onPress={() => router.push('/legal/confidentialite')}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="shield" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Confidentialité</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.privacyItem}</ThemedText>
                 </View>
+                <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
               </Pressable>
 
-              <Pressable style={styles.dividedItem}>
+              <Pressable style={styles.dividedItem} onPress={() => router.push('/legal/cgu')}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="description" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Conditions d'utilisation</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.terms}</ThemedText>
                 </View>
+                <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
               </Pressable>
 
-              <Pressable style={[styles.dividedItem, styles.lastItem]}>
+              <Pressable style={[styles.dividedItem, styles.lastItem]} onPress={() => router.push('/legal/mentions-legales')}>
                 <View style={styles.settingLeft}>
-                  <MaterialIcons name="description" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Politique de confidentialité</ThemedText>
+                  <MaterialIcons name="gavel" size={20} color={theme.colors.foreground} />
+                  <ThemedText style={styles.settingText}>{t.settings.legalNotices}</ThemedText>
                 </View>
+                <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
               </Pressable>
             </View>
           </View>
 
           {/* Section Aide */}
           <View style={styles.card}>
-            <ThemedText style={styles.cardTitle}>Aide</ThemedText>
-            
+            <ThemedText style={styles.cardTitle}>{t.settings.help}</ThemedText>
+
             <View style={styles.cardContentDivided}>
               <Pressable style={styles.dividedItem}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="help" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>Centre d'aide</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.helpCenter}</ThemedText>
                 </View>
               </Pressable>
 
               <Pressable style={[styles.dividedItem, styles.lastItem]}>
                 <View style={styles.settingLeft}>
                   <MaterialIcons name="info" size={20} color={theme.colors.foreground} />
-                  <ThemedText style={styles.settingText}>À propos</ThemedText>
+                  <ThemedText style={styles.settingText}>{t.settings.about}</ThemedText>
                 </View>
               </Pressable>
             </View>
@@ -123,14 +134,14 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingLeft}>
               <MaterialIcons name="logout" size={20} color={theme.colors.destructive} />
-              <ThemedText style={styles.logoutText}>Déconnexion</ThemedText>
+              <ThemedText style={styles.logoutText}>{t.settings.logout}</ThemedText>
             </View>
           </Pressable>
 
           {/* Version */}
           <View style={styles.versionContainer}>
-            <ThemedText style={styles.versionText}>Version 1.0.0</ThemedText>
-            <ThemedText style={styles.versionText}>© 2025 Init. Tous droits réservés.</ThemedText>
+            <ThemedText style={styles.versionText}>{t.settings.version} 1.0.0</ThemedText>
+            <ThemedText style={styles.versionText}>{t.settings.rights}</ThemedText>
           </View>
         </View>
       </ScrollView>

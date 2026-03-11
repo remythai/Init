@@ -10,6 +10,7 @@ import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
 import { SocketProvider } from '@/context/SocketContext';
+import { LangProvider } from '@/context/LangContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -99,6 +100,27 @@ function RootLayoutInner() {
             }}
           />
           <Stack.Screen name="modal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen
+            name="language"
+            options={{
+              animation: 'slide_from_right',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="legal"
+            options={{
+              animation: 'slide_from_right',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="orga"
+            options={{
+              animation: 'slide_from_right',
+              headerShown: false,
+            }}
+          />
         </Stack>
       </SocketProvider>
     </EventProvider>
@@ -121,9 +143,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <SafeAreaProvider>
-        <RootLayoutInner />
-      </SafeAreaProvider>
+      <LangProvider>
+        <SafeAreaProvider>
+          <RootLayoutInner />
+        </SafeAreaProvider>
+      </LangProvider>
     </ThemeProvider>
   );
 }
