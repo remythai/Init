@@ -6,6 +6,7 @@ import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../services/user.service.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { disconnectUser } from '../socket/emitters.js';
+import { PushService } from '../services/push.service.js';
 
 export const UserController = {
   async register(req: Request, res: Response): Promise<void> {
@@ -54,6 +55,21 @@ export const UserController = {
     await UserService.changePassword(req.user!.id, req.body.currentPassword, req.body.newPassword);
     clearRefreshCookie(res);
     success(res, null, 'Mot de passe modifié, veuillez vous reconnecter');
+  },
+
+  async savePushToken(req: Request, res: Response): Promise<void> {
+    const { pushToken } = req.body;
+    if (!pushToken) {
+      res.status(400).json({ error: 'pushToken requis' });
+      return;
+    }
+    await PushService.saveToken(req.user!.id, 'user', pushToken);
+    success(res, null, 'Push token enregistré');
+  },
+
+  async deletePushToken(req: Request, res: Response): Promise<void> {
+    await PushService.removeToken(req.user!.id, 'user');
+    success(res, null, 'Push token supprimé');
   },
 
   async deleteAccount(req: Request, res: Response): Promise<void> {
