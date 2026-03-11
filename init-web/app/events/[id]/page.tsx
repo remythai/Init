@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Calendar, MapPin, Users, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check, Camera, Shield, Ban, BarChart3 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Trash2, Flag, LogIn, X, Edit2, UserCheck, Check, Camera, Shield, Ban, BarChart3, LogOut, MoreVertical } from "lucide-react";
 import { authService } from "../../services/auth.service";
 import {
   eventService,
@@ -34,6 +34,9 @@ export default function EventDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showUnregisterConfirm, setShowUnregisterConfirm] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [profilInfo, setProfilInfo] = useState<Record<string, unknown>>({});
@@ -63,6 +66,18 @@ export default function EventDetailPage() {
     window.addEventListener('resize', updateHeights);
     return () => window.removeEventListener('resize', updateHeights);
   }, [event, userType]);
+
+  // Close more menu on click outside
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMoreMenu]);
 
   useEffect(() => {
     const initPage = async () => {
@@ -486,11 +501,7 @@ export default function EventDetailPage() {
 
   const handleUnregister = async () => {
     if (!event) return;
-
-    if (!confirm("Etes-vous sur de vouloir vous desinscrire de cet evenement ?")) {
-      return;
-    }
-
+    setShowUnregisterConfirm(false);
     setRegistering(true);
 
     try {
@@ -574,19 +585,12 @@ export default function EventDetailPage() {
           <DesktopNav />
           <div className="flex items-center gap-3 md:gap-4">
             <ThemeToggle />
-            {userType === "orga" ? (
+            {userType === "orga" && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2 rounded-lg hover:bg-red-50 transition-colors"
               >
                 <Trash2 className="w-5 h-5 text-red-500" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="p-2 rounded-lg hover:bg-hover transition-colors"
-              >
-                <Flag className="w-5 h-5 text-primary" />
               </button>
             )}
           </div>
@@ -621,9 +625,42 @@ export default function EventDetailPage() {
 
           {/* Event Details */}
           <div className="px-6 pt-10 pb-20 md:py-6">
-            <h1 className="font-poppins text-2xl font-bold text-primary mb-4">
-              {event.name}
-            </h1>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h1 className="font-poppins text-2xl font-bold text-primary">
+                {event.name}
+              </h1>
+              {userType === "user" && (
+                <div ref={moreMenuRef} className="relative shrink-0">
+                  <button
+                    onClick={() => setShowMoreMenu((v) => !v)}
+                    className="p-2 rounded-lg hover:bg-hover transition-colors"
+                  >
+                    <MoreVertical className="w-5 h-5 text-muted" />
+                  </button>
+                  {showMoreMenu && (
+                    <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg py-1 min-w-[200px] z-20">
+                      {event.isRegistered && !event.isBlocked && (
+                        <button
+                          onClick={() => { setShowMoreMenu(false); setShowUnregisterConfirm(true); }}
+                          disabled={registering}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left text-red-500 hover:bg-hover transition-colors disabled:opacity-50"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="text-sm font-medium">Se desinscrire</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setShowMoreMenu(false); setShowReportModal(true); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-muted hover:bg-hover transition-colors"
+                      >
+                        <Flag className="w-4 h-4" />
+                        <span className="text-sm font-medium">Signaler</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Info Cards - Like mobile EventDetails.tsx */}
             <div className="space-y-4 mb-6">
@@ -802,24 +839,14 @@ export default function EventDetailPage() {
               </Link>
             </div>
           ) : event.isRegistered ? (
-            /* User registered - show unregister/enter buttons */
-            <div className="flex gap-3">
-              <button
-                onClick={handleUnregister}
-                disabled={registering}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-white hover:text-red-500 cursor-pointer transition-colors disabled:opacity-50"
-              >
-                <X className="w-5 h-5" />
-                {registering ? "Chargement..." : "Se désinscrire"}
-              </button>
-              <Link
-                href={`/events/${eventId}/environment/swiper`}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-accent-solid text-accent-solid-text font-semibold hover:opacity-90 transition-colors"
-              >
-                <LogIn className="w-5 h-5" />
-                Entrer
-              </Link>
-            </div>
+            /* User registered - enter button */
+            <Link
+              href={`/events/${eventId}/environment/swiper`}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-accent-solid text-accent-solid-text font-semibold hover:opacity-90 transition-colors"
+            >
+              <LogIn className="w-5 h-5" />
+              Entrer
+            </Link>
           ) : (
             /* User not registered */
             <div className="space-y-3">
@@ -847,6 +874,40 @@ export default function EventDetailPage() {
       </div>
 
       {/* Delete Confirmation Modal - Like mobile Alert */}
+      {/* Unregister Confirmation Modal */}
+      {showUnregisterConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !registering && setShowUnregisterConfirm(false)}
+          />
+          <div className="relative bg-modal rounded-2xl p-6 max-w-sm mx-4 w-full">
+            <h3 className="font-semibold text-lg text-primary mb-2">
+              Se desinscrire
+            </h3>
+            <p className="text-muted text-sm mb-6">
+              Etes-vous sur de vouloir vous desinscrire de cet evenement ? Vous perdrez vos matchs et conversations.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowUnregisterConfirm(false)}
+                disabled={registering}
+                className="w-full py-3 rounded-xl text-primary font-medium hover:bg-hover transition-colors disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleUnregister}
+                disabled={registering}
+                className="w-full py-3 rounded-xl text-red-500 font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                {registering ? "Desinscription..." : "Se desinscrire"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
