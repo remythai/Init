@@ -11,6 +11,7 @@ import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUnread } from '@/context/UnreadContext';
 
 export default function MainLayout() {
   const router = useRouter();
@@ -40,6 +41,8 @@ export default function MainLayout() {
     }
   }, [isOrga]);
 
+  const { registerRefresh } = useUnread();
+  useEffect(() => { registerRefresh(loadUnread); }, [loadUnread, registerRefresh]);
   useEffect(() => { loadUnread(); }, [loadUnread]);
 
   // Real-time: update unread badge on new messages

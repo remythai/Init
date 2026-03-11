@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { EventProvider } from '@/context/EventContext';
 import { SocketProvider } from '@/context/SocketContext';
 import { LangProvider } from '@/context/LangContext';
+import { UnreadProvider } from '@/context/UnreadContext';
 import { registerAndSavePushToken } from '@/services/notification.service';
 import * as Notifications from 'expo-notifications';
 
@@ -175,9 +176,11 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <LangProvider>
-        <SafeAreaProvider>
-          <RootLayoutInner />
-        </SafeAreaProvider>
+        <UnreadProvider>
+          <SafeAreaProvider>
+            <RootLayoutInner />
+          </SafeAreaProvider>
+        </UnreadProvider>
       </LangProvider>
     </AppThemeProvider>
   );

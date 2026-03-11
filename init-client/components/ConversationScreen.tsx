@@ -30,6 +30,7 @@ import {
   View,
 } from 'react-native';
 import { SlideUpModal } from '@/components/ui/SlideUpModal';
+import { useUnread } from '@/context/UnreadContext';
 import * as Haptics from 'expo-haptics';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -154,6 +155,7 @@ interface ConversationScreenProps {
 export function ConversationScreen({ matchId, onBack }: ConversationScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { refreshUnread } = useUnread();
   const styles = useMemo(() => createStyles(theme, insets.top, insets.bottom), [theme, insets.top, insets.bottom]);
 
   const flatListRef = useRef<FlatList>(null);
@@ -184,7 +186,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
       if (prev.some(m => m.id === mapped.id)) return prev;
       return [...prev, mapped];
     });
-    if (matchId) matchService.markConversationMessagesAsRead(matchId).catch(() => {});
+    if (matchId) matchService.markConversationMessagesAsRead(matchId).then(() => refreshUnread()).catch(() => {});
   }, [matchId]);
 
   const { typingUsers, sendTyping } = useRealTimeMessages({
@@ -276,7 +278,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
         isLiked: m.is_liked,
       }));
       setMessages(mapped);
-      matchService.markConversationMessagesAsRead(matchId).catch(() => {});
+      matchService.markConversationMessagesAsRead(matchId).then(() => refreshUnread()).catch(() => {});
     } catch (e) {
       console.error('Erreur chargement messages:', e);
     } finally {
