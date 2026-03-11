@@ -204,11 +204,11 @@ export default function ReportsPage() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <Link href="/">
             <Image
-              src="/initLogoGray.png"
+              src="/logoDark.svg"
               alt="Init Logo"
               width={200}
               height={80}
-              className="h-8 md:h-12 w-auto"
+              className="h-20 md:h-24 w-auto"
             />
           </Link>
           <Link
