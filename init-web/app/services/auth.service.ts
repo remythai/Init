@@ -1,7 +1,7 @@
 // services/auth.service.ts
 
-import { isDevMode } from './dev/dev-mode';
-import { MOCK_USER } from './dev/mock-data';
+import { isDevMode, isMockOrganizer } from './dev/dev-mode';
+import { MOCK_USER, MOCK_ORGA } from './dev/mock-data';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -324,7 +324,7 @@ class AuthService {
   }
 
   async validateAndGetUserType(): Promise<'user' | 'orga' | null> {
-    if (isDevMode()) return 'user';
+    if (isDevMode()) return isMockOrganizer() ? 'orga' : 'user';
     let token = this.getToken();
     const userType = this.getUserType();
 
@@ -377,7 +377,7 @@ class AuthService {
   }
 
   async getCurrentProfile(): Promise<User | Orga | null> {
-    if (isDevMode()) return MOCK_USER;
+    if (isDevMode()) return isMockOrganizer() ? MOCK_ORGA : MOCK_USER;
     try {
       const userType = this.getUserType();
       const endpoint = userType === 'orga' ? '/api/orga/me' : '/api/users/me';
@@ -440,6 +440,9 @@ class AuthService {
   }
 
   async uploadOrgaLogo(file: File): Promise<string> {
+    if (isDevMode()) {
+      return URL.createObjectURL(file);
+    }
     let token = this.getToken();
     if (!token) {
       throw new Error('No token available');
@@ -481,6 +484,7 @@ class AuthService {
   }
 
   async deleteOrgaLogo(): Promise<void> {
+    if (isDevMode()) return;
     const response = await this.authenticatedFetch('/api/orga/logo', {
       method: 'DELETE',
     });

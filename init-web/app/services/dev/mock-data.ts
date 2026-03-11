@@ -2,7 +2,8 @@ import type { User } from '../auth.service';
 import type { EventResponse, EventListResponse, CustomField, OrgaPublicProfile } from '../event.service';
 import type { Profile, Match, Conversation, Message, MatchUserProfile } from '../match.service';
 import type { Photo, PhotosGrouped } from '../photo.service';
-import { DEV_MODE_USER_ID } from './dev-mode';
+import { DEV_MODE_USER_ID, DEV_MODE_ORGA_ID } from './dev-mode';
+import type { Orga } from '../auth.service';
 
 // ── Helpers ──
 
@@ -19,6 +20,18 @@ export const MOCK_USER: User = {
   mail: 'alexandre.martin@example.com',
   birthday: '1998-03-15',
   created_at: '2025-01-10T10:00:00Z',
+  updated_at: '2025-02-01T14:30:00Z',
+};
+
+// ── Mock Orga ──
+
+export const MOCK_ORGA: Orga = {
+  id: DEV_MODE_ORGA_ID,
+  nom: 'TechMeet Paris',
+  mail: 'contact@techmeet.paris',
+  description: 'Communaute de professionnels de la tech parisienne.',
+  tel: '01 23 45 67 89',
+  created_at: '2024-06-01T10:00:00Z',
   updated_at: '2025-02-01T14:30:00Z',
 };
 

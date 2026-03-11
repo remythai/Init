@@ -11,6 +11,7 @@ interface ImageCropperProps {
   outputType?: string;
   outputQuality?: number;
   darkMode?: boolean;
+  circular?: boolean; // Show circular overlay (crop stays square 1:1, output is square)
 }
 
 interface CropArea {
@@ -28,7 +29,10 @@ export default function ImageCropper({
   outputType = "image/jpeg",
   outputQuality = 0.92,
   darkMode = false,
+  circular = false,
 }: ImageCropperProps) {
+  // Force 1:1 aspect ratio when circular
+  if (circular) aspectRatio = 1;
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -321,26 +325,53 @@ export default function ImageCropper({
                 bottom: "auto",
               }}
             >
-              {/* Dark overlay with crop cutout using clip-path */}
-              <div
-                className="absolute inset-0 bg-black/50 pointer-events-none"
-                style={{
-                  clipPath: `polygon(
-                    0% 0%, 0% 100%,
-                    ${(crop.x / displaySize.width) * 100}% 100%,
-                    ${(crop.x / displaySize.width) * 100}% ${(crop.y / displaySize.height) * 100}%,
-                    ${((crop.x + crop.width) / displaySize.width) * 100}% ${(crop.y / displaySize.height) * 100}%,
-                    ${((crop.x + crop.width) / displaySize.width) * 100}% ${((crop.y + crop.height) / displaySize.height) * 100}%,
-                    ${(crop.x / displaySize.width) * 100}% ${((crop.y + crop.height) / displaySize.height) * 100}%,
-                    ${(crop.x / displaySize.width) * 100}% 100%,
-                    100% 100%, 100% 0%
-                  )`,
-                }}
-              />
+              {/* Dark overlay with crop cutout */}
+              {circular ? (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ width: displaySize.width, height: displaySize.height }}>
+                  <defs>
+                    <mask id="circle-mask">
+                      <rect width="100%" height="100%" fill="white" />
+                      <ellipse
+                        cx={crop.x + crop.width / 2}
+                        cy={crop.y + crop.height / 2}
+                        rx={crop.width / 2}
+                        ry={crop.height / 2}
+                        fill="black"
+                      />
+                    </mask>
+                  </defs>
+                  <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#circle-mask)" />
+                  <ellipse
+                    cx={crop.x + crop.width / 2}
+                    cy={crop.y + crop.height / 2}
+                    rx={crop.width / 2}
+                    ry={crop.height / 2}
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                </svg>
+              ) : (
+                <div
+                  className="absolute inset-0 bg-black/50 pointer-events-none"
+                  style={{
+                    clipPath: `polygon(
+                      0% 0%, 0% 100%,
+                      ${(crop.x / displaySize.width) * 100}% 100%,
+                      ${(crop.x / displaySize.width) * 100}% ${(crop.y / displaySize.height) * 100}%,
+                      ${((crop.x + crop.width) / displaySize.width) * 100}% ${(crop.y / displaySize.height) * 100}%,
+                      ${((crop.x + crop.width) / displaySize.width) * 100}% ${((crop.y + crop.height) / displaySize.height) * 100}%,
+                      ${(crop.x / displaySize.width) * 100}% ${((crop.y + crop.height) / displaySize.height) * 100}%,
+                      ${(crop.x / displaySize.width) * 100}% 100%,
+                      100% 100%, 100% 0%
+                    )`,
+                  }}
+                />
+              )}
 
-              {/* Crop rectangle border */}
+              {/* Crop area (border shown only for non-circular) */}
               <div
-                className="absolute border-2 border-white"
+                className={`absolute ${circular ? '' : 'border-2 border-white'}`}
                 style={{
                   left: crop.x,
                   top: crop.y,
@@ -348,13 +379,15 @@ export default function ImageCropper({
                   height: crop.height,
                 }}
               >
-                {/* Grid lines */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/30" />
-                  <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/30" />
-                  <div className="absolute top-1/3 left-0 right-0 h-px bg-white/30" />
-                  <div className="absolute top-2/3 left-0 right-0 h-px bg-white/30" />
-                </div>
+                {/* Grid lines (only for non-circular) */}
+                {!circular && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/30" />
+                    <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/30" />
+                    <div className="absolute top-1/3 left-0 right-0 h-px bg-white/30" />
+                    <div className="absolute top-2/3 left-0 right-0 h-px bg-white/30" />
+                  </div>
+                )}
 
                 {/* Move area */}
                 <div
