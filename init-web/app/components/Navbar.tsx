@@ -52,7 +52,7 @@ export default function Navbar() {
             alt="Init Logo"
             width={200}
             height={80}
-            className="h-7 md:h-25 w-auto"
+            className="h-15 md:h-25 w-auto"
           />
         </Link>
 

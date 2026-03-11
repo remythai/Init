@@ -7,12 +7,14 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "block",
 });
 
 const roboto = Roboto({
   variable: "--font-roboto",
   subsets: ["latin"],
   weight: ["400", "500"],
+  display: "block",
 });
 
 export const viewport: Viewport = {

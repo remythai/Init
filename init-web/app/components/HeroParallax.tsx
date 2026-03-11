@@ -57,12 +57,28 @@ export default function HeroParallax() {
           initial={{ opacity: 0, y: 20 }}
           animate={splashDone ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.3 }}
+          className="flex items-center justify-center gap-3"
         >
+          {/* Download button - mobile only, visible when authenticated */}
+          {isAuthenticated && (
+            <a
+              href="/init.apk"
+              download
+              className="md:hidden inline-flex items-center gap-2 font-poppins font-semibold text-sm text-white bg-transparent border border-white hover:bg-white/10 px-6 py-4 rounded-full transition-all duration-300"
+            >
+              {t.navbar.download}
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.523 2.226a.75.75 0 0 0-1.046-.177l-1.867 1.302A8.962 8.962 0 0 0 12 2.726a8.96 8.96 0 0 0-2.61.625L7.523 2.05a.75.75 0 1 0-.869 1.222l1.548 1.08A8.987 8.987 0 0 0 3 12.226v.75h18v-.75a8.987 8.987 0 0 0-5.202-8.174l1.548-1.08a.75.75 0 0 0 .177-1.046zM8.25 10.226a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm7.5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM3 14.476v3.75A3.75 3.75 0 0 0 6.75 22h10.5A3.75 3.75 0 0 0 21 18.226v-3.75H3z"/>
+              </svg>
+            </a>
+          )}
+
           <Link
             href={isAuthenticated ? "/events" : "/auth"}
             className="group inline-flex items-center gap-2.5 font-poppins font-semibold text-sm md:text-base text-white bg-[#1271FF] hover:bg-[#0f5fd6] hover:shadow-lg hover:shadow-[#1271FF]/25 px-8 md:px-10 py-4 md:py-4.5 rounded-full transition-all duration-300"
           >
-            {t.hero.cta}
+            <span className="md:hidden">{isAuthenticated ? t.navbar.access : t.hero.cta}</span>
+            <span className="hidden md:inline">{t.hero.cta}</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </motion.div>
