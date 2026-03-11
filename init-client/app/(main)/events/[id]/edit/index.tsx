@@ -594,13 +594,13 @@ export default function EditEventScreen() {
                 style={styles.bannerPreview}
               />
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Pressable style={[styles.bannerButton, { flex: 1 }]} onPress={handlePickBanner} disabled={uploadingBanner}>
-                  <MaterialIcons name="photo-camera" size={18} color={theme.colors.primary} />
-                  <Text style={styles.bannerButtonText}>{uploadingBanner ? '...' : 'Changer'}</Text>
+                <Pressable style={[styles.bannerButton, styles.bannerButtonChange, { flex: 1 }]} onPress={handlePickBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="photo-camera" size={18} color="#fff" />
+                  <Text style={styles.bannerButtonChangeText}>{uploadingBanner ? '...' : 'Changer'}</Text>
                 </Pressable>
-                <Pressable style={[styles.bannerButton, { flex: 1, borderColor: shared.error }]} onPress={handleDeleteBanner} disabled={uploadingBanner}>
-                  <MaterialIcons name="delete" size={18} color={shared.error} />
-                  <Text style={[styles.bannerButtonText, { color: shared.error }]}>Supprimer</Text>
+                <Pressable style={[styles.bannerButton, styles.bannerButtonDelete, { flex: 1 }]} onPress={handleDeleteBanner} disabled={uploadingBanner}>
+                  <MaterialIcons name="delete" size={18} color="#fff" />
+                  <Text style={styles.bannerButtonDeleteText}>Supprimer</Text>
                 </Pressable>
               </View>
             </View>
@@ -798,7 +798,7 @@ export default function EditEventScreen() {
             <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
           ) : (
             <>
-              <MaterialIcons name="check" size={20} color={theme.colors.primaryForeground} />
+              <MaterialIcons name="check" size={20} color="#fff" />
               <Text style={styles.saveEventButtonText}>Enregistrer les modifications</Text>
             </>
           )}
@@ -810,6 +810,7 @@ export default function EditEventScreen() {
           visible={true}
           onCrop={handleCroppedBanner}
           onCancel={() => setCropBannerUri(null)}
+          aspectRatio={16 / 9}
         />
       )}
     </KeyboardAvoidingView>
@@ -952,9 +953,12 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   bannerPreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: 12, resizeMode: 'cover' as const },
   bannerButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.primary,
+    paddingVertical: 10, borderRadius: 10,
   },
-  bannerButtonText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
+  bannerButtonChange: { backgroundColor: theme.colors.primary },
+  bannerButtonChangeText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  bannerButtonDelete: { backgroundColor: shared.error },
+  bannerButtonDeleteText: { fontSize: 13, fontWeight: '600', color: '#fff' },
   bannerPlaceholder: {
     height: 120, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.border,
     borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: 6,
@@ -978,10 +982,10 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: theme.colors.accentSolid,
+    backgroundColor: theme.colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
   },
   saveEventButtonDisabled: { opacity: 0.6 },
-  saveEventButtonText: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: theme.colors.accentSolidText },
+  saveEventButtonText: { fontFamily: 'Poppins', fontWeight: '700', fontSize: 16, color: '#fff' },
 });

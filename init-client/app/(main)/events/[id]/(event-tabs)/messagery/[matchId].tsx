@@ -1,4 +1,4 @@
-// app/(main)/events/[id]/(event-tabs)/messagery/[id].tsx
+// app/(main)/events/[id]/(event-tabs)/messagery/[matchId].tsx
 import { ConversationScreen } from '@/components/ConversationScreen';
 import { useEvent } from '@/context/EventContext';
 import { useLocalSearchParams, useGlobalSearchParams, useRouter } from 'expo-router';
@@ -8,7 +8,7 @@ import { useFocusEffect } from 'expo-router';
 
 export default function EventConversationPage() {
   const router = useRouter();
-  const { id: matchIdParam } = useLocalSearchParams<{ id: string }>();
+  const { matchId: matchIdParam } = useLocalSearchParams<{ matchId: string }>();
   const globalParams = useGlobalSearchParams();
   const { currentEventId } = useEvent();
   const matchId = matchIdParam ? parseInt(matchIdParam) : 0;

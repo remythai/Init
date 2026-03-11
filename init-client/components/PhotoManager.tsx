@@ -31,18 +31,19 @@ interface PhotoManagerProps {
   eventId?: string;
   maxPhotos?: number;
   onPhotosChange?: (photos: Photo[]) => void;
+  aspectRatio?: number;
 }
 
-function getPosition(index: number, photoSize: number) {
+function getPosition(index: number, photoW: number, photoH: number) {
   const col = index % COLUMNS;
   const row = Math.floor(index / COLUMNS);
-  return { x: col * (photoSize + GAP), y: row * (photoSize + GAP) };
+  return { x: col * (photoW + GAP), y: row * (photoH + GAP) };
 }
 
-function getIndexFromCenter(cx: number, cy: number, total: number, photoSize: number): number | null {
+function getIndexFromCenter(cx: number, cy: number, total: number, photoW: number, photoH: number): number | null {
   for (let i = 0; i < total; i++) {
-    const pos = getPosition(i, photoSize);
-    if (cx >= pos.x && cx < pos.x + photoSize && cy >= pos.y && cy < pos.y + photoSize) {
+    const pos = getPosition(i, photoW, photoH);
+    if (cx >= pos.x && cx < pos.x + photoW && cy >= pos.y && cy < pos.y + photoH) {
       return i;
     }
   }
@@ -53,6 +54,7 @@ export default function PhotoManager({
   eventId,
   maxPhotos = 6,
   onPhotosChange,
+  aspectRatio,
 }: PhotoManagerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -66,6 +68,7 @@ export default function PhotoManager({
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const photoSize = containerWidth > 0 ? (containerWidth - GAP * (COLUMNS - 1)) / COLUMNS : 0;
+  const photoHeight = aspectRatio ? photoSize / aspectRatio : photoSize;
 
   // Drag state
   const [dragFrom, setDragFrom] = useState<number | null>(null);
@@ -90,6 +93,8 @@ export default function PhotoManager({
   // Drag refs for PanResponder (avoid stale closures)
   const photoSizeRef = useRef(photoSize);
   photoSizeRef.current = photoSize;
+  const photoHeightRef = useRef(photoHeight);
+  photoHeightRef.current = photoHeight;
   const dragFromRef = useRef<number | null>(null);
   const isLongPress = useRef(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,7 +148,7 @@ export default function PhotoManager({
         const locX = e.nativeEvent.pageX - gridPageX.current;
         const locY = e.nativeEvent.pageY - gridPageY.current;
         touchStartRef.current = { x: locX, y: locY };
-        const idx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current);
+        const idx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current, photoHeightRef.current);
         if (idx === null) return;
 
         longPressTimer.current = setTimeout(() => {
@@ -171,10 +176,11 @@ export default function PhotoManager({
         const from = dragFromRef.current;
         if (from === null) return;
         const sz = photoSizeRef.current;
-        const origin = getPosition(from, sz);
+        const sh = photoHeightRef.current;
+        const origin = getPosition(from, sz, sh);
         const cx = origin.x + sz / 2 + gesture.dx;
-        const cy = origin.y + sz / 2 + gesture.dy;
-        const target = getIndexFromCenter(cx, cy, photosRef.current.length, sz);
+        const cy = origin.y + sh / 2 + gesture.dy;
+        const target = getIndexFromCenter(cx, cy, photosRef.current.length, sz, sh);
         setHoverTarget(target !== null && target !== from ? target : null);
       },
       onPanResponderRelease: (_, gesture) => {
@@ -199,7 +205,7 @@ export default function PhotoManager({
           if (!wasDragging && Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
             const locX = gesture.x0 - gridPageX.current;
             const locY = gesture.y0 - gridPageY.current;
-            const tappedIdx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current);
+            const tappedIdx = getIndexFromCenter(locX, locY, photosRef.current.length, photoSizeRef.current, photoHeightRef.current);
             if (tappedIdx !== null && photosRef.current[tappedIdx]) {
               setPreviewPhoto(photosRef.current[tappedIdx]);
             }
@@ -208,10 +214,11 @@ export default function PhotoManager({
         }
 
         const sz = photoSizeRef.current;
-        const origin = getPosition(from, sz);
+        const sh = photoHeightRef.current;
+        const origin = getPosition(from, sz, sh);
         const cx = origin.x + sz / 2 + gesture.dx;
-        const cy = origin.y + sz / 2 + gesture.dy;
-        const to = getIndexFromCenter(cx, cy, photosRef.current.length, sz);
+        const cy = origin.y + sh / 2 + gesture.dy;
+        const to = getIndexFromCenter(cx, cy, photosRef.current.length, sz, sh);
 
         if (to !== null && to !== from) {
           doReorder(from, to);
@@ -298,7 +305,7 @@ export default function PhotoManager({
 
   const totalSlots = photos.length + (photos.length < maxPhotos ? 1 : 0);
   const gridRows = Math.ceil(totalSlots / COLUMNS);
-  const gridHeight = photoSize > 0 ? gridRows * (photoSize + GAP) - GAP : 0;
+  const gridHeight = photoSize > 0 ? gridRows * (photoHeight + GAP) - GAP : 0;
 
   if (loading) {
     return (
@@ -336,7 +343,7 @@ export default function PhotoManager({
         {...panResponder.panHandlers}
       >
         {photos.map((photo, index) => {
-          const pos = getPosition(index, photoSize);
+          const pos = getPosition(index, photoSize, photoHeight);
           const isDragged = dragFrom === index;
           const isHover = hoverTarget === index;
 
@@ -345,7 +352,7 @@ export default function PhotoManager({
               key={photo.id}
               style={[
                 styles.photoCell,
-                { position: "absolute", left: pos.x, top: pos.y, width: photoSize, height: photoSize },
+                { position: "absolute", left: pos.x, top: pos.y, width: photoSize, height: photoHeight },
                 isDragged && {
                   transform: [
                     { translateX: dragTranslate.x },
@@ -404,12 +411,12 @@ export default function PhotoManager({
 
         {/* Add photo slot */}
         {photos.length < maxPhotos && (() => {
-          const addPos = getPosition(photos.length, photoSize);
+          const addPos = getPosition(photos.length, photoSize, photoHeight);
           return (
             <Pressable
               style={[
                 styles.addCell,
-                { position: "absolute", left: addPos.x, top: addPos.y, width: photoSize, height: photoSize },
+                { position: "absolute", left: addPos.x, top: addPos.y, width: photoSize, height: photoHeight },
               ]}
               onPress={pickPhoto}
               disabled={uploading}
@@ -498,6 +505,7 @@ export default function PhotoManager({
           visible={true}
           onCrop={uploadCroppedPhoto}
           onCancel={() => setCropUri(null)}
+          aspectRatio={aspectRatio}
         />
       )}
     </View>

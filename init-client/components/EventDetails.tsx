@@ -401,7 +401,7 @@ export function EventDetail({
         style={styles.orgaButtonReports}
         onPress={() => router.push(`/(main)/events/${event.id}/reports`)}
       >
-        <MaterialIcons name="flag" size={18} color={shared.error} />
+        <MaterialIcons name="flag" size={18} color="#fff" />
         <Text style={styles.orgaButtonReportsText}>Signalements</Text>
       </Pressable>
     </View>
@@ -773,15 +773,13 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: shared.errorLight,
-    borderWidth: 1,
-    borderColor: shared.error,
+    backgroundColor: shared.error,
   },
   orgaButtonReportsText: {
     fontFamily: "Poppins",
     fontWeight: "600",
     fontSize: 13,
-    color: shared.error,
+    color: "#fff",
   },
 
   // User actions

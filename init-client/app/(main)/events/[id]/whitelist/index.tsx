@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +52,7 @@ type ImportStep = 'pick' | 'columns' | 'results';
 export default function WhitelistScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Data
@@ -409,7 +411,7 @@ export default function WhitelistScreen() {
         <Text style={styles.switchLabel}>Afficher les retirés</Text>
         <Switch
           value={includeRemoved}
-          onValueChange={v => { setIncludeRemoved(v); setLoading(true); }}
+          onValueChange={setIncludeRemoved}
           trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
           thumbColor="#fff"
         />
@@ -521,94 +523,92 @@ export default function WhitelistScreen() {
       </BottomSheet>
 
       {/* Import modal */}
-      <SlideUpModal visible={showImportModal} onRequestClose={() => setShowImportModal(false)}>
-        <View style={styles.importContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Importer un fichier</Text>
-            <Pressable onPress={() => setShowImportModal(false)}>
-              <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
+      <BottomSheet visible={showImportModal} onClose={() => setShowImportModal(false)}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Importer un fichier</Text>
+          <Pressable onPress={() => setShowImportModal(false)}>
+            <MaterialIcons name="close" size={22} color={theme.colors.foreground} />
+          </Pressable>
+        </View>
+
+        {importStep === 'pick' && (
+          <View style={styles.importContent}>
+            <Text style={styles.modalSub}>
+              Formats acceptés : CSV, TXT, XML{'\n'}
+              Le fichier doit contenir des numéros de téléphone.
+            </Text>
+            <Pressable style={styles.pickFileBtn} onPress={pickFile} disabled={importLoading}>
+              {importLoading ? (
+                <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+              ) : (
+                <>
+                  <MaterialIcons name="folder-open" size={22} color={theme.colors.primaryForeground} />
+                  <Text style={styles.pickFileBtnText}>Choisir un fichier</Text>
+                </>
+              )}
             </Pressable>
           </View>
+        )}
 
-          {importStep === 'pick' && (
-            <View style={styles.importContent}>
-              <Text style={styles.modalSub}>
-                Formats acceptés : CSV, TXT, XML{'\n'}
-                Le fichier doit contenir des numéros de téléphone.
-              </Text>
-              <Pressable style={styles.pickFileBtn} onPress={pickFile} disabled={importLoading}>
-                {importLoading ? (
-                  <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
-                ) : (
-                  <>
-                    <MaterialIcons name="folder-open" size={22} color={theme.colors.primaryForeground} />
-                    <Text style={styles.pickFileBtnText}>Choisir un fichier</Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          )}
-
-          {importStep === 'columns' && csvPreview && (
-            <View style={styles.importContent}>
-              <Text style={styles.modalSub}>
-                Le fichier contient {csvPreview.headers.length} colonnes.{'\n'}
-                Sélectionnez la colonne contenant les numéros :
-              </Text>
-              <ScrollView style={styles.columnsScroll} contentContainerStyle={{ gap: 8 }}>
-                {csvPreview.headers.map(h => (
-                  <Pressable
-                    key={h.index}
-                    style={[styles.columnBtn, selectedColumn === h.index && styles.columnBtnActive]}
-                    onPress={() => handleColumnSelect(h.index)}
-                    disabled={importLoading}
-                  >
-                    <Text style={[styles.columnBtnText, selectedColumn === h.index && styles.columnBtnTextActive]}>
-                      {h.name}
+        {importStep === 'columns' && csvPreview && (
+          <View style={styles.importContent}>
+            <Text style={styles.modalSub}>
+              Le fichier contient {csvPreview.headers.length} colonnes.{'\n'}
+              Sélectionnez la colonne contenant les numéros :
+            </Text>
+            <ScrollView style={styles.columnsScroll} contentContainerStyle={{ gap: 8 }}>
+              {csvPreview.headers.map(h => (
+                <Pressable
+                  key={h.index}
+                  style={[styles.columnBtn, selectedColumn === h.index && styles.columnBtnActive]}
+                  onPress={() => handleColumnSelect(h.index)}
+                  disabled={importLoading}
+                >
+                  <Text style={[styles.columnBtnText, selectedColumn === h.index && styles.columnBtnTextActive]}>
+                    {h.name}
+                  </Text>
+                  {csvPreview.preview[0]?.[h.index] && (
+                    <Text style={styles.columnPreview}>
+                      ex: {csvPreview.preview[0][h.index]}
                     </Text>
-                    {csvPreview.preview[0]?.[h.index] && (
-                      <Text style={styles.columnPreview}>
-                        ex: {csvPreview.preview[0][h.index]}
-                      </Text>
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
-              {importLoading && (
-                <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 16 }} />
-              )}
-            </View>
-          )}
-
-          {importStep === 'results' && importStats && (
-            <View style={styles.importContent}>
-              <View style={styles.importStatsGrid}>
-                <ImportStatItem label="Total traités" value={importStats.total} color={theme.colors.foreground} theme={theme} />
-                <ImportStatItem label="Ajoutés" value={importStats.added} color="#22c55e" theme={theme} />
-                <ImportStatItem label="Doublons ignorés" value={importStats.skipped_duplicate} color="#f97316" theme={theme} />
-                <ImportStatItem label="Retirés ignorés" value={importStats.skipped_removed} color="#6b7280" theme={theme} />
-                <ImportStatItem label="Invalides" value={importStats.invalid} color={shared.error} theme={theme} />
-              </View>
-              {importStats.errors.length > 0 && (
-                <View style={styles.errorsContainer}>
-                  <Text style={styles.errorsTitle}>Erreurs :</Text>
-                  {importStats.errors.slice(0, 10).map((e, i) => (
-                    <Text key={i} style={styles.errorLine}>
-                      {e.phone} — {e.reason}
-                    </Text>
-                  ))}
-                  {importStats.errors.length > 10 && (
-                    <Text style={styles.errorLine}>...et {importStats.errors.length - 10} autres</Text>
                   )}
-                </View>
-              )}
-              <Pressable style={styles.confirmBtn} onPress={() => setShowImportModal(false)}>
-                <Text style={styles.confirmBtnText}>Fermer</Text>
-              </Pressable>
+                </Pressable>
+              ))}
+            </ScrollView>
+            {importLoading && (
+              <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 16 }} />
+            )}
+          </View>
+        )}
+
+        {importStep === 'results' && importStats && (
+          <View style={styles.importContent}>
+            <View style={styles.importStatsGrid}>
+              <ImportStatItem label="Total traités" value={importStats.total} color={theme.colors.foreground} theme={theme} />
+              <ImportStatItem label="Ajoutés" value={importStats.added} color="#22c55e" theme={theme} />
+              <ImportStatItem label="Doublons ignorés" value={importStats.skipped_duplicate} color="#f97316" theme={theme} />
+              <ImportStatItem label="Retirés ignorés" value={importStats.skipped_removed} color="#6b7280" theme={theme} />
+              <ImportStatItem label="Invalides" value={importStats.invalid} color={shared.error} theme={theme} />
             </View>
-          )}
-        </View>
-      </SlideUpModal>
+            {importStats.errors.length > 0 && (
+              <View style={styles.errorsContainer}>
+                <Text style={styles.errorsTitle}>Erreurs :</Text>
+                {importStats.errors.slice(0, 10).map((e, i) => (
+                  <Text key={i} style={styles.errorLine}>
+                    {e.phone} — {e.reason}
+                  </Text>
+                ))}
+                {importStats.errors.length > 10 && (
+                  <Text style={styles.errorLine}>...et {importStats.errors.length - 10} autres</Text>
+                )}
+              </View>
+            )}
+            <Pressable style={styles.confirmBtn} onPress={() => setShowImportModal(false)}>
+              <Text style={styles.confirmBtnText}>Fermer</Text>
+            </Pressable>
+          </View>
+        )}
+      </BottomSheet>
 
       {/* Bulk delete modal */}
       <BottomSheet visible={showBulkModal} onClose={() => setShowBulkModal(false)}>

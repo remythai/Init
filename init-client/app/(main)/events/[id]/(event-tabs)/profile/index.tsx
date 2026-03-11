@@ -14,7 +14,7 @@ import { matchService } from '@/services/match.service';
 import { Photo, photoService } from '@/services/photo.service';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -52,11 +52,13 @@ export default function EventMyProfileScreen() {
   const [primaryPhoto, setPrimaryPhoto] = useState<Photo | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  const [notUser, setNotUser] = useState(false);
+
   useEffect(() => {
     const initPage = async () => {
       const validatedType = await authService.validateAndGetUserType();
       if (!validatedType) { router.push('/auth'); return; }
-      if (validatedType !== 'user') { router.push('/events'); return; }
+      if (validatedType !== 'user') { setNotUser(true); return; }
 
       loadProfile();
       loadMatchStats();
@@ -212,6 +214,10 @@ export default function EventMyProfileScreen() {
     );
   }
 
+  if (notUser) {
+    return <View style={styles.centered} />;
+  }
+
   if (!profile) {
     return (
       <View style={styles.centered}>
@@ -227,25 +233,6 @@ export default function EventMyProfileScreen() {
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-        {/* ── Profile header ── */}
-        <View style={styles.headerSection}>
-          <View style={styles.avatarWrapper}>
-            {primaryPhoto ? (
-              <Image
-                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.name}>
-            {profile.firstname} {profile.lastname}, {profile.age}
-          </Text>
-        </View>
-
         {/* ── Blocked warning ── */}
         {isBlocked && (
           <View style={styles.blockedBanner}>
@@ -259,49 +246,60 @@ export default function EventMyProfileScreen() {
           </View>
         )}
 
-        {/* ── Photos ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Mes photos</Text>
+        {/* ── Profile header (horizontal like web) ── */}
+        <View style={styles.headerSection}>
+          <View style={styles.avatarWrapper}>
+            {primaryPhoto ? (
+              <Image
+                source={{ uri: photoService.getPhotoUrl(primaryPhoto.file_path) }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.name}>{profile.firstname}</Text>
+            <Text style={styles.age}>{profile.age > 0 ? `${profile.age} ans` : ''}</Text>
+          </View>
+          {!editing && !isBlocked && (
+            <Pressable style={styles.editBtn} onPress={() => setEditing(true)}>
+              <MaterialIcons name="edit" size={20} color={theme.colors.foreground} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* ── Photos (no card wrapper) ── */}
+        <View>
           {isBlocked ? (
             <Text style={styles.disabledText}>Modification des photos désactivée</Text>
           ) : (
             <PhotoManager
               eventId={eventId}
               onPhotosChange={handlePhotosChange}
+              aspectRatio={9 / 16}
             />
           )}
         </View>
 
-        {/* ── Stats ── */}
-        <View style={styles.statCard}>
-          <Text style={styles.statCount}>{matchCount}</Text>
-          <Text style={styles.statLabel}>Matchs sur cet événement</Text>
-        </View>
-
         {/* ── Custom fields ── */}
-        <View style={styles.card}>
-          {/* Card header */}
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Mon profil événement</Text>
-            {customFields.length > 0 && !editing ? (
-              !isBlocked && (
-                <Pressable onPress={() => setEditing(true)} hitSlop={8}>
-                  <MaterialIcons name="edit" size={20} color={theme.colors.primary} />
-                </Pressable>
-              )
-            ) : editing ? (
-              <View style={styles.editActions}>
-                <Pressable onPress={handleCancel} disabled={saving} hitSlop={8}>
-                  <MaterialIcons name="close" size={22} color="#f87171" />
-                </Pressable>
-                <Pressable onPress={handleSave} disabled={saving} hitSlop={8}>
-                  {saving
-                    ? <ActivityIndicator size="small" color="#4ade80" />
-                    : <MaterialIcons name="check" size={22} color="#4ade80" />}
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
+        <View>
+          {editing && (
+            <View style={styles.editActions}>
+              <Pressable onPress={handleCancel} disabled={saving} style={styles.editActionBtn}>
+                <MaterialIcons name="close" size={18} color="#f87171" />
+                <Text style={styles.editActionCancelText}>Annuler</Text>
+              </Pressable>
+              <Pressable onPress={handleSave} disabled={saving} style={styles.editActionBtn}>
+                {saving
+                  ? <ActivityIndicator size="small" color="#4ade80" />
+                  : <MaterialIcons name="check" size={18} color="#4ade80" />}
+                <Text style={styles.editActionSaveText}>{saving ? '...' : 'Sauvegarder'}</Text>
+              </Pressable>
+            </View>
+          )}
 
           {profileError ? (
             <View style={styles.emptyFields}>
@@ -315,15 +313,17 @@ export default function EventMyProfileScreen() {
               </Pressable>
             </View>
           ) : customFields.length === 0 ? (
-            <View style={styles.emptyFields}>
-              <MaterialIcons name="info-outline" size={20} color={theme.colors.mutedForeground} />
-              <Text style={styles.disabledText}>
-                Cet événement n'a pas de champs de profil personnalisés.
-              </Text>
+            <View style={styles.sectionBox}>
+              <View style={styles.emptyFields}>
+                <MaterialIcons name="info-outline" size={20} color={theme.colors.mutedForeground} />
+                <Text style={styles.disabledText}>
+                  Cet événement n'a pas de champs de profil personnalisés.
+                </Text>
+              </View>
             </View>
           ) : !editing ? (
             /* View mode */
-            <View style={styles.fieldsView}>
+            <View style={styles.sectionBox}>
               {customFields.every(f => !profilInfo[getFieldId(f.label)]) ? (
                 <View style={styles.emptyFields}>
                   <Text style={styles.disabledText}>Aucune information renseignée.</Text>
@@ -519,12 +519,12 @@ export default function EventMyProfileScreen() {
           )}
         </View>
 
-        {/* ── Tips ── */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>Conseils</Text>
-          <Text style={styles.tipItem}>• Ajoutez une photo de profil claire et souriante</Text>
-          <Text style={styles.tipItem}>• Décrivez vos centres d'intérêt dans votre bio</Text>
-          <Text style={styles.tipItem}>• Soyez authentique et ouvert aux nouvelles rencontres</Text>
+        {/* ── Description (placeholder like web) ── */}
+        <View style={styles.sectionBox}>
+          <Text style={styles.fieldLabel}>Description</Text>
+          <Text style={[styles.disabledText, { fontStyle: 'italic' }]}>
+            Cette fonctionnalité sera bientôt disponible
+          </Text>
         </View>
 
       </ScrollView>
@@ -538,27 +538,35 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
 
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 16, paddingBottom: 40, gap: 16 },
+    content: { padding: 16, paddingBottom: 40, gap: 24 },
 
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.background },
     loadingText: { color: colors.mutedForeground, fontSize: 14 },
     errorText: { color: colors.mutedForeground, fontSize: 14 },
 
-    /* Header */
-    headerSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
-    avatarWrapper: { marginBottom: 12 },
+    /* Header – horizontal row like web */
+    headerSection: {
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+      paddingTop: 8, paddingBottom: 4,
+    },
+    avatarWrapper: {},
     avatar: {
-      width: 96, height: 96, borderRadius: 48,
+      width: 80, height: 80, borderRadius: 40,
       backgroundColor: colors.primary,
       alignItems: 'center', justifyContent: 'center',
-      borderWidth: 3, borderColor: colors.border,
     },
     avatarImage: {
-      width: 96, height: 96, borderRadius: 48,
-      borderWidth: 3, borderColor: colors.border,
+      width: 80, height: 80, borderRadius: 40,
     },
-    avatarText: { color: colors.card, fontSize: 32, fontWeight: '700' },
-    name: { color: colors.foreground, fontSize: 22, fontWeight: '700', textAlign: 'center' },
+    avatarText: { color: '#fff', fontSize: 28, fontWeight: '700' },
+    headerInfo: { flex: 1 },
+    name: { color: colors.foreground, fontSize: 24, fontWeight: '600' },
+    age: { color: `${colors.foreground}B3`, fontSize: 18 },
+    editBtn: {
+      width: 48, height: 48, borderRadius: 24,
+      backgroundColor: `${colors.mutedForeground}40`,
+      alignItems: 'center', justifyContent: 'center',
+    },
 
     /* Blocked */
     blockedBanner: {
@@ -570,17 +578,20 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
     blockedTitle: { color: '#fca5a5', fontWeight: '700', marginBottom: 2 },
     blockedBody: { color: 'rgba(252,165,165,0.8)', fontSize: 13, lineHeight: 18 },
 
-    /* Cards */
-    card: {
-      backgroundColor: colors.card,
-      borderWidth: 1, borderColor: colors.border,
-      borderRadius: 20, padding: 18,
+    /* Section box – gray rounded like web */
+    sectionBox: {
+      backgroundColor: `${colors.mutedForeground}30`,
+      borderRadius: 19, paddingHorizontal: 24, paddingVertical: 20,
+      gap: 16,
     },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-    cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '600' },
-    editActions: { flexDirection: 'row', gap: 14 },
 
-    disabledText: { color: colors.mutedForeground, fontStyle: 'italic', fontSize: 14, flex: 1 },
+    /* Edit actions row */
+    editActions: { flexDirection: 'row', gap: 16, marginBottom: 8 },
+    editActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+    editActionCancelText: { color: '#f87171', fontSize: 15, fontWeight: '500' },
+    editActionSaveText: { color: '#4ade80', fontSize: 15, fontWeight: '500' },
+
+    disabledText: { color: colors.mutedForeground, fontSize: 14 },
     emptyFields: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
     fillBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -589,32 +600,20 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
     },
     fillBtnText: { color: colors.primaryForeground, fontSize: 14, fontWeight: '600' },
 
-    /* Stat card */
-    statCard: {
-      backgroundColor: colors.card,
-      borderWidth: 1, borderColor: colors.border,
-      borderRadius: 20, padding: 18,
-      alignItems: 'center',
-    },
-    statCount: { color: colors.cardForeground, fontSize: 40, fontWeight: '800' },
-    statLabel: { color: colors.mutedForeground, fontSize: 13, marginTop: 2 },
-
     /* Fields – view */
-    fieldsView: { gap: 12 },
     fieldRow: { gap: 2 },
-    fieldLabel: { color: colors.mutedForeground, fontSize: 13 },
-    fieldValue: { color: colors.cardForeground, fontSize: 15, lineHeight: 22 },
+    fieldLabel: { color: colors.mutedForeground, fontSize: 14 },
+    fieldValue: { color: colors.foreground, fontSize: 16, lineHeight: 22 },
 
     /* Fields – edit */
     fieldsEdit: { gap: 18 },
     inputGroup: { gap: 6 },
-    inputLabel: { color: colors.cardForeground, fontSize: 15, fontWeight: '600' },
+    inputLabel: { color: colors.foreground, fontSize: 15, fontWeight: '600' },
     input: {
-      backgroundColor: colors.inputBackground,
-      borderWidth: 1, borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 14, paddingVertical: 11,
-      color: colors.cardForeground, fontSize: 15,
+      backgroundColor: `${colors.mutedForeground}20`,
+      borderRadius: 19,
+      paddingHorizontal: 20, paddingVertical: 16,
+      color: colors.foreground, fontSize: 15,
     },
     textarea: { minHeight: 96, textAlignVertical: 'top' },
     charCount: { color: colors.mutedForeground, fontSize: 12, textAlign: 'right' },
@@ -626,7 +625,7 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
       alignItems: 'center', justifyContent: 'center',
     },
     checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
-    checkboxLabel: { color: colors.cardForeground, fontSize: 15 },
+    checkboxLabel: { color: colors.foreground, fontSize: 15 },
 
     optionsList: { gap: 8 },
     optionBtn: {
@@ -643,13 +642,5 @@ const createStyles = (theme: ReturnType<typeof import('@/constants/theme').getTh
       alignItems: 'center', justifyContent: 'center',
     },
     multiCheckboxSelected: { backgroundColor: colors.card, borderColor: colors.card },
-
-    /* Tips */
-    tipsCard: {
-      backgroundColor: colors.accent,
-      borderRadius: 20, padding: 18, gap: 6,
-    },
-    tipsTitle: { color: colors.accentForeground, fontSize: 16, fontWeight: '600', marginBottom: 4 },
-    tipItem: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
   });
 };
