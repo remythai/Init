@@ -95,8 +95,8 @@ export default function MainLayout() {
           <Image
             style={styles.logo}
             source={isDark
-              ? require('../../assets/images/initLogoGray.png')
-              : require('../../assets/images/InitLogoTransparent.png')
+              ? require('../../assets/images/logoLight.svg')
+              : require('../../assets/images/logoDark.svg')
             }
           />
           <Pressable onPress={() => router.push('/settings')}>

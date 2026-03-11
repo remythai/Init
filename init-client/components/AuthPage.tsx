@@ -143,7 +143,7 @@ export function AuthPage({ onAuth, loading }: AuthPageProps) {
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={require("@/assets/images/initLogoGray.png")}
+            source={require("@/assets/images/logoLight.svg")}
             style={styles.logo}
           />
           <Text style={styles.tagline}>Là où tout commence</Text>
