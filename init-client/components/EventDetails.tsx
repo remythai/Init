@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -36,6 +37,7 @@ export interface Event {
   isRegistered?: boolean;
   isBlocked?: boolean;
   customFields?: CustomField[];
+  orgaId?: number;
   orgaName?: string;
   orgaLogo?: string;
   hasWhitelist?: boolean;
@@ -425,7 +427,7 @@ export function EventDetail({
             onPress={handleUnregister}
             disabled={isLoading}
           >
-            <MaterialIcons name="cancel" size={20} color={shared.error} />
+            <MaterialIcons name="close" size={20} color="#fff" />
             <Text style={styles.unregisterButtonText}>
               {isLoading ? "Chargement..." : "Se désinscrire"}
             </Text>
@@ -435,8 +437,8 @@ export function EventDetail({
             onPress={() => onEnterEvent?.(event)}
             disabled={isLoading}
           >
-            <MaterialIcons name="login" size={20} color={theme.colors.primaryForeground} />
-            <Text style={styles.actionButtonText}>Entrer</Text>
+            <MaterialIcons name="login" size={20} color="#fff" />
+            <Text style={styles.enterButtonText}>Entrer</Text>
           </Pressable>
         </View>
       );
@@ -543,7 +545,14 @@ export function EventDetail({
           {event.orgaName && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Organisateur</Text>
-              <View style={styles.organizerCard}>
+              <Pressable
+                style={styles.organizerCard}
+                onPress={() => {
+                  if (event.orgaId) {
+                    router.push(`/orga/${event.orgaId}` as any);
+                  }
+                }}
+              >
                 {event.orgaLogo ? (
                   <Image
                     source={{ uri: event.orgaLogo }}
@@ -560,7 +569,10 @@ export function EventDetail({
                   <Text style={styles.organizerName}>{event.orgaName}</Text>
                   <Text style={styles.organizerBadge}>Organisateur vérifié</Text>
                 </View>
-              </View>
+                {event.orgaId && (
+                  <MaterialIcons name="chevron-right" size={22} color={theme.colors.mutedForeground} />
+                )}
+              </Pressable>
             </View>
           )}
         </View>
@@ -784,12 +796,10 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   registerButton: { flex: 1, backgroundColor: theme.colors.accentSolid },
   disabledButton: { opacity: 0.5 },
-  enterButton: { flex: 1, backgroundColor: theme.colors.accentSolid },
+  enterButton: { flex: 1, backgroundColor: theme.colors.primary },
   unregisterButton: {
     flex: 1,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1.5,
-    borderColor: shared.error,
+    backgroundColor: shared.error,
   },
   actionButtonText: {
     fontFamily: "Poppins",
@@ -797,9 +807,15 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  enterButtonText: {
+    fontFamily: "Poppins",
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   unregisterButtonText: {
     fontFamily: "Poppins",
-    color: shared.error,
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },

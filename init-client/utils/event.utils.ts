@@ -100,6 +100,7 @@ export const transformEventResponse = (eventResponse: EventResponse): Event => {
     isRegistered: eventResponse.is_registered || false,
     isBlocked: eventResponse.is_blocked || false,
     customFields: eventResponse.custom_fields || [],
+    orgaId: eventResponse.orga_id,
     orgaName: eventResponse.orga_name,
     orgaLogo,
     hasWhitelist: eventResponse.has_whitelist,

@@ -5,6 +5,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export interface EventResponse {
   id: number;
+  orga_id?: number;
   name: string;
   location?: string;
   max_participants: number;
@@ -96,6 +97,7 @@ export interface Event {
   isRegistered?: boolean;
   isBlocked?: boolean;
   customFields?: CustomField[];
+  orgaId?: number;
   orgaName?: string;
   orgaLogo?: string;
   hasWhitelist?: boolean;
@@ -466,6 +468,18 @@ class EventService {
     return data.data.banner_path;
   }
 
+  async getOrgaProfile(orgaId: number): Promise<{ orga: any; events: EventResponse[] }> {
+    const response = await authService.authenticatedFetch(`/api/orga/${orgaId}/public`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || error.message || "Erreur lors de la récupération de l'organisation");
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
   async deleteEventBanner(eventId: string): Promise<void> {
     const response = await authService.authenticatedFetch(`/api/events/${eventId}/banner`, {
       method: 'DELETE',
@@ -651,6 +665,7 @@ export function transformEventResponse(event: EventResponse): Event {
     isRegistered: event.is_registered,
     isBlocked: event.is_blocked,
     customFields: event.custom_fields,
+    orgaId: event.orga_id,
     orgaName: event.orga_name,
     orgaLogo,
     hasWhitelist: event.has_whitelist,
