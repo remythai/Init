@@ -192,7 +192,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: topInset,
+    paddingTop: topInset + 8,
     paddingBottom: 10,
     backgroundColor: theme.colors.card,
     borderBottomWidth: 1,

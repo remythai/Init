@@ -152,7 +152,7 @@ interface ConversationScreenProps {
 export function ConversationScreen({ matchId, onBack }: ConversationScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
+  const styles = useMemo(() => createStyles(theme, insets.top, insets.bottom), [theme, insets.top, insets.bottom]);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -372,7 +372,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -646,11 +646,11 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
   );
 }
 
-const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
+const createStyles = (theme: Theme, topInset: number, bottomInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.card },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 8, paddingTop: topInset, paddingBottom: 12,
+    paddingHorizontal: 8, paddingTop: topInset + 8, paddingBottom: 12,
     backgroundColor: theme.colors.card,
     borderBottomWidth: 1, borderBottomColor: theme.colors.border,
   },
@@ -680,7 +680,7 @@ const createStyles = (theme: Theme, topInset: number) => StyleSheet.create({
   bubbleTimeOther: { color: theme.colors.placeholder },
   typingContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: theme.colors.background },
   typingText: { fontSize: 12, color: theme.colors.placeholder, fontStyle: 'italic' },
-  inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingVertical: 10 },
+  inputContainer: { backgroundColor: theme.colors.card, borderTopWidth: 1, borderTopColor: theme.colors.secondary, paddingHorizontal: 12, paddingTop: 10, paddingBottom: Math.max(bottomInset, 10) },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   input: { flex: 1, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: theme.colors.foreground, maxHeight: 100, fontSize: 14 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.sentMsg, alignItems: 'center', justifyContent: 'center' },
