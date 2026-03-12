@@ -26,8 +26,9 @@ export const emitNewMessage = (matchId: number, message: Record<string, unknown>
   });
 
   if (recipientId) {
-    const title = senderName ? `Message de ${senderName}` : 'Nouveau message';
-    PushService.sendToUser(recipientId, title, (message.content as string) || 'Vous avez reçu un message', {
+    const title = 'Init';
+    const body = senderName ? `${senderName} a envoyé un message` : 'Nouveau message';
+    PushService.sendToUser(recipientId, title, body, {
       type: 'message',
       matchId,
       senderId,
@@ -53,14 +54,18 @@ export const emitNewMatch = (user1Id: number, user2Id: number, matchData: unknow
   emitToUser(user1Id, 'match:new', matchData);
   emitToUser(user2Id, 'match:new', matchData);
 
-  PushService.sendToUser(user1Id, 'Nouveau match !', 'Vous avez un nouveau match', {
+  const md = matchData as Record<string, any>;
+  const user1Name = md.user1?.firstname || md.user1?.name;
+  const user2Name = md.user2?.firstname || md.user2?.name;
+
+  PushService.sendToUser(user1Id, 'Init', user2Name ? `Tu as matché avec ${user2Name}. Dis-lui bonjour !` : 'Tu as un nouveau match !', {
     type: 'match',
-    ...(matchData as Record<string, unknown>)
+    matchId: md.match_id,
   }, 'user', 'matches').catch(err => logger.error({ err }, 'Failed to send push for new match'));
 
-  PushService.sendToUser(user2Id, 'Nouveau match !', 'Vous avez un nouveau match', {
+  PushService.sendToUser(user2Id, 'Init', user1Name ? `Tu as matché avec ${user1Name}. Dis-lui bonjour !` : 'Tu as un nouveau match !', {
     type: 'match',
-    ...(matchData as Record<string, unknown>)
+    matchId: md.match_id,
   }, 'user', 'matches').catch(err => logger.error({ err }, 'Failed to send push for new match'));
 
   logger.debug({ user1Id, user2Id }, 'Emitted match:new');

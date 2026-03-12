@@ -78,6 +78,7 @@ export const PushService = {
           channelId,
           sound: 'default',
           priority: 'high',
+          ...(data?.collapseKey ? { tag: String(data.collapseKey) } : {}),
         },
         ...(data?.collapseKey ? { collapseKey: String(data.collapseKey) } : {}),
       },
