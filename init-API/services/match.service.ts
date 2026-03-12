@@ -1,6 +1,7 @@
 import { MatchModel } from '../models/match.model.js';
 import { RegistrationModel } from '../models/registration.model.js';
 import { EventModel } from '../models/event.model.js';
+import { UserModel } from '../models/user.model.js';
 import { BlockedUserModel } from '../models/blockedUser.model.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError, EventExpiredError, UserBlockedError } from '../utils/errors.js';
 import { emitNewMessage, emitNewMatch, emitConversationUpdate } from '../socket/emitters.js';
@@ -342,7 +343,11 @@ export const MatchService = {
 
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
 
-    emitNewMessage(matchId, message as unknown as Record<string, unknown>, userId, otherUserId);
+    // Get sender name for push notification
+    const sender = await UserModel.findById(userId);
+    const senderName = sender?.firstname || undefined;
+
+    emitNewMessage(matchId, message as unknown as Record<string, unknown>, userId, otherUserId, senderName);
 
     emitConversationUpdate(otherUserId, {
       match_id: matchId,

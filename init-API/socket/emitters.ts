@@ -15,7 +15,7 @@ export const getIO = (): Server | null => {
   return io;
 };
 
-export const emitNewMessage = (matchId: number, message: Record<string, unknown>, senderId: number, recipientId?: number): void => {
+export const emitNewMessage = (matchId: number, message: Record<string, unknown>, senderId: number, recipientId?: number, senderName?: string): void => {
   if (!io) return;
 
   const roomName = `match:${matchId}`;
@@ -26,7 +26,8 @@ export const emitNewMessage = (matchId: number, message: Record<string, unknown>
   });
 
   if (recipientId) {
-    PushService.sendToUser(recipientId, 'Nouveau message', (message.content as string) || 'Vous avez reçu un message', {
+    const title = senderName ? `Message de ${senderName}` : 'Nouveau message';
+    PushService.sendToUser(recipientId, title, (message.content as string) || 'Vous avez reçu un message', {
       type: 'message',
       matchId,
       senderId
