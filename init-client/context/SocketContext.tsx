@@ -11,12 +11,13 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType>({ isConnected: false, currentUserId: null });
 
-export function SocketProvider({ children }: { children: ReactNode }) {
+export function SocketProvider({ children, isAuthenticated }: { children: ReactNode; isAuthenticated?: boolean }) {
   const [isConnected, setIsConnected] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     mountedRef.current = true;
 
     const init = async () => {
@@ -75,7 +76,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       sub.remove();
       socketService.disconnect();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <SocketContext.Provider value={{ isConnected, currentUserId }}>
