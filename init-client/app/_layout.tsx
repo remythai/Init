@@ -13,8 +13,7 @@ import { EventProvider } from '@/context/EventContext';
 import { SocketProvider } from '@/context/SocketContext';
 import { LangProvider } from '@/context/LangContext';
 import { UnreadProvider } from '@/context/UnreadContext';
-import { registerAndSavePushToken } from '@/services/notification.service';
-import * as Notifications from 'expo-notifications';
+import { registerAndSavePushToken, addNotificationResponseListener } from '@/services/notification.service';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,16 +57,14 @@ function RootLayoutInner() {
   }, [isReady, isAuthenticated]);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
-        if (data?.type === 'match') {
-          router.push('/(main)/matches' as any);
-        } else if (data?.type === 'message' && data?.matchId) {
-          router.push(`/(main)/chat/${data.matchId}` as any);
-        }
+    const subscription = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'match') {
+        router.push('/(main)/matches' as any);
+      } else if (data?.type === 'message' && data?.matchId) {
+        router.push(`/(main)/chat/${data.matchId}` as any);
       }
-    );
+    });
     return () => subscription.remove();
   }, []);
 
