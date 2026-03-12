@@ -20,9 +20,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     mountedRef.current = true;
 
     const init = async () => {
-      const token = await authService.getToken();
+      let token = await authService.getToken();
       const userType = await authService.getUserType();
       if (!token || userType !== 'user') return; // Only users use sockets (not orga)
+
+      // Ensure token is fresh before connecting socket
+      const freshToken = await authService.refreshAccessToken();
+      if (freshToken) token = freshToken;
 
       // Get current user ID
       try {
