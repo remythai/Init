@@ -1,6 +1,5 @@
 import * as Device from "expo-device";
-import Constants from "expo-constants";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import { authService } from "./auth.service";
 
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -55,13 +54,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-
   try {
-    const tokenOptions = projectId ? { projectId } : {};
+    // Get native FCM token (not Expo push token)
     const token = (
-      await Notifications.getExpoPushTokenAsync(tokenOptions)
-    ).data;
+      await Notifications.getDevicePushTokenAsync()
+    ).data as string;
 
     if (Platform.OS === "android") {
       // Canal principal pour les messages

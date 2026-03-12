@@ -25,6 +25,7 @@ function RootLayoutInner() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const hasNavigated = useRef(false);
 
+  // Check auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -40,6 +41,20 @@ function RootLayoutInner() {
 
     checkAuth();
   }, []);
+
+  // Re-check auth when navigating to (main) — catches post-login state
+  const inMain = segments[0] === '(main)';
+  useEffect(() => {
+    if (!inMain || isAuthenticated) return;
+    const recheck = async () => {
+      const authenticated = await authService.isAuthenticated();
+      if (authenticated) {
+        setIsAuthenticated(true);
+        registerAndSavePushToken();
+      }
+    };
+    recheck();
+  }, [inMain]);
 
   useEffect(() => {
     if (!isReady || isAuthenticated === null || hasNavigated.current) return;
