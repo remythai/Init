@@ -3,3 +3,4 @@ node_modules
 uploads
 dist
 *.tsbuildinfo
+firebase-service-account.json

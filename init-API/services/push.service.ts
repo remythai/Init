@@ -1,8 +1,21 @@
-import { Expo, type ExpoPushMessage, type ExpoPushTicket } from 'expo-server-sdk';
+import admin from 'firebase-admin';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 
-const expo = new Expo();
+// Initialize Firebase Admin SDK
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || resolve('firebase-service-account.json');
+
+try {
+  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  logger.info('Firebase Admin SDK initialized');
+} catch (error) {
+  logger.error({ error }, 'Failed to initialize Firebase Admin SDK — push notifications will not work');
+}
 
 export const PushService = {
   async saveToken(userId: number, role: 'user' | 'orga', pushToken: string): Promise<void> {
@@ -11,7 +24,7 @@ export const PushService = {
       `UPDATE ${table} SET push_token = $1 WHERE id = $2`,
       [pushToken, userId]
     );
-    logger.info({ userId, role, pushToken }, 'Push token saved');
+    logger.info({ userId, role }, 'Push token saved');
   },
 
   async removeToken(userId: number, role: 'user' | 'orga'): Promise<void> {
@@ -32,34 +45,56 @@ export const PushService = {
   },
 
   async sendNotification(
-    pushToken: string,
+    fcmToken: string,
     title: string,
     body: string,
     data?: Record<string, unknown>,
     channelId: string = 'messages'
-  ): Promise<ExpoPushTicket | null> {
-    if (!Expo.isExpoPushToken(pushToken)) {
-      logger.warn({ pushToken }, 'Invalid Expo push token');
+  ): Promise<string | null> {
+    if (!admin.apps?.length) {
+      logger.warn('Firebase not initialized, skipping notification');
       return null;
     }
 
-    const collapseKey = data?.collapseKey as string | undefined;
-    const message: ExpoPushMessage & { _collapseKey?: string } = {
-      to: pushToken,
-      sound: 'default',
-      title,
-      body,
-      data,
-      channelId,
-      ...(collapseKey ? { _collapseKey: collapseKey } : {}),
+    // FCM data values must be strings
+    const stringData: Record<string, string> = {};
+    if (data) {
+      for (const [key, value] of Object.entries(data)) {
+        if (key === 'collapseKey') continue;
+        stringData[key] = String(value);
+      }
+    }
+
+    const message: admin.messaging.Message = {
+      token: fcmToken,
+      notification: {
+        title,
+        body,
+      },
+      data: stringData,
+      android: {
+        priority: 'high',
+        notification: {
+          channelId,
+          sound: 'default',
+          priority: 'high',
+        },
+        ...(data?.collapseKey ? { collapseKey: String(data.collapseKey) } : {}),
+      },
     };
 
     try {
-      const [ticket] = await expo.sendPushNotificationsAsync([message]);
-      logger.info({ ticket, title }, 'Push notification sent');
-      return ticket;
-    } catch (error) {
-      logger.error({ error, pushToken, title }, 'Failed to send push notification');
+      const messageId = await admin.messaging().send(message);
+      logger.info({ messageId, title }, 'Push notification sent via FCM');
+      return messageId;
+    } catch (error: any) {
+      // Clean up invalid tokens
+      if (error?.code === 'messaging/registration-token-not-registered' ||
+          error?.code === 'messaging/invalid-registration-token') {
+        logger.warn({ fcmToken }, 'Invalid FCM token, should be cleaned up');
+      } else {
+        logger.error({ error, fcmToken, title }, 'Failed to send FCM notification');
+      }
       return null;
     }
   },
