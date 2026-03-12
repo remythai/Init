@@ -30,8 +30,9 @@ export const emitNewMessage = (matchId: number, message: Record<string, unknown>
     PushService.sendToUser(recipientId, title, (message.content as string) || 'Vous avez reçu un message', {
       type: 'message',
       matchId,
-      senderId
-    }).catch(err => logger.error({ err }, 'Failed to send push for new message'));
+      senderId,
+      collapseKey: `chat-${matchId}`,
+    }, 'user', 'messages').catch(err => logger.error({ err }, 'Failed to send push for new message'));
   }
 
   logger.debug({ matchId, room: roomName }, 'Emitted chat:newMessage');
@@ -55,12 +56,12 @@ export const emitNewMatch = (user1Id: number, user2Id: number, matchData: unknow
   PushService.sendToUser(user1Id, 'Nouveau match !', 'Vous avez un nouveau match', {
     type: 'match',
     ...(matchData as Record<string, unknown>)
-  }).catch(err => logger.error({ err }, 'Failed to send push for new match'));
+  }, 'user', 'matches').catch(err => logger.error({ err }, 'Failed to send push for new match'));
 
   PushService.sendToUser(user2Id, 'Nouveau match !', 'Vous avez un nouveau match', {
     type: 'match',
     ...(matchData as Record<string, unknown>)
-  }).catch(err => logger.error({ err }, 'Failed to send push for new match'));
+  }, 'user', 'matches').catch(err => logger.error({ err }, 'Failed to send push for new match'));
 
   logger.debug({ user1Id, user2Id }, 'Emitted match:new');
 };

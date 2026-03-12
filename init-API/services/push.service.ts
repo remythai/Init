@@ -35,19 +35,23 @@ export const PushService = {
     pushToken: string,
     title: string,
     body: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
+    channelId: string = 'messages'
   ): Promise<ExpoPushTicket | null> {
     if (!Expo.isExpoPushToken(pushToken)) {
       logger.warn({ pushToken }, 'Invalid Expo push token');
       return null;
     }
 
-    const message: ExpoPushMessage = {
+    const collapseKey = data?.collapseKey as string | undefined;
+    const message: ExpoPushMessage & { _collapseKey?: string } = {
       to: pushToken,
       sound: 'default',
       title,
       body,
       data,
+      channelId,
+      ...(collapseKey ? { _collapseKey: collapseKey } : {}),
     };
 
     try {
@@ -65,12 +69,13 @@ export const PushService = {
     title: string,
     body: string,
     data?: Record<string, unknown>,
-    role: 'user' | 'orga' = 'user'
+    role: 'user' | 'orga' = 'user',
+    channelId: string = 'messages'
   ): Promise<void> {
     const token = await this.getToken(userId, role);
     if (token) {
       logger.info({ userId, title }, 'Sending push notification');
-      await this.sendNotification(token, title, body, data);
+      await this.sendNotification(token, title, body, data, channelId);
     } else {
       logger.warn({ userId, role }, 'No push token found for user, skipping notification');
     }

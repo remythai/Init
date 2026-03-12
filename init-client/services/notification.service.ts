@@ -64,10 +64,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
     ).data;
 
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.MAX,
+      // Canal principal pour les messages
+      await Notifications.setNotificationChannelAsync("messages", {
+        name: "Messages",
+        description: "Notifications de nouveaux messages",
+        importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
+        sound: "default",
+        enableVibrate: true,
+      });
+      // Canal pour les matchs
+      await Notifications.setNotificationChannelAsync("matches", {
+        name: "Matchs",
+        description: "Notifications de nouveaux matchs",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: "default",
+        enableVibrate: true,
       });
     }
 
