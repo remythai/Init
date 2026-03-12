@@ -46,6 +46,7 @@ services:
       - "3001:3000"
     volumes:
       - ./init-API/uploads:/app/uploads
+      - ./init-API/firebase-service-account.json:/app/firebase-service-account.json:ro
     restart: unless-stopped
     networks:
       - init_net
