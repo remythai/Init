@@ -1,9 +1,10 @@
 // app/(main)/events/[id]/(event-tabs)/swiper.tsx
 import { View, StyleSheet, Text } from "react-native";
 import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/context/ThemeContext';
 import { EventSwiper } from "@/components/EventSwiper";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useEvent } from '@/context/EventContext';
 
 export default function SwiperScreen() {
@@ -15,13 +16,20 @@ export default function SwiperScreen() {
   // ✅ Priorité : params d'URL > context
   const eventId = eventIdParam ? parseInt(eventIdParam) : currentEventId || 0;
   const [matchCount, setMatchCount] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const navigation = useNavigation();
 
-  console.log('🔍 Swiper - eventIdParam:', eventIdParam, 'currentEventId:', currentEventId, 'eventId:', eventId);
+  // Reload profiles when tab regains focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setRefreshKey(k => k + 1);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
-  // ✅ Synchroniser le context avec l'URL au montage
+  // Synchroniser le context avec l'URL au montage
   useEffect(() => {
     if (eventId && eventId !== currentEventId) {
-      console.log('🔄 Swiper: Syncing context with eventId:', eventId);
       setCurrentEventId(eventId);
     }
   }, [eventId, currentEventId, setCurrentEventId]);
@@ -40,8 +48,8 @@ export default function SwiperScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <EventSwiper
         eventId={eventId}
+        refreshKey={refreshKey}
         onMatch={() => {
-          console.log("🎉 NOUVEAU MATCH ! event:", eventId);
           setMatchCount(c => c + 1);
           setCurrentEventId(eventId);
         }}

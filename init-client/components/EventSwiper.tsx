@@ -39,6 +39,7 @@ export interface EventProfile {
 interface EventSwiperProps {
   eventId: number;
   onMatch?: () => void;
+  refreshKey?: number;
 }
 
 function profileToEventProfile(profile: Profile): EventProfile {
@@ -54,7 +55,7 @@ function profileToEventProfile(profile: Profile): EventProfile {
   };
 }
 
-export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
+export function EventSwiper({ eventId, onMatch, refreshKey }: EventSwiperProps) {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -83,7 +84,7 @@ export function EventSwiper({ eventId, onMatch }: EventSwiperProps) {
   // 🔄 LOAD API PROFILES
   useEffect(() => {
     loadProfiles();
-  }, [eventId]);
+  }, [eventId, refreshKey]);
 
   const loadProfiles = async () => {
     setLoading(true);
