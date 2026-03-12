@@ -105,7 +105,7 @@ function RootLayoutInner() {
   return (
     <NavThemeProvider value={navigationTheme}>
     <EventProvider>
-      <SocketProvider>
+      <SocketProvider isAuthenticated={isAuthenticated ?? false}>
         <StatusBar style={statusBarStyle} />
         <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: theme.colors.background } }}>
           <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
