@@ -198,7 +198,7 @@ export default function AuthPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <Link href="/" className="inline-block mb-4">
-          <Image src="/logo.png" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto" />
+          <Image src="/logoDark.svg" alt="Init Logo" width={200} height={80} className="h-20 md:h-24 w-auto" />
         </Link>
         <p className="text-white/70 font-roboto text-xs md:text-sm">Là où tout commence</p>
       </div>
