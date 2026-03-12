@@ -119,38 +119,53 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile burger button */}
-        <div ref={menuRef} className="md:hidden relative">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="text-white p-2"
-            aria-label="Menu"
-          >
-            {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+        {/* Mobile: language selector + burger button */}
+        <div className="md:hidden flex items-center gap-2">
+          {/* Language dropdown outside burger */}
+          <div ref={dropdownRef} className="relative">
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className="flex items-center gap-1.5 font-poppins text-sm text-white font-bold hover:text-white/80 transition-colors"
+            >
+              <Globe className="w-4 h-4" />
+              {lang}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${langOpen ? "rotate-180" : ""}`} />
+            </button>
 
-          {/* Mobile dropdown menu */}
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl min-w-[220px] flex flex-col p-3 gap-2">
-              {/* Language selector */}
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Globe className="w-4 h-4 text-white/60" />
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl overflow-hidden shadow-xl min-w-[140px]">
                 {languages.map((l) => (
                   <button
                     key={l.code}
-                    onClick={() => setLang(l.code)}
-                    className={`font-poppins text-sm px-2 py-1 rounded-lg transition-colors ${
+                    onClick={() => {
+                      setLang(l.code);
+                      setLangOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 font-poppins text-sm transition-colors ${
                       lang === l.code
                         ? "text-white bg-white/10"
-                        : "text-white/50 hover:text-white"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    {l.code}
+                    {l.label}
                   </button>
                 ))}
               </div>
+            )}
+          </div>
 
-              <hr className="border-white/10" />
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="text-white p-2"
+              aria-label="Menu"
+            >
+              {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+
+            {/* Mobile dropdown menu */}
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl min-w-[220px] flex flex-col p-3 gap-2">
 
               <a
                 href="/init.apk"
@@ -181,8 +196,9 @@ export default function Navbar() {
                   {t.navbar.logout}
                 </button>
               )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
