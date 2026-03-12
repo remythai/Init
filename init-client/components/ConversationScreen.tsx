@@ -155,10 +155,7 @@ interface ConversationScreenProps {
 export function ConversationScreen({ matchId, onBack }: ConversationScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-<<<<<<< Updated upstream
   const { refreshUnread } = useUnread();
-=======
->>>>>>> Stashed changes
   const styles = useMemo(() => createStyles(theme, insets.top, insets.bottom), [theme, insets.top, insets.bottom]);
 
   const flatListRef = useRef<FlatList>(null);
@@ -702,11 +699,7 @@ export function ConversationScreen({ matchId, onBack }: ConversationScreenProps)
 }
 
 const createStyles = (theme: Theme, topInset: number, bottomInset: number) => StyleSheet.create({
-<<<<<<< Updated upstream
   container: { flex: 1, backgroundColor: theme.colors.background },
-=======
-  container: { flex: 1, backgroundColor: theme.colors.card },
->>>>>>> Stashed changes
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 8, paddingTop: topInset + 8, paddingBottom: 12,

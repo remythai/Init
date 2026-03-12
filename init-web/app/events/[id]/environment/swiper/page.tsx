@@ -156,6 +156,17 @@ export default function SwiperPage() {
     initPage();
   }, [eventId]);
 
+  // Reload profiles when tab regains visibility (user navigates back)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadProfiles();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [eventId]);
+
   const loadProfiles = async () => {
     try {
       setLoading(true);
